@@ -9,6 +9,13 @@ using YamlDotNet.Serialization;
 
 namespace KepwareSync.Model
 {
+    public interface IHaveOwner
+    {
+        [JsonIgnore]
+        [YamlIgnore]
+        public BaseEntity? Owner { get; set; }
+    }
+
     public abstract class BaseEntity
     {
         [JsonPropertyName("common.ALLTYPES_NAME")]
@@ -22,5 +29,10 @@ namespace KepwareSync.Model
         [JsonExtensionData]
         [YamlIgnore]
         public Dictionary<string, object> DynamicProperties { get; set; } = new();
+    }
+
+    public class DefaultEntity(BaseEntity owner) : BaseEntity, IHaveOwner
+    {
+        public BaseEntity? Owner { get; set; } = owner;
     }
 }

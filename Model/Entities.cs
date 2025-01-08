@@ -1,125 +1,106 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using YamlDotNet.Core.Tokens;
 using YamlDotNet.Serialization;
 
 namespace KepwareSync.Model
 {
-    [Endpoint("/config/v1/project/channels")]
+    [Endpoint("/config/v1/project/channels/{name}")]
     public class Channel : BaseEntity
     {
-        [JsonIgnore]
-        [YamlIgnore]
-        public List<Device> Devices { get; set; } = new();
+    }
 
-        [JsonIgnore]
-        [YamlIgnore]
-        public List<Phonebook> Phonebooks { get; set; } = new();
+    [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}")]
+    public class Device(BaseEntity owner) : DefaultEntity(owner) { }
+
+    [Endpoint("/config/v1/project/channels")]
+    public class ChannelCollection : EntityCollection<Channel>
+    {
+        public ChannelCollection(BaseEntity owner) : base(owner) { }
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices")]
-    public class Device : BaseEntity
+    public class DeviceCollection : EntityCollection<Device>
     {
-        [JsonIgnore]
-        [YamlIgnore]
-        public List<ConsumerExchangeGroup> ConsumerExchangeGroups { get; set; } = new();
+        public DeviceCollection(BaseEntity owner) : base(owner) { }
+    }
 
-        [JsonIgnore]
-        [YamlIgnore]
-        public List<DeviceProfile> DeviceProfiles { get; set; } = new();
-
-        [JsonIgnore]
-        [YamlIgnore]
-        public List<TagGroup> TagGroups { get; set; } = new();
-
-        [JsonIgnore]
-        [YamlIgnore]
-        public List<OmniMappingGroup> OmniMappingGroups { get; set; } = new();
-
-        [JsonIgnore]
-        [YamlIgnore]
-        public List<ProducerExchangeGroup> ProducerExchangeGroups { get; set; } = new();
+    [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}/tags")]
+    public class DeviceTagCollection : EntityCollection<DefaultEntity>
+    {
+        public DeviceTagCollection(BaseEntity owner) : base(owner) { }
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}/consumer_exchange_groups")]
-    public class ConsumerExchangeGroup : BaseEntity
+    public class ConsumerExchangeGroupCollection : EntityCollection<DefaultEntity>
     {
-        [JsonIgnore]
-        [YamlIgnore]
-        public List<ConsumerExchange> ConsumerExchanges { get; set; } = new();
+        public ConsumerExchangeGroupCollection(BaseEntity owner) : base(owner) { }
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}/consumer_exchange_groups/{groupName}/consumer_exchanges")]
-    public class ConsumerExchange : BaseEntity
+    public class ConsumerExchangeCollection : EntityCollection<DefaultEntity>
     {
-        [JsonIgnore]
-        [YamlIgnore]
-        public List<Range> Ranges { get; set; } = new();
+        public ConsumerExchangeCollection(BaseEntity owner) : base(owner) { }
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}/producer_exchange_groups")]
-    public class ProducerExchangeGroup : BaseEntity
+    public class ProducerExchangeGroupCollection : EntityCollection<DefaultEntity>
     {
-        [JsonIgnore]
-        [YamlIgnore]
-        public List<ProducerExchange> ProducerExchanges { get; set; } = new();
+        public ProducerExchangeGroupCollection(BaseEntity owner) : base(owner) { }
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}/producer_exchange_groups/{groupName}/producer_exchanges")]
-    public class ProducerExchange : BaseEntity
+    public class ProducerExchangeCollection : EntityCollection<DefaultEntity>
     {
-        [JsonIgnore]
-        [YamlIgnore]
-        public List<Range> Ranges { get; set; } = new();
+        public ProducerExchangeCollection(BaseEntity owner) : base(owner) { }
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}/omni_mapping_groups")]
-    public class OmniMappingGroup : BaseEntity
+    public class OmniMappingGroupCollection : EntityCollection<DefaultEntity>
     {
-        [JsonIgnore]
-        [YamlIgnore]
-        public List<OmniMapping> OmniMappings { get; set; } = new();
+        public OmniMappingGroupCollection(BaseEntity owner) : base(owner) { }
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}/omni_mapping_groups/{groupName}/omni_mappings")]
-    public class OmniMapping : BaseEntity
+    public class OmniMappingCollection : EntityCollection<DefaultEntity>
     {
-        [JsonIgnore]
-        [YamlIgnore]
-        public List<OmniAlarm> OmniAlarms { get; set; } = new();
+        public OmniMappingCollection(BaseEntity owner) : base(owner) { }
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}/omni_mapping_groups/{groupName}/omni_mappings/{mappingName}/omni_gas_alarms")]
-    public class OmniAlarm : BaseEntity
+    public class OmniAlarmCollection : EntityCollection<DefaultEntity>
     {
-        // Specific properties for Omni Alarms
+        public OmniAlarmCollection(BaseEntity owner) : base(owner) { }
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}/tag_groups")]
-    public class TagGroup : BaseEntity
+    public class TagGroupCollection : EntityCollection<DefaultEntity>
     {
-        [JsonIgnore]
-        [YamlIgnore]
-        public List<Tag> Tags { get; set; } = new();
+        public TagGroupCollection(BaseEntity owner) : base(owner) { }
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}/tag_groups/{groupName}/tags")]
-    public class Tag : BaseEntity { }
-
-    [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}/tag_groups/{groupName}/tags/{tagName}/ranges")]
-    public class Range : BaseEntity { }
+    public class TagCollection : EntityCollection<DefaultEntity>
+    {
+        public TagCollection(BaseEntity owner) : base(owner) { }
+    }
 
     [Endpoint("/config/v1/project/channels/{channelName}/phonebooks")]
-    public class Phonebook : BaseEntity
+    public class PhonebookCollection : EntityCollection<DefaultEntity>
     {
-        [JsonIgnore]
-        [YamlIgnore]
-        public List<PhoneEntry> PhoneEntries { get; set; } = new();
+        public PhonebookCollection(BaseEntity owner) : base(owner) { }
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/phonebooks/{phonebookName}/phonelist")]
-    public class PhoneEntry : BaseEntity { }
+    public class PhoneEntryCollection : EntityCollection<DefaultEntity>
+    {
+        public PhoneEntryCollection(BaseEntity owner) : base(owner) { }
+    }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}/device_profiles")]
-    public class DeviceProfile : BaseEntity { }
+    public class DeviceProfileCollection : EntityCollection<DefaultEntity>
+    {
+        public DeviceProfileCollection(BaseEntity owner) : base(owner) { }
+    }
 }
