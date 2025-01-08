@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "KepwareSync": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
