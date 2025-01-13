@@ -2,9 +2,13 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace KepwareSync
@@ -12,10 +16,12 @@ namespace KepwareSync
     public class KepServerClient
     {
         private readonly ILogger<KepServerClient> m_logger;
+        private readonly HttpClient m_httpClient;
 
         public KepServerClient(ILogger<KepServerClient> logger)
         {
             m_logger = logger;
+            m_httpClient = CreateHttpClient();
         }
 
         public async Task<string> GetFullProjectAsync()
@@ -31,26 +37,92 @@ namespace KepwareSync
             // Upload full project JSON to KepServer REST API
             await Task.CompletedTask;
         }
-
-        protected async Task<T> LoadAsync<T>(HttpClient client, params (string Key, string Value)[] parentParameters)
-            where T : BaseEntity, new()
+        
+        private HttpClient CreateHttpClient()
         {
-            var endpoint = ResolveEndpoint<T>(parentParameters);
-            var response = await client.GetStringAsync(endpoint);
-            return JsonSerializer.Deserialize<T>(response);
+
+            string username = "Administrator";
+            string password = "InrayTkeDocker2024!";
+            string credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{username}:{password}"));
+            bool acceptSelfSignedCertificates = true;
+
+            // Create and configure HttpClientHandler to accept self-signed certificates
+            var handler = acceptSelfSignedCertificates ? new HttpClientHandler()
+            {
+                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+            } : new HttpClientHandler();
+
+            // Create and configure HttpClient
+            return new HttpClient(handler)
+            {
+                BaseAddress = new Uri("https://localhost:57512/"),
+                Timeout = TimeSpan.FromSeconds(30),
+                DefaultRequestHeaders =
+                {
+                    { "Accept", "application/json" },
+                    { "User-Agent", "KepwareSync" },
+                    { "Authorization", $"Basic {credentials}" }
+                },
+            };
         }
 
-        protected async Task SaveAsync<T>(HttpClient client, T entity , params (string Key, string Value)[] parentParameters)
-            where T : BaseEntity
+        public Task<T?> LoadAsync<T>(BaseEntity? owner = null)
+          where T : EntityCollection<DefaultEntity>, new()
+         => LoadAsync<T, DefaultEntity>(owner);
+
+        public async Task<T?> LoadAsync<T, K>(BaseEntity? owner = null)
+            where T : EntityCollection<K>, new()
+            where K : BaseEntity, new()
         {
-            var endpoint = ResolveEndpoint<T>(parentParameters);
-            var jsonContent = JsonSerializer.Serialize(entity);
-            var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
-            await client.PutAsync(endpoint, content);
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            var endpoint = ResolveEndpoint<T>(owner);
+
+            m_logger.LogInformation($"Loading {typeof(T).Name} from {endpoint}...");
+            var response = await m_httpClient.GetAsync(endpoint);
+            if (!response.IsSuccessStatusCode)
+            {
+                m_logger.LogError($"Failed to load {typeof(T).Name} from {endpoint}: {response.ReasonPhrase}");
+                return default;
+            }
+
+            var collection = await DeserializeJsonAsync<K>(response);
+            if (collection != null)
+            {
+                // if generic type K implements IHaveOwner
+                if (collection.OfType<IHaveOwner>().Any())
+                {
+                    foreach (var item in collection.OfType<IHaveOwner>())
+                    {
+                        item.Owner = owner;
+                    }
+                }
+
+                var resultCollection = new T() { Owner = owner, Items = collection };
+                return resultCollection; 
+            }
+            else
+            {
+                m_logger.LogError($"Failed to deserialize {typeof(T).Name} from {endpoint}");
+                return default;
+            }
         }
 
-        private string ResolveEndpoint<T>(params (string Key, string Value)[] parentParameters)
-            where T : BaseEntity
+        protected async Task<List<K>?> DeserializeJsonAsync<K>(HttpResponseMessage httpResponse)
+            where K : BaseEntity, new()
+        {
+            try
+            {
+                using (var stream = await httpResponse.Content.ReadAsStreamAsync())
+                    return await JsonSerializer.DeserializeAsync(stream, KepJsonContext.GetJsonListTypeInfo<K>());
+            }
+            catch (JsonException ex)
+            {
+                m_logger.LogError($"JSON Deserialization failed: {ex.Message}");
+                return null;
+            }
+        }
+
+        private string ResolveEndpoint<T>(BaseEntity? owner)
         {
             var endpointTemplate = typeof(T).GetCustomAttributes(typeof(EndpointAttribute), false)
                 .OfType<EndpointAttribute>()
@@ -61,10 +133,24 @@ namespace KepwareSync
                 throw new InvalidOperationException($"No endpoint defined for {GetType().Name}");
             }
 
-            foreach (var (key, value) in parentParameters)
+            //Regex to find all placeholders in the endpoint template
+            var placeholders = Regex.Matches(endpointTemplate, @"\{(.+?)\}")
+                .Reverse();
+
+            // owner -> owner.Owner -> owner.Owner.Owner -> ... to replace the placeholders in the endpoint template by reverse order
+
+            foreach (Match placeholder in placeholders)
             {
-                endpointTemplate = endpointTemplate.Replace($"{{{key}}}", value);
+                var placeholderName = placeholder.Groups[1].Value;
+
+                endpointTemplate = endpointTemplate.Replace(placeholder.Value, owner?.Name);
+
+                if (owner is IHaveOwner ownable && ownable.Owner != null)
+                    owner = ownable.Owner;
+                else
+                    break;
             }
+
 
             return endpointTemplate;
         }

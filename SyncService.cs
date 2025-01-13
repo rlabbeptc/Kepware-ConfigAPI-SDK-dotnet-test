@@ -37,13 +37,13 @@ namespace KepwareSync
 
         public void NotifyChange(ChangeEvent changeEvent)
         {
-            m_logger.LogInformation($"Change detected: {changeEvent.Source} - {changeEvent.Path}");
+            m_logger.LogInformation($"Change detected: {changeEvent.Source} - {changeEvent}");
             m_changePipeline.OnNext(changeEvent);
         }
 
         private async Task ProcessChangeAsync(ChangeEvent change)
         {
-            m_logger.LogInformation($"Processing Change: {change.Source} - {change.Path}");
+            m_logger.LogInformation($"Processing Change: {change.Source} - {change}");
 
             switch (change.Source)
             {
