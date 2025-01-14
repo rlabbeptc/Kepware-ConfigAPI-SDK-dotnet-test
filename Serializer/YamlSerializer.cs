@@ -32,7 +32,20 @@ namespace KepwareSync.Serializer
         {
             var yaml = _serializer.Serialize(entity);
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!); // Erstelle Verzeichnis, falls es nicht existiert
-            return File.WriteAllTextAsync(filePath, yaml);
+
+            if (yaml.Trim().Equals("{}"))
+            {
+                //don't write empty files
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                }
+                return Task.CompletedTask;
+            }
+            else
+            {
+                return File.WriteAllTextAsync(filePath, yaml);
+            }
         }
     }
 

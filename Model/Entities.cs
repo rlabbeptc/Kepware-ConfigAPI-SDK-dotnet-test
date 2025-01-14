@@ -6,6 +6,13 @@ using YamlDotNet.Serialization;
 
 namespace KepwareSync.Model
 {
+    [Endpoint("/config/v1/project")]
+    public class Project : BaseEntity
+    {
+        [YamlIgnore]
+        public ChannelCollection? Channels { get; set; }
+    }
+
     [Endpoint("/config/v1/project/channels/{name}")]
     public class Channel : BaseEntity
     {

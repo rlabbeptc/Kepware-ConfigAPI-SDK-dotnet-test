@@ -18,10 +18,10 @@ namespace KepwareSync
         private readonly ILogger<KepServerClient> m_logger;
         private readonly HttpClient m_httpClient;
 
-        public KepServerClient(ILogger<KepServerClient> logger)
+        public KepServerClient(ILogger<KepServerClient> logger, HttpClient httpClient)
         {
             m_logger = logger;
-            m_httpClient = CreateHttpClient();
+            m_httpClient = httpClient;
         }
 
         public async Task<string> GetFullProjectAsync()
@@ -37,33 +37,45 @@ namespace KepwareSync
             // Upload full project JSON to KepServer REST API
             await Task.CompletedTask;
         }
-        
-        private HttpClient CreateHttpClient()
+
+        public async Task<Project> LoadProject(bool blnDeep = true)
         {
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            var channels = await LoadAsync<ChannelCollection, Channel>(null);
 
-            string username = "Administrator";
-            string password = "InrayTkeDocker2024!";
-            string credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{username}:{password}"));
-            bool acceptSelfSignedCertificates = true;
-
-            // Create and configure HttpClientHandler to accept self-signed certificates
-            var handler = acceptSelfSignedCertificates ? new HttpClientHandler()
+            if (blnDeep && channels != null)
             {
-                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
-            } : new HttpClientHandler();
-
-            // Create and configure HttpClient
-            return new HttpClient(handler)
-            {
-                BaseAddress = new Uri("https://localhost:57512/"),
-                Timeout = TimeSpan.FromSeconds(30),
-                DefaultRequestHeaders =
+                int totalChannelCount = channels.Items.Count;
+                int loadedChannelCount = 0;
+                await Task.WhenAll(channels.Select(async channel =>
                 {
-                    { "Accept", "application/json" },
-                    { "User-Agent", "KepwareSync" },
-                    { "Authorization", $"Basic {credentials}" }
-                },
-            };
+                    channel.Devices = await LoadAsync<DeviceCollection, Device>(channel);
+
+                    if (channel.Devices != null)
+                    {
+                        await Task.WhenAll(channel.Devices.Select(async device =>
+                        {
+                            device.Tags = await LoadAsync<DeviceTagCollection>(device);
+                            device.TagGroups = await LoadAsync<DeviceTagGroupCollection, DeviceTagGroup>(device);
+
+                            if (device.TagGroups != null)
+                            {
+                                await Task.WhenAll(device.TagGroups.Select(async tagGroup =>
+                                {
+                                    tagGroup.Tags = await LoadAsync<DeviceTagGroupTagCollection>(tagGroup);
+                                }));
+                            }
+                        }));
+                    }
+                    //Log information, loaded channel <Name> x of y
+                    loadedChannelCount++;
+                    m_logger.LogInformation(totalChannelCount == 1 ? $"Loaded channel {channel.Name}" : $"Loaded channel {channel.Name} {loadedChannelCount} of {totalChannelCount}");
+                }));
+            }
+
+            m_logger.LogInformation($"Loaded project in {stopwatch.ElapsedMilliseconds} ms");
+
+            return new Project { Channels = channels };
         }
 
         public Task<T?> LoadAsync<T>(BaseEntity? owner = null)
@@ -77,7 +89,7 @@ namespace KepwareSync
             Stopwatch stopwatch = Stopwatch.StartNew();
             var endpoint = ResolveEndpoint<T>(owner);
 
-            m_logger.LogInformation($"Loading {typeof(T).Name} from {endpoint}...");
+            m_logger.LogDebug($"Loading {typeof(T).Name} from {endpoint}...");
             var response = await m_httpClient.GetAsync(endpoint);
             if (!response.IsSuccessStatusCode)
             {
@@ -98,7 +110,7 @@ namespace KepwareSync
                 }
 
                 var resultCollection = new T() { Owner = owner, Items = collection };
-                return resultCollection; 
+                return resultCollection;
             }
             else
             {
@@ -143,14 +155,21 @@ namespace KepwareSync
             {
                 var placeholderName = placeholder.Groups[1].Value;
 
-                endpointTemplate = endpointTemplate.Replace(placeholder.Value, owner?.Name);
+                string? placeholderValue = owner?.Name;
+                if (!string.IsNullOrEmpty(placeholderValue))
+                {
+                    endpointTemplate = endpointTemplate.Replace(placeholder.Value, Uri.EscapeDataString(placeholderValue));
 
-                if (owner is IHaveOwner ownable && ownable.Owner != null)
-                    owner = ownable.Owner;
+                    if (owner is IHaveOwner ownable && ownable.Owner != null)
+                        owner = ownable.Owner;
+                    else
+                        break;
+                }
                 else
-                    break;
+                {
+                    throw new InvalidOperationException($"Placeholder '{placeholderName}' in endpoint template '{endpointTemplate}' could not be resolved.");
+                }
             }
-
 
             return endpointTemplate;
         }

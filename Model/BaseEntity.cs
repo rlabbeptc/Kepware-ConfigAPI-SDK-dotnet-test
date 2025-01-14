@@ -37,7 +37,7 @@ namespace KepwareSync.Model
 
         [JsonExtensionData]
         //Yaml-Properties
-        public Dictionary<string, object?> DynamicProperties { get; set; } = new();
+        public Dictionary<string, object?> DynamicProperties { get; set; } = [];
 
         public T? GetDynamicProperty<T>(string key)
         {

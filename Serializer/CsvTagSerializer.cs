@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Formats.Asn1;
 using System.Globalization;
 using System.IO;
@@ -12,6 +13,7 @@ using KepwareSync.Model;
 
 namespace KepwareSync
 {
+    
     public class CsvTagSerializer
     {
         private readonly string[] _headers =
@@ -65,6 +67,17 @@ namespace KepwareSync
             };
         }
 
+        //[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CsvHelper.Configuration.DefaultClassMap<CsvRecord>))]
+        //[DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CsvHelper.Configuration.MemberMap<CsvRecord, string>))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CsvHelper.Expressions.RecordManager))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CsvHelper.Expressions.RecordCreatorFactory))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CsvHelper.Expressions.RecordHydrator))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CsvHelper.Expressions.ExpressionManager))]
+        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CsvHelper.TypeConversion.StringConverter))]
+        public CsvTagSerializer()
+        {
+            
+        }
 
         public Task ExportTagsAsync(string filePath, List<DefaultEntity> tags, IDataTypeEnumConverter dataTypeEnumConverter)
             => ExportTagsAsync(filePath, tags
@@ -101,7 +114,7 @@ namespace KepwareSync
             }
         }
 
-        public async Task<List<Dictionary<string, object?>>> ImportTagsAsync(string filePath)
+        public Task<List<Dictionary<string, object?>>> ImportTagsAsync(string filePath)
         {
             var tags = new List<Dictionary<string, object?>>();
 
@@ -118,7 +131,7 @@ namespace KepwareSync
                 tags.Add(dict);
             }
 
-            return tags;
+            return Task.FromResult(tags);
         }
     }
 }
