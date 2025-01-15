@@ -13,50 +13,116 @@ using System.Text;
 using System.CommandLine.Builder;
 using System.CommandLine.NamingConventionBinder;
 using System.CommandLine.Hosting;
+using KepwareSync.Configuration;
+using Microsoft.Extensions.Configuration;
 
 namespace KepwareSync
 {
     internal class Program
     {
-        static async Task Main(string[] args)
+        static Task Main(string[] args)
         {
-            await BuildCommandLine()
-                .UseHost(remainingArgs => Host.CreateApplicationBuilder(remainingArgs))
-            // Command-line options
-            var usernameOption = new Option<string>("--username", "Username for KepServer");
-            var passwordOption = new Option<string>("--password", "Password for KepServer");
-            var hostOption = new Option<string>("--host", "Host URL for KepServer");
+            // Binder
+            var kepApiBinder = new KepApiOptionsBinder();
+            var kepStorageBinder = new KepStorageOptionsBinder();
 
-            var rootCommand = new RootCommand
-            {
-                usernameOption,
-                passwordOption,
-                hostOption
-            };
-            rootCommand.SetHandler(context =>
-            {
-                var host = BuildHost(context, args);
-                return RunHost(context, host);
-            });
-            await rootCommand.InvokeAsync(args);
+            // Root Command
+            var rootCommand = new RootCommand("KepwareSync CLI Tool");
+            kepApiBinder.BindTo(rootCommand);
+            kepStorageBinder.BindTo(rootCommand);
+
+            rootCommand.SetHandler(RunRootCommand, kepApiBinder, kepStorageBinder);
+
+            // SyncToDisk Command
+            var syncToDiskCommand = new Command("SyncToDisk", "Synchronize data to disk");
+            kepApiBinder.BindTo(syncToDiskCommand);
+            kepStorageBinder.BindTo(syncToDiskCommand);
+
+            syncToDiskCommand.SetHandler(SyncToDisk, kepApiBinder, kepStorageBinder);
+
+            // SyncFromDisk Command
+            var syncFromDiskCommand = new Command("SyncFromDisk", "Synchronize data from disk");
+            kepApiBinder.BindTo(syncFromDiskCommand);
+            kepStorageBinder.BindTo(syncFromDiskCommand);
+
+            syncFromDiskCommand.SetHandler(SyncFromDisk, kepApiBinder, kepStorageBinder);
+
+            // Commands hinzufügen
+            rootCommand.AddCommand(syncToDiskCommand);
+            rootCommand.AddCommand(syncFromDiskCommand);
+
+            return rootCommand.InvokeAsync(args);
         }
 
-        private static IHost BuildHost(InvocationContext context, string[] args)
+
+        private static async Task RunRootCommand(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions)
         {
-            var builder = Host.CreateApplicationBuilder(args);
+            var host = await BuildHost(apiOptions, kepStorageOptions);
+
+            await host.RunAsync();
+        }
+
+        private static async Task SyncToDisk(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions)
+        {
+            var host = await BuildHost(apiOptions, kepStorageOptions);
+
+            var kepServerClient = host.Services.GetRequiredService<KepServerClient>();
+
+            var channels = await kepServerClient.LoadProject();
+
+            var syncService = host.Services.GetRequiredService<SyncService>();
+
+
+            Console.WriteLine("Sync to disk completed.");
+        }
+
+        private static async Task SyncFromDisk(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions)
+        {
+            var host = await BuildHost(apiOptions, kepStorageOptions);
+
+            var syncService = host.Services.GetRequiredService<SyncService>();
+
+            Console.WriteLine("Sync from disk completed.");
+        }
+
+        #region BuildHost
+        private static Task<IHost> BuildHost(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions)
+        {
+            var builder = Host.CreateApplicationBuilder();
+            var configuration = builder.Configuration;
+
+            configuration
+                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+                .AddEnvironmentVariables();
+
+
+
+            apiOptions.UserName ??= configuration["KepApi:Username"];
+            apiOptions.Password ??= configuration["KepApi:Password"];
+            apiOptions.Host ??= configuration["KepApi:Host"];
+
+            kepStorageOptions.Directory ??= configuration["KepStorage:Directory"];
+#pragma warning disable IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
+            kepStorageOptions.PersistDefaultValue ??= configuration.GetValue<bool>("KepStorage:PersistDefaultValue");
+#pragma warning restore IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
+
+            if (apiOptions.UserName == null || apiOptions.Password == null || apiOptions.Host == null)
+            {
+                throw new InvalidOperationException("Missing configuration for KepApiOptions");
+            }
 
             builder.Services.AddLogging();
             builder.Services.AddSingleton<IProjectStorage, JsonFlatFileProjectStorage>();
             builder.Services.AddSingleton<SyncService>();
             builder.Services.AddHttpClient<KepServerClient>(client =>
             {
-                client.BaseAddress = new Uri("https://localhost:57512/");
+                client.BaseAddress = new Uri(apiOptions.Host);
                 client.Timeout = TimeSpan.FromSeconds(30);
                 client.DefaultRequestHeaders.Add("Accept", "application/json");
                 client.DefaultRequestHeaders.Add("User-Agent", "KepwareSync");
-                string username = "Administrator";
-                string password = "InrayTkeDocker2024!";
-                string credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{username}:{password}"));
+
+                string credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{apiOptions.UserName}:{apiOptions.Password}"));
                 client.DefaultRequestHeaders.Add("Authorization", $"Basic {credentials}");
             })
             .ConfigurePrimaryHttpMessageHandler(() =>
@@ -71,75 +137,12 @@ namespace KepwareSync
             builder.Services.AddHostedService<Worker>();
 
             var host = builder.Build();
-            return host;
+
+            return Task.FromResult(host);
         }
+        #endregion
 
-        private static CommandLineBuilder BuildCommandLine()
-        {
-            // Define options
-            var usernameOption = new Option<string>("--username", "Username for KepServer") { IsRequired = true };
-            var passwordOption = new Option<string>("--password", "Password for KepServer") { IsRequired = true };
-            var hostOption = new Option<string>("--host", () => "https://localhost:57512/", "Host URL for KepServer");
-
-            // Define commands
-            var rootCommand = new RootCommand("Starts the worker process.")
-            {
-                usernameOption,
-                passwordOption,
-                hostOption
-            };
-
-            rootCommand.Handler = CommandHandler.Create<IHost>(RunWorker);
-
-            var syncToDiskCommand = new Command("SyncToDisk", "Synchronize data to disk.")
-            {
-                usernameOption,
-                passwordOption,
-                hostOption
-            };
-            syncToDiskCommand.Handler = CommandHandler.Create<IHost>(SyncToDisk);
-
-            var syncFromDiskCommand = new Command("SyncFromDisk", "Synchronize data from disk.")
-            {
-                usernameOption,
-                passwordOption,
-                hostOption
-            };
-            syncFromDiskCommand.Handler = CommandHandler.Create<IHost>(SyncFromDisk);
-
-            rootCommand.AddCommand(syncToDiskCommand);
-            rootCommand.AddCommand(syncFromDiskCommand);
-
-            return new CommandLineBuilder(rootCommand);
-        }
-
-        private static Task RunWorker(IHost host)
-        {
-            // This will start the Worker service
-            return host.RunAsync();
-        }
-
-        private static async Task SyncToDisk(IHost host)
-        {
-            var kepServerClient = host.Services.GetRequiredService<KepServerClient>();
-
-            var channels = await kepServerClient.LoadProject();
-
-            var syncService = host.Services.GetRequiredService<SyncService>();
-
-
-
-            Console.WriteLine("Sync to disk completed.");
-        }
-
-        private static void SyncFromDisk(IHost host)
-        {
-            var syncService = host.Services.GetRequiredService<SyncService>();
-            
-            Console.WriteLine("Sync from disk completed.");
-        }
-
-
+        #region retryPolicy
         static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
         {
             return HttpPolicyExtensions
@@ -147,21 +150,10 @@ namespace KepwareSync
                 .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
                     onRetry: (outcome, timespan, retryAttempt, context) =>
                     {
-                        var logger = context.GetLogger();
-                        logger?.LogWarning($"Delaying for {timespan.TotalSeconds} seconds, then making retry {retryAttempt}");
+                        if (context.TryGetValue("Logger", out var objLogger) && objLogger is ILogger logger)
+                            logger.LogWarning($"Delaying for {timespan.TotalSeconds} seconds, then making retry {retryAttempt}");
                     });
         }
-    }
-
-    public static class PollyContextExtensions
-    {
-        public static ILogger? GetLogger(this Context context)
-        {
-            if (context.TryGetValue("Logger", out var logger))
-            {
-                return logger as ILogger;
-            }
-            return null;
-        }
+        #endregion
     }
 }

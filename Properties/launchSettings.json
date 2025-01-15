@@ -2,6 +2,7 @@
   "profiles": {
     "KepwareSync": {
       "commandName": "Project",
+      "commandLineArgs": "SyncToDisk",
       "environmentVariables": {
         "DOTNET_ENVIRONMENT": "Development"
       },
