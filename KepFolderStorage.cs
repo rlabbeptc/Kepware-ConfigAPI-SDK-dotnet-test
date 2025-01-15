@@ -8,6 +8,8 @@ using YamlDotNet.Serialization;
 using KepwareSync.Model;
 using KepwareSync.Serializer;
 using YamlDotNet.Serialization.NodeTypeResolvers;
+using System.Security.AccessControl;
+using KepwareSync.Configuration;
 
 namespace KepwareSync
 {
@@ -16,23 +18,51 @@ namespace KepwareSync
         private readonly YamlSerializer m_yamlSerializer;
         private readonly CsvTagSerializer m_csvTagSerializer;
         private readonly DataTypeEnumConverterProvider m_dataTypeEnumConverterProvider;
+        private readonly ILogger<KepFolderStorage> m_logger;
+        private readonly KepStorageOptions m_kepStorageOptions;
 
-        public KepFolderStorage()
+        public KepFolderStorage(ILogger<KepFolderStorage> logger, KepStorageOptions kepStorageOptions)
         {
+            m_logger = logger;
+            m_kepStorageOptions = kepStorageOptions;
             m_yamlSerializer = new YamlSerializer();
             m_csvTagSerializer = new CsvTagSerializer();
             m_dataTypeEnumConverterProvider = new DataTypeEnumConverterProvider();
         }
 
+        private void DeleteDirectories(string baseDir, IEnumerable<string> names)
+        {
+            // Delete all channel directories that are not in the current project   
+            foreach (var dir in names)
+            {
+                var folderPath = Path.Combine(baseDir, dir);
+                if (Directory.Exists(folderPath))
+                {
+                    Directory.Delete(folderPath, true);
+                    m_logger.LogInformation($"Deleted folder: {folderPath}");
+                }
+            }
+        }
+
         public async Task ExportChannelsAsYamlAsync(
-            string baseFolder,
             ChannelCollection? channels)
         {
             if (channels == null) return;
 
+            DirectoryInfo baseDirInfo = new DirectoryInfo(m_kepStorageOptions.Directory ?? "ExportedYaml");
+
+            if (!baseDirInfo.Exists)
+                baseDirInfo.Create();
+
+            var channelDirsToDelete = baseDirInfo.GetDirectories().Select(dir => dir.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            List<(string baseDir, IEnumerable<string> folderNames)> foldersToDelete = [];
+
             foreach (var channel in channels)
             {
-                var channelFolder = Path.Combine(baseFolder, channel.Name);
+                var channelFolder = Path.Combine(baseDirInfo.FullName, channel.Name);
+                channelDirsToDelete.Remove(channel.Name);
 
                 // Export Channel
                 var channelFile = Path.Combine(channelFolder, "channel.yaml");
@@ -40,10 +70,13 @@ namespace KepwareSync
 
                 if (channel.Devices != null)
                 {
+                    var deviceDirsToDelete = new DirectoryInfo(channelFolder).GetDirectories().Select(dir => dir.Name)
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
                     foreach (var device in channel.Devices)
                     {
                         var deviceFolder = Path.Combine(channelFolder, device.Name);
                         var dataTypeConverter = m_dataTypeEnumConverterProvider.GetDataTypeEnumConverter(device.GetDynamicProperty<string>(Properties.DeviceDriver));
+                        deviceDirsToDelete.Remove(device.Name);
 
                         // Export Device
                         var deviceFile = Path.Combine(deviceFolder, "device.yaml");
@@ -69,7 +102,16 @@ namespace KepwareSync
                             }
                         }
                     }
+
+                    foldersToDelete.Add((channelFolder, deviceDirsToDelete));
                 }
+            }
+
+            DeleteDirectories(baseDirInfo.FullName, channelDirsToDelete);
+
+            foreach (var (baseDir, folderNames) in foldersToDelete)
+            {
+                DeleteDirectories(baseDir, folderNames);
             }
         }
     }

@@ -68,7 +68,11 @@ namespace KepwareSync
 
             var kepServerClient = host.Services.GetRequiredService<KepServerClient>();
 
-            var channels = await kepServerClient.LoadProject();
+            var project = await kepServerClient.LoadProject();
+
+            var storage = host.Services.GetRequiredService<KepFolderStorage>();
+
+            await storage.ExportChannelsAsYamlAsync(project.Channels);
 
             var syncService = host.Services.GetRequiredService<SyncService>();
 
@@ -113,8 +117,11 @@ namespace KepwareSync
             }
 
             builder.Services.AddLogging();
+            builder.Services.AddSingleton(apiOptions);
+            builder.Services.AddSingleton(kepStorageOptions);
             builder.Services.AddSingleton<IProjectStorage, JsonFlatFileProjectStorage>();
             builder.Services.AddSingleton<SyncService>();
+            builder.Services.AddSingleton<KepFolderStorage>();
             builder.Services.AddHttpClient<KepServerClient>(client =>
             {
                 client.BaseAddress = new Uri(apiOptions.Host);
