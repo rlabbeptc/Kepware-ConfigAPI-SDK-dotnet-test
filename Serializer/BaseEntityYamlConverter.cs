@@ -27,7 +27,7 @@ namespace KepwareSync.Serializer
             return typeof(BaseEntity).IsAssignableFrom(type);
         }
 
-        public object? ReadYaml(IParser parser, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type type, ObjectDeserializer nestedObjectDeserializer)
+        public object? ReadYaml(IParser parser, Type type, ObjectDeserializer nestedObjectDeserializer)
         {
             if (!typeof(BaseEntity).IsAssignableFrom(type))
             {
@@ -36,50 +36,104 @@ namespace KepwareSync.Serializer
 
             var entity = (BaseEntity)Activator.CreateInstance(type)!;
 
-
-            var yamlDictionary = nestedObjectDeserializer(typeof(Dictionary<string, object>)) as Dictionary<string, object>;
-
-            if (yamlDictionary == null)
+            // Erwartet den Start eines Mappings
+            if (!(parser.Current is MappingStart))
             {
-                throw new YamlException("Expected a mapping to deserialize into Dictionary<string, object>");
+                throw new YamlException("Expected MappingStart");
             }
 
-            foreach (var kvp in yamlDictionary)
+            while (parser.MoveNext())
             {
-                //string based  to scalar types (int, float, bool, etc.)
-                if (kvp.Value is string stringValue)
+                if (parser.Current is DocumentEnd)
                 {
-                    if (int.TryParse(stringValue, out var intValue))
-                    {
-                        entity.DynamicProperties[kvp.Key] = intValue;
-                    }
-                    else if (float.TryParse(stringValue, out var floatValue))
-                    {
-                        entity.DynamicProperties[kvp.Key] = floatValue;
-                    }
-                    else if (double.TryParse(stringValue, out var doubleValue))
-                    {
-                        entity.DynamicProperties[kvp.Key] = doubleValue;
-                    }
-                    else if (bool.TryParse(stringValue, out var boolValue))
-                    {
-                        entity.DynamicProperties[kvp.Key] = boolValue;
-                    }
-                    else
-                    {
-                        entity.DynamicProperties[kvp.Key] = stringValue;
-                    }
+                    break;
+                }
+
+                if (parser.Current is MappingEnd)
+                {
+                    continue;
+                }
+
+                if (!(parser.Current is Scalar keyScalar))
+                {
+                    throw new YamlException("Expected Scalar for key");
+                }
+
+                string key = keyScalar.Value ?? throw new YamlException("Key cannot be null");
+
+                if (!parser.MoveNext())
+                {
+                    throw new YamlException("Unexpected end of YAML while expecting a value");
+                }
+
+                object? value = DeserializeValue(parser, nestedObjectDeserializer);
+
+                if (key == "common.ALLTYPES_DESCRIPTION")
+                {
+                    entity.Description = value?.ToString() ?? string.Empty;
                 }
                 else
                 {
-                    entity.DynamicProperties[kvp.Key] = kvp.Value;
+                    if (!m_nonpersistetDynamicProps.Contains(key))
+                    {
+                        entity.DynamicProperties[key] = value;
+                    }
                 }
             }
 
-            if (yamlDictionary.TryGetValue(Properties.Description, out var description))
-                entity.Description = description?.ToString() ?? string.Empty;
-
             return entity;
+        }
+
+        private object? DeserializeValue(IParser parser, ObjectDeserializer nestedObjectDeserializer)
+        {
+            switch (parser.Current)
+            {
+                case Scalar scalar:
+                    string? scalarValue = scalar.Value;
+                    if (int.TryParse(scalarValue, out var intValue))
+                        return intValue;
+                    if (long.TryParse(scalarValue, out var longValue))
+                        return longValue;
+                    if (float.TryParse(scalarValue, out var floatValue))
+                        return floatValue;
+                    if (double.TryParse(scalarValue, out var doubleValue))
+                        return doubleValue;
+                    if (bool.TryParse(scalarValue, out var boolValue))
+                        return boolValue;
+                    return scalarValue;
+
+                case SequenceStart _:
+                    var list = new List<object?>();
+                    parser.MoveNext(); // Move past SequenceStart
+                    while (!(parser.Current is SequenceEnd))
+                    {
+                        list.Add(DeserializeValue(parser, nestedObjectDeserializer));
+                        parser.MoveNext();
+                    }
+                    return list;
+
+                case MappingStart _:
+                    var dict = new Dictionary<string, object?>();
+                    parser.MoveNext(); // Move past MappingStart
+                    while (!(parser.Current is MappingEnd))
+                    {
+                        if (!(parser.Current is Scalar mapKey))
+                            throw new YamlException("Expected Scalar for dictionary key");
+                        string mapKeyValue = mapKey.Value ?? throw new YamlException("Key cannot be null");
+
+                        if (!parser.MoveNext())
+                            throw new YamlException("Unexpected end of YAML while expecting a value");
+
+                        object? mapValue = DeserializeValue(parser, nestedObjectDeserializer);
+                        dict[mapKeyValue] = mapValue;
+
+                        parser.MoveNext(); // Move to next key or MappingEnd
+                    }
+                    return dict;
+
+                default:
+                    throw new YamlException($"Unexpected YAML node type: {parser.Current?.GetType().Name ?? "unknown"}");
+            }
         }
 
 

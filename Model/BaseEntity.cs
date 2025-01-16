@@ -91,6 +91,7 @@ namespace KepwareSync.Model
         public NamedEntity? Owner { get; set; }
     }
 
+    [DebuggerDisplay("{TypeName} - {Name} - {Description}")]
     public class NamedEntity : DefaultEntity
     {
         [JsonPropertyName(Properties.Name)]
