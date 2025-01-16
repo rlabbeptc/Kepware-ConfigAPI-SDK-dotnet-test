@@ -15,6 +15,8 @@ using System.CommandLine.NamingConventionBinder;
 using System.CommandLine.Hosting;
 using KepwareSync.Configuration;
 using Microsoft.Extensions.Configuration;
+using Serilog;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace KepwareSync
 {
@@ -72,7 +74,7 @@ namespace KepwareSync
 
             var storage = host.Services.GetRequiredService<KepFolderStorage>();
 
-            await storage.ExportChannelsAsYamlAsync(project.Channels);
+            await storage.ExportProjecAsync(project);
 
             var syncService = host.Services.GetRequiredService<SyncService>();
 
@@ -84,7 +86,9 @@ namespace KepwareSync
         {
             var host = await BuildHost(apiOptions, kepStorageOptions);
 
-            var syncService = host.Services.GetRequiredService<SyncService>();
+            var storage = host.Services.GetRequiredService<KepFolderStorage>();
+
+            var project = await storage.LoadProject();
 
             Console.WriteLine("Sync from disk completed.");
         }
@@ -94,6 +98,8 @@ namespace KepwareSync
         {
             var builder = Host.CreateApplicationBuilder();
             var configuration = builder.Configuration;
+
+
 
             configuration
                  .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
@@ -117,6 +123,13 @@ namespace KepwareSync
             }
 
             builder.Services.AddLogging();
+            builder.Services.AddSerilog((services, loggerConfiguration) =>
+            {
+                loggerConfiguration
+                    .ReadFrom.Configuration(builder.Configuration)
+                    .Enrich.FromLogContext()
+                    .WriteTo.Console();
+            });
             builder.Services.AddSingleton(apiOptions);
             builder.Services.AddSingleton(kepStorageOptions);
             builder.Services.AddSingleton<IProjectStorage, JsonFlatFileProjectStorage>();

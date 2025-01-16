@@ -41,63 +41,105 @@ namespace KepwareSync
         public async Task<Project> LoadProject(bool blnDeep = true)
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
-            var channels = await LoadAsync<ChannelCollection, Channel>(null);
+            var project = await LoadEntityAsync<Project>();
 
-            if (blnDeep && channels != null)
+            if (project == null)
             {
-                int totalChannelCount = channels.Items.Count;
-                int loadedChannelCount = 0;
-                await Task.WhenAll(channels.Select(async channel =>
-                {
-                    channel.Devices = await LoadAsync<DeviceCollection, Device>(channel);
-
-                    if (channel.Devices != null)
-                    {
-                        await Task.WhenAll(channel.Devices.Select(async device =>
-                        {
-                            device.Tags = await LoadAsync<DeviceTagCollection>(device);
-                            device.TagGroups = await LoadAsync<DeviceTagGroupCollection, DeviceTagGroup>(device);
-
-                            if (device.TagGroups != null)
-                            {
-                                await Task.WhenAll(device.TagGroups.Select(async tagGroup =>
-                                {
-                                    tagGroup.Tags = await LoadAsync<DeviceTagGroupTagCollection>(tagGroup);
-                                }));
-                            }
-                        }));
-                    }
-                    //Log information, loaded channel <Name> x of y
-                    loadedChannelCount++;
-                    m_logger.LogInformation(totalChannelCount == 1 ? $"Loaded channel {channel.Name}" : $"Loaded channel {channel.Name} {loadedChannelCount} of {totalChannelCount}");
-                }));
+                m_logger.LogWarning("Failed to load project");
+                return new Project();
             }
+            else
+            {
+                project.Channels = await LoadCollectionAsync<ChannelCollection, Channel>();
 
-            m_logger.LogInformation($"Loaded project in {stopwatch.ElapsedMilliseconds} ms");
+                if (blnDeep && project.Channels != null)
+                {
+                    int totalChannelCount = project.Channels.Items.Count;
+                    int loadedChannelCount = 0;
+                    await Task.WhenAll(project.Channels.Select(async channel =>
+                    {
+                        channel.Devices = await LoadCollectionAsync<DeviceCollection, Device>(channel);
 
-            return new Project { Channels = channels };
+                        if (channel.Devices != null)
+                        {
+                            await Task.WhenAll(channel.Devices.Select(async device =>
+                            {
+                                device.Tags = await LoadAsync<DeviceTagCollection>(device);
+                                device.TagGroups = await LoadCollectionAsync<DeviceTagGroupCollection, DeviceTagGroup>(device);
+
+                                if (device.TagGroups != null)
+                                {
+                                    await Task.WhenAll(device.TagGroups.Select(async tagGroup =>
+                                    {
+                                        tagGroup.Tags = await LoadAsync<DeviceTagGroupTagCollection>(tagGroup);
+                                    }));
+                                }
+                            }));
+                        }
+                        // Log information, loaded channel <Name> x of y
+                        loadedChannelCount++;
+                        if (totalChannelCount == 1)
+                        {
+                            m_logger.LogInformation("Loaded channel {ChannelName}", channel.Name);
+                        }
+                        else
+                        {
+                            m_logger.LogInformation("Loaded channel {ChannelName} {LoadedChannelCount} of {TotalChannelCount}", channel.Name, loadedChannelCount, totalChannelCount);
+                        }
+
+                    }));
+                }
+
+                m_logger.LogInformation("Loaded project in {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
+
+                return project;
+            }
         }
 
-        public Task<T?> LoadAsync<T>(BaseEntity? owner = null)
-          where T : EntityCollection<DefaultEntity>, new()
-         => LoadAsync<T, DefaultEntity>(owner);
+        public async Task<T?> LoadEntityAsync<T>(NamedEntity? owner = null)
+          where T : BaseEntity, new()
+        {
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            var endpoint = ResolveEndpoint<T>(owner);
 
-        public async Task<T?> LoadAsync<T, K>(BaseEntity? owner = null)
+            m_logger.LogDebug("Loading {TypeName} from {Endpoint}...", typeof(T).Name, endpoint);
+            var response = await m_httpClient.GetAsync(endpoint);
+            if (!response.IsSuccessStatusCode)
+            {
+                m_logger.LogError("Failed to load {TypeName} from {Endpoint}: {ReasonPhrase}", typeof(T).Name, endpoint, response.ReasonPhrase);
+                return default;
+            }
+
+            var entity = await DeserializeJsonAsync<T>(response);
+            if (entity != null && entity is IHaveOwner ownable)
+            {
+                ownable.Owner = owner;
+            }
+
+            return entity;
+        }
+
+
+        public Task<T?> LoadAsync<T>(NamedEntity? owner = null)
+          where T : EntityCollection<DefaultEntity>, new()
+         => LoadCollectionAsync<T, DefaultEntity>(owner);
+
+        public async Task<T?> LoadCollectionAsync<T, K>(NamedEntity? owner = null)
             where T : EntityCollection<K>, new()
             where K : BaseEntity, new()
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
             var endpoint = ResolveEndpoint<T>(owner);
 
-            m_logger.LogDebug($"Loading {typeof(T).Name} from {endpoint}...");
+            m_logger.LogDebug("Loading {TypeName} from {Endpoint}...", typeof(T).Name, endpoint);
             var response = await m_httpClient.GetAsync(endpoint);
             if (!response.IsSuccessStatusCode)
             {
-                m_logger.LogError($"Failed to load {typeof(T).Name} from {endpoint}: {response.ReasonPhrase}");
+                m_logger.LogError("Failed to load {TypeName} from {Endpoint}: {ReasonPhrase}", typeof(T).Name, endpoint, response.ReasonPhrase);
                 return default;
             }
 
-            var collection = await DeserializeJsonAsync<K>(response);
+            var collection = await DeserializeJsonArrayAsync<K>(response);
             if (collection != null)
             {
                 // if generic type K implements IHaveOwner
@@ -114,12 +156,28 @@ namespace KepwareSync
             }
             else
             {
-                m_logger.LogError($"Failed to deserialize {typeof(T).Name} from {endpoint}");
+                m_logger.LogError("Failed to deserialize {TypeName} from {Endpoint}", typeof(T).Name, endpoint);
                 return default;
             }
         }
 
-        protected async Task<List<K>?> DeserializeJsonAsync<K>(HttpResponseMessage httpResponse)
+        protected async Task<K?> DeserializeJsonAsync<K>(HttpResponseMessage httpResponse)
+          where K : BaseEntity, new()
+        {
+            try
+            {
+                using (var stream = await httpResponse.Content.ReadAsStreamAsync())
+                    return await JsonSerializer.DeserializeAsync(stream, KepJsonContext.GetJsonTypeInfo<K>());
+            }
+            catch (JsonException ex)
+            {
+                m_logger.LogError("JSON Deserialization failed: {Message}", ex.Message);
+                return null;
+            }
+        }
+
+
+        protected async Task<List<K>?> DeserializeJsonArrayAsync<K>(HttpResponseMessage httpResponse)
             where K : BaseEntity, new()
         {
             try
@@ -129,12 +187,12 @@ namespace KepwareSync
             }
             catch (JsonException ex)
             {
-                m_logger.LogError($"JSON Deserialization failed: {ex.Message}");
+                m_logger.LogError("JSON Deserialization failed: {Message}", ex.Message);
                 return null;
             }
         }
 
-        private string ResolveEndpoint<T>(BaseEntity? owner)
+        private string ResolveEndpoint<T>(NamedEntity? owner)
         {
             var endpointTemplate = typeof(T).GetCustomAttributes(typeof(EndpointAttribute), false)
                 .OfType<EndpointAttribute>()
@@ -142,10 +200,10 @@ namespace KepwareSync
 
             if (endpointTemplate == null)
             {
-                throw new InvalidOperationException($"No endpoint defined for {GetType().Name}");
+                throw new InvalidOperationException($"No endpoint defined for {typeof(T).Name}");
             }
 
-            //Regex to find all placeholders in the endpoint template
+            // Regex to find all placeholders in the endpoint template
             var placeholders = Regex.Matches(endpointTemplate, @"\{(.+?)\}")
                 .Reverse();
 

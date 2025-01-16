@@ -14,14 +14,14 @@ namespace KepwareSync.Model
     }
 
     [Endpoint("/config/v1/project/channels/{name}")]
-    public class Channel : BaseEntity
+    public class Channel : NamedEntity
     {
         [YamlIgnore]
         public DeviceCollection? Devices { get; set; }
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}")]
-    public class Device : DefaultEntity
+    public class Device : NamedEntity
     {
         [YamlIgnore]
         public DeviceTagCollection? Tags { get; set; }
@@ -31,7 +31,7 @@ namespace KepwareSync.Model
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}/tag_groups/{groupName}")]
-    public class DeviceTagGroup : DefaultEntity
+    public class DeviceTagGroup : NamedEntity
     {
         [YamlIgnore]
         public DeviceTagGroupTagCollection? Tags { get; set; }

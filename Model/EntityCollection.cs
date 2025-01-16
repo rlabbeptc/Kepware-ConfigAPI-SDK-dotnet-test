@@ -14,7 +14,7 @@ namespace KepwareSync.Model
     {
         [JsonIgnore]
         [YamlIgnore]
-        public BaseEntity? Owner { get; set; }
+        public NamedEntity? Owner { get; set; }
 
         public List<T> Items { get; set; } = new();
 

@@ -15,26 +15,25 @@ namespace KepwareSync.Model
     {
         [JsonIgnore]
         [YamlIgnore]
-        public BaseEntity? Owner { get; internal set; }
+        public NamedEntity? Owner { get; internal set; }
     }
 
 
-    [DebuggerDisplay("{Name} - {Description}")]
+    [DebuggerDisplay("{TypeName} - {Description}")]
     public abstract class BaseEntity
     {
         [JsonPropertyName(Properties.ProjectId)]
         [YamlIgnore]
         public long? ProjectId { get; set; } = null;
 
-        [JsonPropertyName(Properties.Name)]
-        [YamlIgnore]
-        //Yaml File-Name
-        public string Name { get; set; } = string.Empty;
-
         [JsonPropertyName(Properties.Description)]
         [YamlMember(Alias = Properties.Description)]
         public string? Description { get; set; } = string.Empty;
 
+        [JsonIgnore]
+        [YamlIgnore]
+        public string TypeName => GetType().Name;
+        
         [JsonExtensionData]
         //Yaml-Properties
         public Dictionary<string, object?> DynamicProperties { get; set; } = [];
@@ -89,6 +88,14 @@ namespace KepwareSync.Model
     {
         [YamlIgnore]
         [JsonIgnore]
-        public BaseEntity? Owner { get; set; }
+        public NamedEntity? Owner { get; set; }
+    }
+
+    public class NamedEntity : DefaultEntity
+    {
+        [JsonPropertyName(Properties.Name)]
+        [YamlIgnore]
+        //Yaml File-Name
+        public string Name { get; set; } = string.Empty;
     }
 }

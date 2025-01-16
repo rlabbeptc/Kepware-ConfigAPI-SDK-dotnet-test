@@ -13,7 +13,7 @@ using KepwareSync.Model;
 
 namespace KepwareSync
 {
-    
+
     public class CsvTagSerializer
     {
         private readonly string[] _headers =
@@ -44,26 +44,26 @@ namespace KepwareSync
 
         private static Dictionary<string, object?> CreateTagDictionary(DefaultEntity tag, IDataTypeEnumConverter dataTypeEnumConverter)
         {
-            bool sclaing = tag.GetDynamicProperty<int>("servermain.TAG_SCALING_TYPE") != 0;
+            bool scaling = tag.GetDynamicProperty<int>(Properties.Tag.ScalingType) != 0;
             return new Dictionary<string, object?>
             {
-                { "Tag Name", tag.Name },
-                { "Address", tag.GetDynamicProperty<string>("servermain.TAG_ADDRESS") },
-                { "Data Type", dataTypeEnumConverter.ConvertToString(tag.GetDynamicProperty<int>("servermain.TAG_DATA_TYPE")) },
+                { "Tag Name", tag.GetDynamicProperty<string>(Properties.Name) },
+                { "Address", tag.GetDynamicProperty<string>(Properties.Tag.Address) },
+                { "Data Type", dataTypeEnumConverter.ConvertToString(tag.GetDynamicProperty<int>(Properties.Tag.DataType)) },
                 { "Respect Data Type", "1" }, // Assuming this aligns
-                { "Client Access", tag.GetDynamicProperty<int>("servermain.TAG_READ_WRITE_ACCESS") == 1 ? "R/W" : "RO" },
-                { "Scan Rate", tag.GetDynamicProperty<int>("servermain.TAG_SCAN_RATE_MILLISECONDS") },
-                { "Scaling", tag.GetDynamicProperty<int>("servermain.TAG_SCALING_TYPE") },
-                { "Raw Low", sclaing ? tag.GetDynamicProperty<int>("servermain.TAG_SCALING_RAW_LOW") : null },
-                { "Raw High",sclaing ? tag.GetDynamicProperty<int>("servermain.TAG_SCALING_RAW_HIGH") : null },
-                { "Scaled Low",sclaing ? tag.GetDynamicProperty<int>("servermain.TAG_SCALING_SCALED_LOW") : null },
-                { "Scaled High",sclaing ? tag.GetDynamicProperty<int>("servermain.TAG_SCALING_SCALED_HIGH") : null },
-                { "Scaled Data Type", sclaing ? tag.GetDynamicProperty < int >("servermain.TAG_SCALING_SCALED_DATA_TYPE") : null },
-                { "Clamp Low",sclaing ? tag.GetDynamicProperty<bool>("servermain.TAG_SCALING_CLAMP_LOW"): null },
-                { "Clamp High", sclaing ? tag.GetDynamicProperty<bool>("servermain.TAG_SCALING_CLAMP_HIGH") :null },
-                { "Eng Units", tag.GetDynamicProperty<string>("servermain.TAG_SCALING_UNITS") },
+                { "Client Access", tag.GetDynamicProperty<int>(Properties.Tag.ReadWriteAccess) == 1 ? "R/W" : "RO" },
+                { "Scan Rate", tag.GetDynamicProperty<int>(Properties.Tag.ScanRateMilliseconds) },
+                { "Scaling", tag.GetDynamicProperty<int>(Properties.Tag.ScalingType) },
+                { "Raw Low", scaling ? tag.GetDynamicProperty<int>(Properties.Tag.ScalingRawLow) : null },
+                { "Raw High", scaling ? tag.GetDynamicProperty<int>(Properties.Tag.ScalingRawHigh) : null },
+                { "Scaled Low", scaling ? tag.GetDynamicProperty<int>(Properties.Tag.ScalingScaledLow) : null },
+                { "Scaled High", scaling ? tag.GetDynamicProperty<int>(Properties.Tag.ScalingScaledHigh) : null },
+                { "Scaled Data Type", scaling ? tag.GetDynamicProperty<int>(Properties.Tag.ScalingScaledDataType) : null },
+                { "Clamp Low", scaling ? tag.GetDynamicProperty<bool>(Properties.Tag.ScalingClampLow) : null },
+                { "Clamp High", scaling ? tag.GetDynamicProperty<bool>(Properties.Tag.ScalingClampHigh) : null },
+                { "Eng Units", tag.GetDynamicProperty<string>(Properties.Tag.ScalingUnits) },
                 { "Description", tag.Description },
-                { "Negate Value",sclaing ? tag.GetDynamicProperty<bool>("servermain.TAG_SCALING_NEGATE_VALUE") : null }
+                { "Negate Value", scaling ? tag.GetDynamicProperty<bool>(Properties.Tag.ScalingNegateValue) : null }
             };
         }
 
@@ -76,7 +76,7 @@ namespace KepwareSync
         [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CsvHelper.TypeConversion.StringConverter))]
         public CsvTagSerializer()
         {
-            
+
         }
 
         public Task ExportTagsAsync(string filePath, List<DefaultEntity> tags, IDataTypeEnumConverter dataTypeEnumConverter)

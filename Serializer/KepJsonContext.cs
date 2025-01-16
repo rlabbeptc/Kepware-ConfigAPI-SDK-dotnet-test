@@ -9,6 +9,7 @@ using System.Collections;
 
 namespace KepwareSync.Model
 {
+    [JsonSerializable(typeof(Project))]
     [JsonSerializable(typeof(List<Channel>))]
     [JsonSerializable(typeof(List<Device>))]
     [JsonSerializable(typeof(List<DeviceTagGroup>))]
@@ -21,6 +22,10 @@ namespace KepwareSync.Model
             if (typeof(T) == typeof(Channel))
             {
                 return (JsonTypeInfo<T>)(object)Default.Channel;
+            }
+            else if (typeof(T) == typeof(Project))
+            {
+                return (JsonTypeInfo<T>)(object)Default.Project;
             }
             else if (typeof(T) == typeof(Device))
             {

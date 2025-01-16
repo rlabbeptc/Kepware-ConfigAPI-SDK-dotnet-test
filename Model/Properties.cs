@@ -13,6 +13,24 @@ namespace KepwareSync.Model
         public const string Name = "common.ALLTYPES_NAME";
         public const string ProjectId = "PROJECT_ID";
 
+        public static class Tag
+        {
+            public const string Address = "servermain.TAG_ADDRESS";
+            public const string DataType = "servermain.TAG_DATA_TYPE";
+            public const string ReadWriteAccess = "servermain.TAG_READ_WRITE_ACCESS";
+            public const string ScanRateMilliseconds = "servermain.TAG_SCAN_RATE_MILLISECONDS";
+            public const string ScalingType = "servermain.TAG_SCALING_TYPE";
+            public const string ScalingRawLow = "servermain.TAG_SCALING_RAW_LOW";
+            public const string ScalingRawHigh = "servermain.TAG_SCALING_RAW_HIGH";
+            public const string ScalingScaledLow = "servermain.TAG_SCALING_SCALED_LOW";
+            public const string ScalingScaledHigh = "servermain.TAG_SCALING_SCALED_HIGH";
+            public const string ScalingScaledDataType = "servermain.TAG_SCALING_SCALED_DATA_TYPE";
+            public const string ScalingClampLow = "servermain.TAG_SCALING_CLAMP_LOW";
+            public const string ScalingClampHigh = "servermain.TAG_SCALING_CLAMP_HIGH";
+            public const string ScalingUnits = "servermain.TAG_SCALING_UNITS";
+            public const string ScalingNegateValue = "servermain.TAG_SCALING_NEGATE_VALUE";
+        }
+
         public static class NonSerialized
         {
             public const string TagGrpTotalTagCount = "servermain.TAGGROUP_TOTAL_TAG_COUNT";
