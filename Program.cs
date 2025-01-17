@@ -69,7 +69,6 @@ namespace KepwareSync
             var host = await BuildHost(apiOptions, kepStorageOptions);
 
             var kepServerClient = host.Services.GetRequiredService<KepServerClient>();
-
             var project = await kepServerClient.LoadProject();
 
             var storage = host.Services.GetRequiredService<KepFolderStorage>();
@@ -88,8 +87,21 @@ namespace KepwareSync
 
             var storage = host.Services.GetRequiredService<KepFolderStorage>();
 
-            var project = await storage.LoadProject();
+            var projectFromDisk = await storage.LoadProject();
 
+            var kepServerClient = host.Services.GetRequiredService<KepServerClient>();
+            var projectFromApi = await kepServerClient.LoadProject();
+
+
+            var prjCompare = EntityCompare.Compare(projectFromDisk, projectFromApi);
+            try
+            {
+                var channelCompare = EntityCompare.Compare<ChannelCollection, Channel>(projectFromDisk.Channels, projectFromApi.Channels);
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
             Console.WriteLine("Sync from disk completed.");
         }
 
@@ -99,14 +111,10 @@ namespace KepwareSync
             var builder = Host.CreateApplicationBuilder();
             var configuration = builder.Configuration;
 
-
-
             configuration
                  .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
                 .AddEnvironmentVariables();
-
-
 
             apiOptions.UserName ??= configuration["KepApi:Username"];
             apiOptions.Password ??= configuration["KepApi:Password"];

@@ -12,6 +12,7 @@ namespace KepwareSync.Model
     [JsonSerializable(typeof(Project))]
     [JsonSerializable(typeof(List<Channel>))]
     [JsonSerializable(typeof(List<Device>))]
+    [JsonSerializable(typeof(List<Tag>))]
     [JsonSerializable(typeof(List<DeviceTagGroup>))]
     [JsonSerializable(typeof(List<DefaultEntity>))]
     public partial class KepJsonContext : JsonSerializerContext
@@ -30,6 +31,10 @@ namespace KepwareSync.Model
             else if (typeof(T) == typeof(Device))
             {
                 return (JsonTypeInfo<T>)(object)Default.Device;
+            }
+            else if (typeof(T) == typeof(Tag))
+            {
+                return (JsonTypeInfo<T>)(object)Default.Tag;
             }
             else if (typeof(T) == typeof(DeviceTagGroup))
             {
@@ -59,6 +64,10 @@ namespace KepwareSync.Model
             else if (typeof(T) == typeof(DeviceTagGroup))
             {
                 return (JsonTypeInfo<List<T>>)(object)Default.ListDeviceTagGroup;
+            }
+            else if (typeof(T) == typeof(Tag))
+            {
+                return (JsonTypeInfo<List<T>>)(object)Default.ListTag;
             }
             else if (typeof(T) == typeof(DefaultEntity))
             {

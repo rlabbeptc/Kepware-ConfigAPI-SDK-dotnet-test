@@ -64,14 +64,14 @@ namespace KepwareSync
                         {
                             await Task.WhenAll(channel.Devices.Select(async device =>
                             {
-                                device.Tags = await LoadAsync<DeviceTagCollection>(device);
+                                device.Tags = await LoadCollectionAsync<DeviceTagCollection, Tag>(device);
                                 device.TagGroups = await LoadCollectionAsync<DeviceTagGroupCollection, DeviceTagGroup>(device);
 
                                 if (device.TagGroups != null)
                                 {
                                     await Task.WhenAll(device.TagGroups.Select(async tagGroup =>
                                     {
-                                        tagGroup.Tags = await LoadAsync<DeviceTagGroupTagCollection>(tagGroup);
+                                        tagGroup.Tags = await LoadCollectionAsync<DeviceTagGroupTagCollection, Tag>(tagGroup);
                                     }));
                                 }
                             }));
@@ -120,7 +120,7 @@ namespace KepwareSync
         }
 
 
-        public Task<T?> LoadAsync<T>(NamedEntity? owner = null)
+        public Task<T?> LoadCollectionAsync<T>(NamedEntity? owner = null)
           where T : EntityCollection<DefaultEntity>, new()
          => LoadCollectionAsync<T, DefaultEntity>(owner);
 

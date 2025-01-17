@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NodeTypeResolvers;
 
 namespace KepwareSync.Model
 {
@@ -17,11 +18,21 @@ namespace KepwareSync.Model
         [YamlIgnore]
         public NamedEntity? Owner { get; internal set; }
     }
+    public interface IHaveName
+    {
+        public string Name { get; }
+    }
 
 
     [DebuggerDisplay("{TypeName} - {Description}")]
-    public abstract class BaseEntity
+    public abstract class BaseEntity : IEquatable<BaseEntity>
     {
+        private ulong? _hash;
+
+        [JsonIgnore]
+        [YamlIgnore]
+        public ulong Hash => _hash ??= CalculateHash();
+
         [JsonPropertyName(Properties.ProjectId)]
         [YamlIgnore]
         public long? ProjectId { get; set; } = null;
@@ -33,10 +44,15 @@ namespace KepwareSync.Model
         [JsonIgnore]
         [YamlIgnore]
         public string TypeName => GetType().Name;
-        
+
         [JsonExtensionData]
         //Yaml-Properties
         public Dictionary<string, object?> DynamicProperties { get; set; } = [];
+
+        public virtual bool Equals(BaseEntity? other)
+        {
+            return other?.Hash == Hash;
+        }
 
         public T? GetDynamicProperty<T>(string key)
         {
@@ -81,6 +97,24 @@ namespace KepwareSync.Model
 
             return default;
         }
+
+        protected virtual ulong CalculateHash()
+        {
+            return CustomHashGenerator.ComputeHash(
+                    DynamicProperties
+                        .ExceptBy(Properties.NonSerialized.AsHashSet, kvp => kvp.Key)
+                        .Concat(
+                            AppendHashSources(
+                                CustomHashGenerator.CreateHashSourceBuilder(nameof(Description), Description)
+                            )
+                        )
+                );
+        }
+
+        protected virtual CustomHashGenerator.HashSourceBuilder AppendHashSources(CustomHashGenerator.HashSourceBuilder builder)
+        {
+            return builder;
+        }
     }
 
 
@@ -92,11 +126,14 @@ namespace KepwareSync.Model
     }
 
     [DebuggerDisplay("{TypeName} - {Name} - {Description}")]
-    public class NamedEntity : DefaultEntity
+    public class NamedEntity : DefaultEntity, IHaveName
     {
         [JsonPropertyName(Properties.Name)]
         [YamlIgnore]
         //Yaml File-Name
         public string Name { get; set; } = string.Empty;
+
+        protected override CustomHashGenerator.HashSourceBuilder AppendHashSources(CustomHashGenerator.HashSourceBuilder builder)
+         => base.AppendHashSources(builder).Append(nameof(Name), Name);
     }
 }
