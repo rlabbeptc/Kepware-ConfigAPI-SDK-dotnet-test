@@ -14,20 +14,24 @@ namespace KepwareSync.Model
     }
 
     [Endpoint("/config/v1/project/channels/{name}")]
-    public class Channel : NamedEntity
+    public class Channel : NamedUidEntity
     {
         [YamlIgnore]
         public DeviceCollection? Devices { get; set; }
+
+        protected override string UniqueIdKey => Properties.ChannelUniqueId;
+
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}")]
-    public class Device : NamedEntity
+    public class Device : NamedUidEntity
     {
         [YamlIgnore]
         public DeviceTagCollection? Tags { get; set; }
 
         [YamlIgnore]
         public DeviceTagGroupCollection? TagGroups { get; set; }
+        protected override string UniqueIdKey => Properties.DeviceUniqueId;
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}/tag_groups/{groupName}")]

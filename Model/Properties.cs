@@ -13,6 +13,8 @@ namespace KepwareSync.Model
         public const string Description = "common.ALLTYPES_DESCRIPTION";
         public const string Name = "common.ALLTYPES_NAME";
         public const string ProjectId = "PROJECT_ID";
+        public const string ChannelUniqueId = "servermain.CHANNEL_UNIQUE_ID";
+        public const string DeviceUniqueId = "servermain.DEVICE_UNIQUE_ID";
 
         public static class Tag
         {

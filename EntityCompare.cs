@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using static KepwareSync.EntityCompare;
@@ -14,8 +15,8 @@ namespace KepwareSync
     /// Compares two entities and determines if they are the same, different, or if one is missing.
     /// Left represents the source and Right represents the target.
     /// 
-    /// Added - The entity is in the Right but not in the Left.
-    /// Removed - The entity is in the Left but not in the Right.
+    /// PresentInRightOnly - The entity is in the Right but not in the Left.
+    /// PresentInLeftOnly - The entity is in the Left but not in the Right.
     /// Changed - The entity is in both the Left and Right but the properties are different.
     /// None - The entity is in both the Left and Right and the properties are the same.
     /// </summary>
@@ -23,15 +24,22 @@ namespace KepwareSync
     {
         public enum CompareResult
         {
-            Removed = -1,
+            PresentInLeftOnly = -1,
             None = 0,
             Changed = 1,
-            Added = 2,
+            PresentInRightOnly = 2,
         }
 
         public static CollectionResultBucket<T, K> Compare<T, K>(T? left, T? right)
             where T : EntityCollection<K>
             where K : NamedEntity
+        {
+            return Compare<T, K>(left, right, k => k.Name);
+        }
+
+        public static CollectionResultBucket<T, K> Compare<T, K>(T? left, T? right, Func<K, string> keySelector)
+           where T : EntityCollection<K>
+           where K : BaseEntity
         {
             var results = new List<ResultBucket<K>>();
             if (left == null && right == null)
@@ -40,45 +48,89 @@ namespace KepwareSync
             }
             else if (left == null)
             {
-                results.AddRange(right!.Items.Select(ResultBucket<K>.Added));
+                results.AddRange(right!.Items.Select(ResultBucket<K>.PresentInRight));
             }
             else if (right == null)
             {
-                results.AddRange(left.Items.Select(ResultBucket<K>.Removed));
+                results.AddRange(left.Items.Select(ResultBucket<K>.PresentInLeft));
             }
             else
             {
-                var leftItems = left.Items.ToDictionary(i => i.Name);
-                var rightItems = right.Items.ToDictionary(i => i.Name);
+                var leftItems = left.Items.ToDictionary(keySelector);
+                var rightItems = right.Items.ToDictionary(keySelector);
+                Dictionary<long, K>? leftByUid = null, rightByUid = null;
+
+                if (typeof(K).IsAssignableTo(typeof(NamedUidEntity)))
+                {
+                    leftByUid = left.Items.Cast<NamedUidEntity>().Where(u => u.UniqueId != 0).ToDictionary(k => k.UniqueId, k => (K)(object)k);
+                    rightByUid = right.Items.Cast<NamedUidEntity>().Where(u => u.UniqueId != 0).ToDictionary(k => k.UniqueId, k => (K)(object)k);
+                }
+
                 foreach (var leftItem in left.Items)
                 {
-                    if (rightItems.TryGetValue(leftItem.Name, out var rightItem))
+                    if (rightItems.TryGetValue(keySelector(leftItem), out var rightItem))
                     {
-                        results.Add(
-                            Compare(leftItem, rightItem) switch
-                            {
-                                CompareResult.Added => ResultBucket<K>.Added(rightItem),
-                                CompareResult.Removed => ResultBucket<K>.Removed(leftItem),
-                                CompareResult.Changed => ResultBucket<K>.Changed(leftItem, rightItem),
-                                _ => ResultBucket<K>.Unchanged(leftItem, rightItem),
-                            }
-                        );
+                        results.Add(GetResult(leftItem, rightItem));
 
+                    }
+                    else if (leftItem is NamedUidEntity leftUidItem && rightByUid?.TryGetValue(leftUidItem.UniqueId, out var rightItemByUid) == true)
+                    {
+                        results.Add(GetResult(leftItem, rightItemByUid));
                     }
                     else
                     {
-                        results.Add(ResultBucket<K>.Removed(leftItem));
+                        results.Add(ResultBucket<K>.PresentInLeft(leftItem));
                     }
                 }
+
                 foreach (var rightItem in right.Items)
                 {
-                    if (!leftItems.ContainsKey(rightItem.Name))
+                    if (!leftItems.ContainsKey(keySelector(rightItem)))
                     {
-                        results.Add(ResultBucket<K>.Added(rightItem));
+                        if (rightItem is NamedUidEntity rightUidItem && leftByUid?.TryGetValue(rightUidItem.UniqueId, out var leftItemByUid) == true)
+                        {
+                            //found by uuid
+                        }
+                        else
+                        {
+                            results.Add(ResultBucket<K>.PresentInRight(rightItem));
+                        }
                     }
                 }
             }
-            return new CollectionResultBucket<T, K>(results);
+            var retValue = new CollectionResultBucket<T, K>(results);
+#if DEBUG
+            // do logical assertations based on the found item counts
+            var leftCount = left?.Items.Count ?? 0;
+            var rightCount = right?.Items.Count ?? 0;
+            var addedCount = retValue.ItemsOnlyInRight.Count;
+            var removedCount = retValue.ItemsOnlyInLeft.Count;
+            var changedCount = retValue.ChangedItems.Count;
+            var unchangedCount = retValue.UnchangedItems.Count;
+
+            if (leftCount + addedCount - removedCount != rightCount)
+            {
+                throw new InvalidOperationException("The counts of the items are not correct.");
+            }
+
+            if (changedCount + unchangedCount != leftCount - removedCount)
+            {
+                throw new InvalidOperationException("The counts of the items are not correct.");
+            }
+#endif
+
+            return retValue;
+        }
+
+        private static ResultBucket<K> GetResult<K>(K leftItem, K rightItem) where K : BaseEntity
+        {
+            return Compare(leftItem, rightItem) switch
+            {
+                CompareResult.PresentInRightOnly => ResultBucket<K>.PresentInRight(rightItem),
+                CompareResult.PresentInLeftOnly => ResultBucket<K>.PresentInLeft(leftItem),
+                CompareResult.Changed => ResultBucket<K>.Changed(leftItem, rightItem),
+                _ => ResultBucket<K>.Unchanged(leftItem, rightItem),
+            };
         }
 
         public static CompareResult Compare<T>(T? left, T? right)
@@ -90,11 +142,11 @@ namespace KepwareSync
             }
             else if (left == null)
             {
-                return CompareResult.Added;
+                return CompareResult.PresentInRightOnly;
             }
             else if (right == null)
             {
-                return CompareResult.Removed;
+                return CompareResult.PresentInLeftOnly;
             }
             else if (left.Equals(right))
             {
@@ -110,15 +162,27 @@ namespace KepwareSync
             where T : EntityCollection<K>
             where K : BaseEntity
         {
-            public ReadOnlyCollection<ResultBucket<K>> AddedItems { get; }
-            public ReadOnlyCollection<ResultBucket<K>> RemovedItems { get; }
+            /// <summary>
+            /// The items that are in the Right but not in the Left.
+            /// </summary>
+            public ReadOnlyCollection<ResultBucket<K>> ItemsOnlyInRight { get; }
+            /// <summary>
+            /// The items that are in the Left but not in the Right.
+            /// </summary>
+            public ReadOnlyCollection<ResultBucket<K>> ItemsOnlyInLeft { get; }
+            /// <summary>
+            /// The items that are in both the Left and Right but the properties are different.
+            /// </summary>
             public ReadOnlyCollection<ResultBucket<K>> ChangedItems { get; }
+            /// <summary>
+            /// The items that are in both the Left and Right and the properties are the same.
+            /// </summary>
             public ReadOnlyCollection<ResultBucket<K>> UnchangedItems { get; }
 
             public CollectionResultBucket(IEnumerable<ResultBucket<K>> results)
             {
-                AddedItems = results.Where(r => r.CompareResult == CompareResult.Added).ToList().AsReadOnly();
-                RemovedItems = results.Where(r => r.CompareResult == CompareResult.Removed).ToList().AsReadOnly();
+                ItemsOnlyInRight = results.Where(r => r.CompareResult == CompareResult.PresentInRightOnly).ToList().AsReadOnly();
+                ItemsOnlyInLeft = results.Where(r => r.CompareResult == CompareResult.PresentInLeftOnly).ToList().AsReadOnly();
                 ChangedItems = results.Where(r => r.CompareResult == CompareResult.Changed).ToList().AsReadOnly();
                 UnchangedItems = results.Where(r => r.CompareResult == CompareResult.None && r.Left != null).ToList().AsReadOnly();
             }
@@ -135,20 +199,20 @@ namespace KepwareSync
             public string? LeftName => (Left as NamedEntity)?.Name;
             public string RightName => (Right as NamedEntity)?.Name ?? typeof(T).Name;
 
-            public static ResultBucket<T> Added(T right)
+            public static ResultBucket<T> PresentInRight(T right)
                => new ResultBucket<T>
                {
                    Left = default,
                    Right = right,
-                   CompareResult = CompareResult.Added,
+                   CompareResult = CompareResult.PresentInRightOnly,
                };
 
-            public static ResultBucket<T> Removed(T left)
+            public static ResultBucket<T> PresentInLeft(T left)
                 => new ResultBucket<T>
                 {
                     Left = left,
                     Right = default,
-                    CompareResult = CompareResult.Removed,
+                    CompareResult = CompareResult.PresentInLeftOnly,
                 };
 
             public static ResultBucket<T> Changed(T left, T right)

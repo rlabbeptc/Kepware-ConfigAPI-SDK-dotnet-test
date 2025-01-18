@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 
 namespace KepwareSync.Model
 {
-    [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+    [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
     public class EndpointAttribute : Attribute
     {
         public string EndpointTemplate { get; }
 
-        
+
         public EndpointAttribute(string endpointTemplate)
         {
             EndpointTemplate = endpointTemplate;

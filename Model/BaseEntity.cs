@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using System.Xml.Serialization;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NodeTypeResolvers;
@@ -23,6 +24,7 @@ namespace KepwareSync.Model
         public string Name { get; }
     }
 
+ 
 
     [DebuggerDisplay("{TypeName} - {Description}")]
     public abstract class BaseEntity : IEquatable<BaseEntity>
@@ -46,8 +48,10 @@ namespace KepwareSync.Model
         public string TypeName => GetType().Name;
 
         [JsonExtensionData]
+        // Add the known scalar types to for the Serializer as Attribte like , boolean int to support AOT
+        
         //Yaml-Properties
-        public Dictionary<string, object?> DynamicProperties { get; set; } = [];
+        public Dictionary<string, JsonElement> DynamicProperties { get; set; } = [];
 
         public virtual bool Equals(BaseEntity? other)
         {
@@ -101,7 +105,7 @@ namespace KepwareSync.Model
         protected virtual ulong CalculateHash()
         {
             return CustomHashGenerator.ComputeHash(
-                    DynamicProperties
+                    KepJsonContext.Unwrap(DynamicProperties)
                         .ExceptBy(Properties.NonSerialized.AsHashSet, kvp => kvp.Key)
                         .Concat(
                             AppendHashSources(
@@ -135,5 +139,14 @@ namespace KepwareSync.Model
 
         protected override CustomHashGenerator.HashSourceBuilder AppendHashSources(CustomHashGenerator.HashSourceBuilder builder)
          => base.AppendHashSources(builder).Append(nameof(Name), Name);
+    }
+
+    public abstract class NamedUidEntity : NamedEntity
+    {
+        [JsonIgnore]
+        [YamlIgnore]
+        public long UniqueId => GetDynamicProperty<long>(UniqueIdKey);
+
+        protected abstract string UniqueIdKey { get; }
     }
 }

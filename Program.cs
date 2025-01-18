@@ -96,14 +96,35 @@ namespace KepwareSync
             var prjCompare = EntityCompare.Compare(projectFromDisk, projectFromApi);
             try
             {
-                var channelCompare = EntityCompare.Compare<ChannelCollection, Channel>(projectFromDisk.Channels, projectFromApi.Channels);
+
+                var channelCompare = await kepServerClient.CompareAndApply<ChannelCollection, Channel>(projectFromDisk.Channels, projectFromApi.Channels);
+
+                foreach (var channel in channelCompare.UnchangedItems)
+                {
+                    var deviceCompare = await kepServerClient.CompareAndApply<DeviceCollection, Device>(channel.Left!.Devices, channel.Right!.Devices, channel.Right);
+
+                    foreach (var device in deviceCompare.UnchangedItems)
+                    {
+                        var tagCompare = await kepServerClient.CompareAndApply<DeviceTagCollection, Tag>(device.Left!.Tags, device.Right!.Tags, device.Right);
+                        var tagGroupCompare = await kepServerClient.CompareAndApply<DeviceTagGroupCollection, DeviceTagGroup>(device.Left!.TagGroups, device.Right!.TagGroups, device.Right);
+
+                        foreach (var tagGroup in tagGroupCompare.UnchangedItems)
+                        {
+                            var tagGroupTagCompare = await kepServerClient.CompareAndApply<DeviceTagGroupTagCollection, Tag>(tagGroup.Left!.Tags, tagGroup.Right!.Tags, tagGroup.Right);
+
+
+                        }
+                    }
+                }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
             }
             Console.WriteLine("Sync from disk completed.");
         }
+
+
 
         #region BuildHost
         private static Task<IHost> BuildHost(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions)

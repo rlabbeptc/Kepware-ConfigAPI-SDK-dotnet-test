@@ -76,7 +76,7 @@ namespace KepwareSync.Serializer
                 {
                     if (!m_nonpersistetDynamicProps.Contains(key))
                     {
-                        entity.DynamicProperties[key] = value;
+                        entity.DynamicProperties[key] = KepJsonContext.WrapInJsonElement(value) ;
                     }
                 }
             }

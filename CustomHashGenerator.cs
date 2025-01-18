@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace KepwareSync
@@ -49,6 +51,25 @@ namespace KepwareSync
             return new HashSourceBuilder(seed);
         }
 
+        private static string ToString(JsonElement jsonElement)
+        {
+            switch (jsonElement.ValueKind)
+            {
+                case JsonValueKind.True:
+                    return bool.TrueString;
+                case JsonValueKind.False:
+                    return bool.FalseString;
+                case JsonValueKind.Null:
+                    return string.Empty;
+
+                case JsonValueKind.Array:
+                    return string.Join(",", jsonElement.EnumerateArray().Select(ToString));
+
+                default:
+                    return jsonElement.ToString();
+            }
+        }
+
         /// <summary>
         /// Interne Methode zur Berechnung des Hashs unter Verwendung von FNV-1a.
         /// </summary>
@@ -71,8 +92,26 @@ namespace KepwareSync
                 }
 
                 // Hash the value's string representation
-                string valueString = kvp.Value?.ToString() ?? string.Empty;
-                foreach (byte b in Encoding.UTF8.GetBytes(valueString))
+                string? valueString;
+                if (kvp.Value is JsonElement jsonElement)
+                {
+                    valueString = ToString(jsonElement);
+                }
+                else if (kvp.Value is string strValue)
+                {
+                    valueString = strValue;
+                }
+                else if (kvp.Value is ICollection collection)
+                {
+                    valueString = string.Join(",", collection.Cast<object>().Select(o => o?.ToString()));
+                }
+                else
+                {
+
+                    valueString = kvp.Value?.ToString();
+                }
+
+                foreach (byte b in Encoding.UTF8.GetBytes(valueString ?? string.Empty))
                 {
                     hash ^= b;
                     hash *= fnvPrime;
