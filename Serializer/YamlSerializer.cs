@@ -36,18 +36,23 @@ namespace KepwareSync.Serializer
             where T : BaseEntity, new()
         {
             FileInfo file = new FileInfo(filePath);
+            T entity;
+
             if (!file.Exists)
             {
-                return default!;
+                entity = new T();
             }
-            var yaml = await System.IO.File.ReadAllTextAsync(filePath);
-            var entity = _deserializer.Deserialize<T>(yaml);
+            else
+            {
+                var yaml = await System.IO.File.ReadAllTextAsync(filePath);
+                entity = _deserializer.Deserialize<T>(yaml);
+            }
 
             if (entity is NamedEntity namedEntity)
             {
                 namedEntity.Name = file.DirectoryName!.Split('\\').Last();
             }
-            
+
             return entity;
         }
 
@@ -66,7 +71,7 @@ namespace KepwareSync.Serializer
             }
             else
             {
-                if (!File.Exists(filePath) ||  await File.ReadAllTextAsync(filePath) != yaml)
+                if (!File.Exists(filePath) || await File.ReadAllTextAsync(filePath) != yaml)
                 {
                     await File.WriteAllTextAsync(filePath, yaml);
                 }

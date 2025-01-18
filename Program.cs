@@ -17,6 +17,7 @@ using KepwareSync.Configuration;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
+using System.Linq;
 
 namespace KepwareSync
 {
@@ -99,16 +100,16 @@ namespace KepwareSync
 
                 var channelCompare = await kepServerClient.CompareAndApply<ChannelCollection, Channel>(projectFromDisk.Channels, projectFromApi.Channels);
 
-                foreach (var channel in channelCompare.UnchangedItems)
+                foreach (var channel in channelCompare.UnchangedItems.Concat(channelCompare.ChangedItems))
                 {
                     var deviceCompare = await kepServerClient.CompareAndApply<DeviceCollection, Device>(channel.Left!.Devices, channel.Right!.Devices, channel.Right);
 
-                    foreach (var device in deviceCompare.UnchangedItems)
+                    foreach (var device in deviceCompare.UnchangedItems.Concat(deviceCompare.ChangedItems))
                     {
                         var tagCompare = await kepServerClient.CompareAndApply<DeviceTagCollection, Tag>(device.Left!.Tags, device.Right!.Tags, device.Right);
                         var tagGroupCompare = await kepServerClient.CompareAndApply<DeviceTagGroupCollection, DeviceTagGroup>(device.Left!.TagGroups, device.Right!.TagGroups, device.Right);
 
-                        foreach (var tagGroup in tagGroupCompare.UnchangedItems)
+                        foreach (var tagGroup in tagGroupCompare.UnchangedItems.Concat(tagGroupCompare.ChangedItems))
                         {
                             var tagGroupTagCompare = await kepServerClient.CompareAndApply<DeviceTagGroupTagCollection, Tag>(tagGroup.Left!.Tags, tagGroup.Right!.Tags, tagGroup.Right);
 

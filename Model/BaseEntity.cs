@@ -24,7 +24,7 @@ namespace KepwareSync.Model
         public string Name { get; }
     }
 
- 
+
 
     [DebuggerDisplay("{TypeName} - {Description}")]
     public abstract class BaseEntity : IEquatable<BaseEntity>
@@ -37,6 +37,7 @@ namespace KepwareSync.Model
 
         [JsonPropertyName(Properties.ProjectId)]
         [YamlIgnore]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public long? ProjectId { get; set; } = null;
 
         [JsonPropertyName(Properties.Description)]
@@ -49,7 +50,7 @@ namespace KepwareSync.Model
 
         [JsonExtensionData]
         // Add the known scalar types to for the Serializer as Attribte like , boolean int to support AOT
-        
+
         //Yaml-Properties
         public Dictionary<string, JsonElement> DynamicProperties { get; set; } = [];
 
@@ -102,11 +103,23 @@ namespace KepwareSync.Model
             return default;
         }
 
+        public void SetDynamicProperty<T>(string key, T value)
+        {
+            if (value is JsonElement jsonElement)
+            {
+                DynamicProperties[key] = jsonElement;
+            }
+            else
+            {
+                DynamicProperties[key] = KepJsonContext.WrapInJsonElement(value);
+            }
+            _hash = null;
+        }
+
         protected virtual ulong CalculateHash()
         {
             return CustomHashGenerator.ComputeHash(
-                    KepJsonContext.Unwrap(DynamicProperties)
-                        .ExceptBy(Properties.NonSerialized.AsHashSet, kvp => kvp.Key)
+                    KepJsonContext.Unwrap(DynamicProperties.Except(Properties.NonSerialized.AsHashSet, Properties.NonUpdatable.AsHashSet))
                         .Concat(
                             AppendHashSources(
                                 CustomHashGenerator.CreateHashSourceBuilder(nameof(Description), Description)
@@ -139,6 +152,36 @@ namespace KepwareSync.Model
 
         protected override CustomHashGenerator.HashSourceBuilder AppendHashSources(CustomHashGenerator.HashSourceBuilder builder)
          => base.AppendHashSources(builder).Append(nameof(Name), Name);
+
+        public virtual Dictionary<string, JsonElement> GetUpdateDiff(NamedEntity other)
+        {
+            var diff = new Dictionary<string, JsonElement>();
+            if (Name != other.Name)
+            {
+                diff[Properties.Name] = KepJsonContext.WrapInJsonElement(Name);
+            }
+
+            if (Description != other.Description)
+            {
+                diff[Properties.Description] = KepJsonContext.WrapInJsonElement(Description);
+            }
+
+            if (ProjectId != 0)
+            {
+                diff[Properties.ProjectId] = KepJsonContext.WrapInJsonElement(ProjectId);
+            }
+
+            foreach (var kvp in DynamicProperties.Except(Properties.NonSerialized.AsHashSet, Properties.NonUpdatable.AsHashSet))
+            {
+                if (!other.DynamicProperties.TryGetValue(kvp.Key, out var otherValue) ||
+                    !KepJsonContext.Equals(kvp.Value, otherValue))
+                {
+                    diff[kvp.Key] = kvp.Value;
+                }
+            }
+
+            return diff;
+        }
     }
 
     public abstract class NamedUidEntity : NamedEntity

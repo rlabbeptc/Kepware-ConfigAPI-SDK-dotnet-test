@@ -27,7 +27,17 @@ namespace KepwareSync.Serializer
             return typeof(BaseEntity).IsAssignableFrom(type);
         }
 
-        public object? ReadYaml(IParser parser, Type type, ObjectDeserializer nestedObjectDeserializer)
+        object? IYamlTypeConverter.ReadYaml(IParser parser, Type type, ObjectDeserializer deserializer)
+        {
+#pragma warning disable IL2067 // Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The parameter of method does not have matching annotations.
+            return ReadYamlWithAttributes(
+                   parser,
+                   type,
+                   deserializer);
+#pragma warning restore IL2067 // Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The parameter of method does not have matching annotations.
+        }
+
+        public object? ReadYamlWithAttributes(IParser parser, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type type, ObjectDeserializer nestedObjectDeserializer)
         {
             if (!typeof(BaseEntity).IsAssignableFrom(type))
             {
@@ -76,7 +86,7 @@ namespace KepwareSync.Serializer
                 {
                     if (!m_nonpersistetDynamicProps.Contains(key))
                     {
-                        entity.DynamicProperties[key] = KepJsonContext.WrapInJsonElement(value) ;
+                        entity.DynamicProperties[key] = KepJsonContext.WrapInJsonElement(value);
                     }
                 }
             }

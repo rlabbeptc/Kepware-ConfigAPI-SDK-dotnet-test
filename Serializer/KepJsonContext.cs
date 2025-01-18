@@ -134,6 +134,87 @@ namespace KepwareSync.Model
             }
         }
 
+        public static bool Equals(JsonElement element, JsonElement other)
+        {
+            if (element.ValueKind != other.ValueKind)
+            {
+                return false;
+            }
+
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    var elementProperties = element.EnumerateObject().ToDictionary(prop => prop.Name, prop => prop.Value);
+                    var otherProperties = other.EnumerateObject().ToDictionary(prop => prop.Name, prop => prop.Value);
+
+                    if (elementProperties.Count != otherProperties.Count)
+                    {
+                        return false;
+                    }
+
+                    foreach (var property in elementProperties)
+                    {
+                        if (!otherProperties.TryGetValue(property.Key, out var otherValue))
+                        {
+                            return false;
+                        }
+
+                        if (!Equals(property.Value, otherValue))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return true;
+
+                case JsonValueKind.Array:
+                    var elementArray = element.EnumerateArray().ToArray();
+                    var otherArray = other.EnumerateArray().ToArray();
+
+                    if (elementArray.Length != otherArray.Length)
+                    {
+                        return false;
+                    }
+
+                    for (int i = 0; i < elementArray.Length; i++)
+                    {
+                        if (!Equals(elementArray[i], otherArray[i]))
+                        {
+                            return false;
+                        }
+                    }
+
+                    return true;
+
+                case JsonValueKind.String:
+                    return element.GetString() == other.GetString();
+
+                case JsonValueKind.Number:
+                    if (element.TryGetInt64(out var elementLong) && other.TryGetInt64(out var otherLong))
+                    {
+                        return elementLong == otherLong;
+                    }
+
+                    if (element.TryGetDouble(out var elementDouble) && other.TryGetDouble(out var otherDouble))
+                    {
+                        return Math.Abs(elementDouble - otherDouble) <= double.Epsilon;
+                    }
+
+                    return false;
+
+                case JsonValueKind.True:
+                case JsonValueKind.False:
+                    return element.GetBoolean() == other.GetBoolean();
+
+                case JsonValueKind.Null:
+                    return true;
+
+                default:
+                    return element.GetRawText() == other.GetRawText();
+            }
+        }
+
+
         internal static JsonElement WrapInJsonElement(object? value)
         {
             if (value == null)

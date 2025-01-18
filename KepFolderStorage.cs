@@ -37,8 +37,6 @@ namespace KepwareSync
         public async Task<Project> LoadProject(bool blnLoadDeep = true)
         {
             var projectFile = Path.Combine(m_baseDirectory.FullName, "project.yaml");
-            if (!File.Exists(projectFile))
-                return new Project();
 
             var project = await m_yamlSerializer.LoadFromYaml<Project>(projectFile);
             if (project == null) return new Project();
@@ -68,8 +66,7 @@ namespace KepwareSync
         public async Task<Channel> LoadChannel(DirectoryInfo channelDir, bool blnLoadDeep = true)
         {
             var channelFile = Path.Combine(channelDir.FullName, "channel.yaml");
-            if (!File.Exists(channelFile))
-                return new Channel();
+
             var channel = await m_yamlSerializer.LoadFromYaml<Channel>(channelFile);
             if (channel == null) return new Channel();
             if (blnLoadDeep)
@@ -93,26 +90,40 @@ namespace KepwareSync
         private async Task<Device> LoadDevice(DirectoryInfo deviceDir, bool blnLoadDeep = true)
         {
             var deviceFile = Path.Combine(deviceDir.FullName, "device.yaml");
-            if (!File.Exists(deviceFile))
-                return new Device();
             var device = await m_yamlSerializer.LoadFromYaml<Device>(deviceFile);
             if (device == null) return new Device();
             if (blnLoadDeep)
             {
-                //device.Tags = await LoadTags(deviceDir);
-                //device.TagGroups = await LoadTagGroups(deviceDir);
+                device.Tags = new DeviceTagCollection { Items = await LoadTags(device, deviceDir) };
+                device.TagGroups = await LoadTagGroups(device, deviceDir);
             }
             return device;
         }
 
-        private async Task<DeviceTagGroupCollection?> LoadTagGroups(DirectoryInfo deviceDir)
+        private async Task<DeviceTagGroupCollection?> LoadTagGroups(Device device, DirectoryInfo deviceDir)
         {
-            throw new NotImplementedException();
+            var tagGroups = new DeviceTagGroupCollection();
+            var tagGroupDirs = deviceDir.GetDirectories();
+
+            foreach (var grpDir in tagGroupDirs)
+            {
+                var tagGroupFile = Path.Combine(grpDir.FullName, "tagGroup.yaml");
+                var tagGroup = await m_yamlSerializer.LoadFromYaml<DeviceTagGroup>(tagGroupFile);
+                tagGroup.Tags = new DeviceTagGroupTagCollection { Items = await LoadTags(device, grpDir) };
+                tagGroups.Items.Add(tagGroup);
+            }
+
+            return tagGroups;
         }
 
-        private async Task<DeviceTagCollection?> LoadTags(DirectoryInfo deviceDir)
+        private Task<List<Tag>> LoadTags(Device device, DirectoryInfo tagDirectory)
         {
-            throw new NotImplementedException();
+            var tagFile = Path.Combine(tagDirectory.FullName, "tags.csv");
+            if (!File.Exists(tagFile))
+                return Task.FromResult(new List<Tag>());
+
+            var dataTypeConverter = m_dataTypeEnumConverterProvider.GetDataTypeEnumConverter(device.GetDynamicProperty<string>(Properties.DeviceDriver));
+            return m_csvTagSerializer.ImportTagsAsync(tagFile, dataTypeConverter);
         }
 
         internal async Task ExportProjecAsync(Project project)

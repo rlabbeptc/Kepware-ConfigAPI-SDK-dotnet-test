@@ -57,24 +57,15 @@ namespace KepwareSync
 
             /// This are the items that are in the API but not in the source
             /// --> we need to delete them
-            foreach (var removedFromApi in compareResult.ItemsOnlyInRight)
-            {
-                await DeleteItemAsync<T, K>(removedFromApi.Right!, owner);
-            }
+            await DeleteItemsAsync<T, K>(compareResult.ItemsOnlyInRight.Select(i => i.Right!).ToList(), owner);
 
             /// This are the items both in the API and the source
             /// --> we need to update them
-            foreach (var changed in compareResult.ChangedItems)
-            {
-                await UpdateItemAsync(changed.Left!, changed.Right);
-            }
+            await UpdateItemsAsync<T, K>(compareResult.ChangedItems.Select(i => (i.Left!, i.Right)).ToList(), owner);
 
             /// This are the items that are in the source but not in the API
             /// --> we need to insert them
-            foreach (var addedToApi in compareResult.ItemsOnlyInLeft)
-            {
-                await InsertItemAsync<T, K>(addedToApi.Left!, owner);
-            }
+            await InsertItemsAsync<T, K>(compareResult.ItemsOnlyInLeft.Select(i => i.Left!).ToList(), owner);
 
             return compareResult;
         }
@@ -85,7 +76,7 @@ namespace KepwareSync
         {
             var endpoint = ResolveEndpoint<T>(oldItem ?? item);
 
-            m_logger.LogDebug("Updating {TypeName} on {Endpoint}...", typeof(T).Name, endpoint);
+            m_logger.LogInformation("Updating {TypeName} on {Endpoint}...", typeof(T).Name, endpoint);
 
             var currentEntity = await LoadEntityAsync<T>(oldItem ?? item);
             item.ProjectId = currentEntity?.ProjectId;
@@ -94,7 +85,39 @@ namespace KepwareSync
             var response = await m_httpClient.PutAsync(endpoint, httpContent);
             if (!response.IsSuccessStatusCode)
             {
-                m_logger.LogError("Failed to update {TypeName} from {Endpoint}: {ReasonPhrase}", typeof(T).Name, endpoint, response.ReasonPhrase);
+                var message = await response.Content.ReadAsStringAsync();
+                m_logger.LogError("Failed to update {TypeName} from {Endpoint}: {ReasonPhrase}\n\t{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+            }
+        }
+
+        public Task UpdateItemAsync<T, K>(K item, K? oldItem = default, NamedEntity? owner = null)
+            where T : EntityCollection<K>
+          where K : NamedEntity, new()
+            => UpdateItemsAsync<T, K>([(item, oldItem)], owner);
+        public async Task UpdateItemsAsync<T, K>(List<(K item, K? oldItem)> items, NamedEntity? owner = null)
+          where T : EntityCollection<K>
+          where K : NamedEntity, new()
+        {
+            if (items.Count == 0)
+                return;
+            var collectionEndpoint = ResolveEndpoint<T>(owner).TrimEnd('/');
+            foreach (var pair in items)
+            {
+                var endpoint = $"{collectionEndpoint}/{pair.item.Name}";
+                var currentEntity = await LoadEntityAsync<K>(endpoint, owner);
+                pair.item.ProjectId = currentEntity?.ProjectId;
+
+                var diff = pair.item.GetUpdateDiff(currentEntity!);
+
+                m_logger.LogInformation("Updating {TypeName} on {Endpoint}, values {Diff}", typeof(T).Name, endpoint, diff);
+
+                HttpContent httpContent = new StringContent(JsonSerializer.Serialize(diff, KepJsonContext.Default.DictionaryStringJsonElement), Encoding.UTF8, "application/json");
+                var response = await m_httpClient.PutAsync(endpoint, httpContent);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var message = await response.Content.ReadAsStringAsync();
+                    m_logger.LogError("Failed to update {TypeName} from {Endpoint}: {ReasonPhrase}\n\t{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                }
             }
         }
 
@@ -107,14 +130,18 @@ namespace KepwareSync
             where T : EntityCollection<K>
             where K : NamedEntity, new()
         {
+            if (items.Count == 0)
+                return;
+
             var endpoint = ResolveEndpoint<T>(owner);
             m_logger.LogInformation("Inserting {TypeName} on {Endpoint}...", typeof(K).Name, endpoint);
 
             HttpContent httpContent = new StringContent(JsonSerializer.Serialize(items, KepJsonContext.GetJsonListTypeInfo<K>()), Encoding.UTF8, "application/json");
-            var response = await m_httpClient.PutAsync(endpoint, httpContent);
+            var response = await m_httpClient.PostAsync(endpoint, httpContent);
             if (!response.IsSuccessStatusCode)
             {
-                m_logger.LogError("Failed to insert {TypeName} from {Endpoint}: {ReasonPhrase}", typeof(T).Name, endpoint, response.ReasonPhrase);
+                var message = await response.Content.ReadAsStringAsync();
+                m_logger.LogError("Failed to insert {TypeName} from {Endpoint}: {ReasonPhrase}\n\t{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
             }
         }
 
@@ -127,6 +154,8 @@ namespace KepwareSync
             where T : EntityCollection<K>
             where K : NamedEntity, new()
         {
+            if (items.Count == 0)
+                return;
             var collectionEndpoint = ResolveEndpoint<T>(owner).TrimEnd('/');
             foreach (var item in items)
             {
@@ -137,7 +166,8 @@ namespace KepwareSync
                 var response = await m_httpClient.DeleteAsync(endpoint);
                 if (!response.IsSuccessStatusCode)
                 {
-                    m_logger.LogError("Failed to delete {TypeName} from {Endpoint}: {ReasonPhrase}", typeof(T).Name, endpoint, response.ReasonPhrase);
+                    var message = await response.Content.ReadAsStringAsync();
+                    m_logger.LogError("Failed to delete {TypeName} from {Endpoint}: {ReasonPhrase}\n\t{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
                 }
             }
         }
@@ -200,12 +230,18 @@ namespace KepwareSync
             }
         }
 
-        public async Task<T?> LoadEntityAsync<T>(NamedEntity? owner = null)
+        public Task<T?> LoadEntityAsync<T>(NamedEntity? owner = null)
+          where T : BaseEntity, new()
+        {
+
+            var endpoint = ResolveEndpoint<T>(owner);
+            return LoadEntityAsync<T>(endpoint, owner);
+        }
+
+        private async Task<T?> LoadEntityAsync<T>(string endpoint, NamedEntity? owner = null)
           where T : BaseEntity, new()
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
-            var endpoint = ResolveEndpoint<T>(owner);
-
             m_logger.LogDebug("Loading {TypeName} from {Endpoint}...", typeof(T).Name, endpoint);
             var response = await m_httpClient.GetAsync(endpoint);
             if (!response.IsSuccessStatusCode)

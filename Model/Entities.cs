@@ -19,7 +19,7 @@ namespace KepwareSync.Model
         [YamlIgnore]
         public DeviceCollection? Devices { get; set; }
 
-        protected override string UniqueIdKey => Properties.ChannelUniqueId;
+        protected override string UniqueIdKey => Properties.NonUpdatable.ChannelUniqueId;
 
     }
 
@@ -31,7 +31,7 @@ namespace KepwareSync.Model
 
         [YamlIgnore]
         public DeviceTagGroupCollection? TagGroups { get; set; }
-        protected override string UniqueIdKey => Properties.DeviceUniqueId;
+        protected override string UniqueIdKey => Properties.NonUpdatable.DeviceUniqueId;
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}/tag_groups/{groupName}")]
