@@ -50,7 +50,7 @@ namespace KepwareSync.Serializer
 
             if (entity is NamedEntity namedEntity)
             {
-                namedEntity.Name = Uri.UnescapeDataString(file.DirectoryName!.Split('\\').Last());
+                namedEntity.Name = file.DirectoryName!.Split('\\').Last().UnescapeDiskEntry();
             }
 
             return entity;

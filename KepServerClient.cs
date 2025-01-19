@@ -65,7 +65,7 @@ namespace KepwareSync
 
             /// This are the items that are in the source but not in the API
             /// --> we need to insert them
-            await InsertItemsAsync<T, K>(compareResult.ItemsOnlyInLeft.Select(i => i.Left!).ToList(), owner);
+            await InsertItemsAsync<T, K>(compareResult.ItemsOnlyInLeft.Select(i => i.Left!).ToList(), owner: owner);
 
             return compareResult;
         }
@@ -103,23 +103,26 @@ namespace KepwareSync
             var collectionEndpoint = ResolveEndpoint<T>(owner).TrimEnd('/');
             foreach (var pair in items)
             {
-                var endpoint = $"{collectionEndpoint}/{Uri.EscapeDataString(pair.item.Name)}";
+                var endpoint = $"{collectionEndpoint}/{Uri.EscapeDataString(pair.oldItem!.Name)}";
                 var currentEntity = await LoadEntityAsync<K>(endpoint, owner);
-                pair.item.ProjectId = currentEntity?.ProjectId;
-
-                var diff = pair.item.GetUpdateDiff(currentEntity!);
-
-                var hash = pair.item.CalculateHash();
-                var oldHash = pair.oldItem?.CalculateHash();
-
-                m_logger.LogInformation("Updating {TypeName} on {Endpoint}, values {Diff}", typeof(T).Name, endpoint, diff);
-
-                HttpContent httpContent = new StringContent(JsonSerializer.Serialize(diff, KepJsonContext.Default.DictionaryStringJsonElement), Encoding.UTF8, "application/json");
-                var response = await m_httpClient.PutAsync(endpoint, httpContent);
-                if (!response.IsSuccessStatusCode)
+                if (currentEntity == null)
                 {
-                    var message = await response.Content.ReadAsStringAsync();
-                    m_logger.LogError("Failed to update {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                    m_logger.LogError("Failed to load {TypeName} from {Endpoint}", typeof(K).Name, endpoint);
+                }
+                else
+                {
+                    pair.item.ProjectId = currentEntity.ProjectId;
+                    var diff = pair.item.GetUpdateDiff(currentEntity);
+
+                    m_logger.LogInformation("Updating {TypeName} on {Endpoint}, values {Diff}", typeof(T).Name, endpoint, diff);
+
+                    HttpContent httpContent = new StringContent(JsonSerializer.Serialize(diff, KepJsonContext.Default.DictionaryStringJsonElement), Encoding.UTF8, "application/json");
+                    var response = await m_httpClient.PutAsync(endpoint, httpContent);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var message = await response.Content.ReadAsStringAsync();
+                        m_logger.LogError("Failed to update {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                    }
                 }
             }
         }
@@ -127,24 +130,30 @@ namespace KepwareSync
         public Task InsertItemAsync<T, K>(K item, NamedEntity? owner = null)
           where T : EntityCollection<K>
           where K : NamedEntity, new()
-            => InsertItemsAsync<T, K>([item], owner);
+            => InsertItemsAsync<T, K>([item], owner: owner);
 
-        public async Task InsertItemsAsync<T, K>(List<K> items, NamedEntity? owner = null)
-            where T : EntityCollection<K>
-            where K : NamedEntity, new()
+        public async Task InsertItemsAsync<T, K>(List<K> items, int pageSize = 10, NamedEntity? owner = null)
+         where T : EntityCollection<K>
+         where K : NamedEntity, new()
         {
             if (items.Count == 0)
                 return;
 
             var endpoint = ResolveEndpoint<T>(owner);
-            m_logger.LogInformation("Inserting {TypeName} on {Endpoint}...", typeof(K).Name, endpoint);
-
-            HttpContent httpContent = new StringContent(JsonSerializer.Serialize(items, KepJsonContext.GetJsonListTypeInfo<K>()), Encoding.UTF8, "application/json");
-            var response = await m_httpClient.PostAsync(endpoint, httpContent);
-            if (!response.IsSuccessStatusCode)
+            var totalPageCount = (int)Math.Ceiling((double)items.Count / pageSize);
+            for (int i = 0; i < totalPageCount; i++)
             {
-                var message = await response.Content.ReadAsStringAsync();
-                m_logger.LogError("Failed to insert {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                var pageItems = items.Skip(i * pageSize).Take(pageSize).ToList();
+                m_logger.LogInformation("Inserting {numItems} {TypeName} on {Endpoint} in batch {batchNr} of {totalBatches} ...", pageItems.Count, typeof(K).Name, endpoint, i + 1, totalPageCount);
+
+                var jsonContent = JsonSerializer.Serialize(pageItems, KepJsonContext.GetJsonListTypeInfo<K>());
+                HttpContent httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+                var response = await m_httpClient.PostAsync(endpoint, httpContent);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var message = await response.Content.ReadAsStringAsync();
+                    m_logger.LogError("Failed to insert {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                }
             }
         }
 

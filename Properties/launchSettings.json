@@ -1,8 +1,16 @@
 {
   "profiles": {
-    "KepwareSync": {
+    "KepwareSync from Disk": {
       "commandName": "Project",
       "commandLineArgs": "SyncFromDisk",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "dotnetRunMessages": true
+    },
+    "KepwareSync to Disk": {
+      "commandName": "Project",
+      "commandLineArgs": "SyncToDisk",
       "environmentVariables": {
         "DOTNET_ENVIRONMENT": "Development"
       },

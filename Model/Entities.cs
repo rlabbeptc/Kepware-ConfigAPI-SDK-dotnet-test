@@ -10,6 +10,7 @@ namespace KepwareSync.Model
     public class Project : BaseEntity
     {
         [YamlIgnore]
+        [JsonPropertyName("channels")]
         public ChannelCollection? Channels { get; set; }
     }
 
@@ -17,6 +18,7 @@ namespace KepwareSync.Model
     public class Channel : NamedUidEntity
     {
         [YamlIgnore]
+        [JsonPropertyName("devices")]
         public DeviceCollection? Devices { get; set; }
 
         protected override string UniqueIdKey => Properties.NonUpdatable.ChannelUniqueId;
@@ -27,9 +29,11 @@ namespace KepwareSync.Model
     public class Device : NamedUidEntity
     {
         [YamlIgnore]
+        [JsonPropertyName("tags")]
         public DeviceTagCollection? Tags { get; set; }
 
         [YamlIgnore]
+        [JsonPropertyName("tag_groups")]
         public DeviceTagGroupCollection? TagGroups { get; set; }
         protected override string UniqueIdKey => Properties.NonUpdatable.DeviceUniqueId;
     }
@@ -38,6 +42,7 @@ namespace KepwareSync.Model
     public class DeviceTagGroup : NamedEntity
     {
         [YamlIgnore]
+        [JsonPropertyName("tags")]
         public DeviceTagGroupTagCollection? Tags { get; set; }
 
         [YamlIgnore]

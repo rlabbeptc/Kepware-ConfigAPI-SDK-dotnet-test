@@ -96,7 +96,7 @@ namespace KepwareSync
                 Description = tagDict[CsvHeaders.Description] as string ?? string.Empty
             };
             tag.SetDynamicProperty(Properties.Tag.Address, tagDict.GetValue<string>(CsvHeaders.Address));
-            tag.SetDynamicProperty(Properties.Tag.DataType, dataTypeEnumConverter.ConvertFromString(tagDict.GetValue<string>(CsvHeaders.DataType)));
+            tag.SetDynamicProperty(Properties.Tag.DataType, dataTypeEnumConverter.ConvertFromString(tagDict.GetValue<string>(CsvHeaders.DataType) ?? string.Empty));
             tag.SetDynamicProperty(Properties.Tag.ReadWriteAccess, tagDict.GetValue<string>(CsvHeaders.ClientAccess) == "R/W" ? 1 : 0);
             tag.SetDynamicProperty(Properties.Tag.ScanRateMilliseconds, tagDict.GetValue<int>(CsvHeaders.ScanRate));
             tag.SetDynamicProperty(Properties.Tag.ScalingType, tagDict.GetValue<int>(CsvHeaders.Scaling));

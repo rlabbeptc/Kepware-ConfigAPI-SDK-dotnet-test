@@ -97,6 +97,10 @@ namespace KepwareSync
             var prjCompare = EntityCompare.Compare(projectFromDisk, projectFromApi);
             try
             {
+                if(projectFromDisk.Hash != projectFromApi.Hash)
+                {
+                   //TODO update project
+                }
 
                 var channelCompare = await kepServerClient.CompareAndApply<ChannelCollection, Channel>(projectFromDisk.Channels, projectFromApi.Channels);
 

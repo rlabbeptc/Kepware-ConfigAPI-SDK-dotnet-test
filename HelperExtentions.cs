@@ -1,13 +1,64 @@
 ﻿using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace KepwareSync
 {
     public static class HelperExtentions
     {
+
+        private static readonly FrozenSet<char> InvalidChars = new HashSet<char> { '\\', '/', ':', '*', '?', '\\', '<', '>', '|', EscapeChar }.ToFrozenSet();
+        private const char EscapeChar = '%'; // Escape character for encoding
+
+        public static string EscapeDiskEntry(this string path)
+        {
+            return string.Concat(path.Select(c =>
+             InvalidChars.Contains(c) ? EscapeChar + ((int)c).ToString("X2") : c.ToString()));
+        }
+
+
+        public static string UnescapeDiskEntry(this string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                throw new ArgumentException("Path cannot be null or empty.", nameof(path));
+
+            // Worst-case: Länge des ursprünglichen Strings
+            var result = new char[path.Length];
+            int index = 0;
+
+            for (int i = 0; i < path.Length; i++)
+            {
+                if (path[i] == EscapeChar && i + 2 < path.Length &&
+                    IsHexDigit(path[i + 1]) && IsHexDigit(path[i + 2]))
+                {
+                    // Konvertiere %XX zurück in ein Zeichen
+                    string hex = new string(new[] { path[i + 1], path[i + 2] });
+                    result[index++] = (char)Convert.ToInt32(hex, 16);
+                    i += 2; // Überspringe die beiden Hex-Zeichen
+                }
+                else
+                {
+                    // Normales Zeichen übernehmen
+                    result[index++] = path[i];
+                }
+            }
+
+            // Gib den tatsächlich verwendeten Teil zurück
+            return new string(result, 0, index);
+        }
+
+        private static bool IsHexDigit(char c)
+        {
+            return (c >= '0' && c <= '9') ||
+                   (c >= 'A' && c <= 'F') ||
+                   (c >= 'a' && c <= 'f');
+        }
+
+
         public static IEnumerable<KeyValuePair<K, V>> Except<K, V>(this IDictionary<K, V> source, ISet<K> except, ISet<K>? except2 = default, ISet<K>? except3 = default)
         {
             if (except2 == null)

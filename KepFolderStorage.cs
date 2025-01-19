@@ -152,7 +152,7 @@ namespace KepwareSync
                 int exportedChannels = 0, exportedDevices = 0, exportedTags = 0;
                 foreach (var channel in channels)
                 {
-                    var fileSaveName = Uri.EscapeDataString(channel.Name);
+                    var fileSaveName = channel.Name.EscapeDiskEntry();
 
                     var channelFolder = new DirectoryInfo(Path.Combine(m_baseDirectory.FullName, fileSaveName));
                     if (!channelFolder.Exists)
@@ -228,7 +228,7 @@ namespace KepwareSync
 
         public async Task ExportDevices(Channel channel, DeviceCollection? devices)
         {
-            string channelFolder = Path.Combine(m_baseDirectory.FullName, Uri.EscapeDataString(channel.Name));
+            string channelFolder = Path.Combine(m_baseDirectory.FullName, channel.Name.EscapeDiskEntry());
 
             var deviceDirsToDelete = new DirectoryInfo(channelFolder).GetDirectories().Select(dir => dir.Name)
                             .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -247,7 +247,7 @@ namespace KepwareSync
             {
                 ++exportedDevices;
 
-                string fileSaveName = Uri.EscapeDataString(device.Name);
+                string fileSaveName = device.Name.EscapeDiskEntry();
 
                 var deviceFolder = Path.Combine(channelFolder, fileSaveName);
                 if (!Directory.Exists(deviceFolder))
