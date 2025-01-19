@@ -152,10 +152,12 @@ namespace KepwareSync
                 int exportedChannels = 0, exportedDevices = 0, exportedTags = 0;
                 foreach (var channel in channels)
                 {
-                    var channelFolder = new DirectoryInfo(Path.Combine(m_baseDirectory.FullName, channel.Name));
+                    var fileSaveName = Uri.EscapeDataString(channel.Name);
+
+                    var channelFolder = new DirectoryInfo(Path.Combine(m_baseDirectory.FullName, fileSaveName));
                     if (!channelFolder.Exists)
                         channelFolder.Create();
-                    channelDirsToDelete.Remove(channel.Name);
+                    channelDirsToDelete.Remove(fileSaveName);
                     ++exportedChannels;
                     try
                     {
@@ -226,7 +228,8 @@ namespace KepwareSync
 
         public async Task ExportDevices(Channel channel, DeviceCollection? devices)
         {
-            string channelFolder = Path.Combine(m_baseDirectory.FullName, channel.Name);
+            string channelFolder = Path.Combine(m_baseDirectory.FullName, Uri.EscapeDataString(channel.Name));
+
             var deviceDirsToDelete = new DirectoryInfo(channelFolder).GetDirectories().Select(dir => dir.Name)
                             .ToHashSet(StringComparer.OrdinalIgnoreCase);
             await ExportDevices(channel, channelFolder, deviceDirsToDelete);
@@ -243,13 +246,15 @@ namespace KepwareSync
             foreach (var device in channel.Devices)
             {
                 ++exportedDevices;
-                var deviceFolder = Path.Combine(channelFolder, device.Name);
 
+                string fileSaveName = Uri.EscapeDataString(device.Name);
+
+                var deviceFolder = Path.Combine(channelFolder, fileSaveName);
                 if (!Directory.Exists(deviceFolder))
                     Directory.CreateDirectory(deviceFolder);
 
                 var dataTypeConverter = m_dataTypeEnumConverterProvider.GetDataTypeEnumConverter(device.GetDynamicProperty<string>(Properties.DeviceDriver));
-                deviceDirsToDelete.Remove(device.Name);
+                deviceDirsToDelete.Remove(fileSaveName);
 
                 try
                 {

@@ -116,10 +116,10 @@ namespace KepwareSync.Model
             _hash = null;
         }
 
-        protected virtual ulong CalculateHash()
+        protected internal virtual ulong CalculateHash()
         {
             return CustomHashGenerator.ComputeHash(
-                    KepJsonContext.Unwrap(DynamicProperties.Except(Properties.NonSerialized.AsHashSet, Properties.NonUpdatable.AsHashSet))
+                    KepJsonContext.Unwrap(DynamicProperties.Except(Properties.NonSerialized.AsHashSet, Properties.NonUpdatable.AsHashSet, ConditionalNonSerialized()))
                         .Concat(
                             AppendHashSources(
                                 CustomHashGenerator.CreateHashSourceBuilder(nameof(Description), Description)
@@ -131,6 +131,11 @@ namespace KepwareSync.Model
         protected virtual CustomHashGenerator.HashSourceBuilder AppendHashSources(CustomHashGenerator.HashSourceBuilder builder)
         {
             return builder;
+        }
+
+        protected virtual ISet<string>? ConditionalNonSerialized()
+        {
+            return null;
         }
     }
 
@@ -171,7 +176,7 @@ namespace KepwareSync.Model
                 diff[Properties.ProjectId] = KepJsonContext.WrapInJsonElement(ProjectId);
             }
 
-            foreach (var kvp in DynamicProperties.Except(Properties.NonSerialized.AsHashSet, Properties.NonUpdatable.AsHashSet))
+            foreach (var kvp in DynamicProperties.Except(Properties.NonSerialized.AsHashSet, Properties.NonUpdatable.AsHashSet, ConditionalNonSerialized()))
             {
                 if (!other.DynamicProperties.TryGetValue(kvp.Key, out var otherValue) ||
                     !KepJsonContext.Equals(kvp.Value, otherValue))

@@ -86,7 +86,7 @@ namespace KepwareSync
             if (!response.IsSuccessStatusCode)
             {
                 var message = await response.Content.ReadAsStringAsync();
-                m_logger.LogError("Failed to update {TypeName} from {Endpoint}: {ReasonPhrase}\n\t{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                m_logger.LogError("Failed to update {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
             }
         }
 
@@ -103,11 +103,14 @@ namespace KepwareSync
             var collectionEndpoint = ResolveEndpoint<T>(owner).TrimEnd('/');
             foreach (var pair in items)
             {
-                var endpoint = $"{collectionEndpoint}/{pair.item.Name}";
+                var endpoint = $"{collectionEndpoint}/{Uri.EscapeDataString(pair.item.Name)}";
                 var currentEntity = await LoadEntityAsync<K>(endpoint, owner);
                 pair.item.ProjectId = currentEntity?.ProjectId;
 
                 var diff = pair.item.GetUpdateDiff(currentEntity!);
+
+                var hash = pair.item.CalculateHash();
+                var oldHash = pair.oldItem?.CalculateHash();
 
                 m_logger.LogInformation("Updating {TypeName} on {Endpoint}, values {Diff}", typeof(T).Name, endpoint, diff);
 
@@ -116,7 +119,7 @@ namespace KepwareSync
                 if (!response.IsSuccessStatusCode)
                 {
                     var message = await response.Content.ReadAsStringAsync();
-                    m_logger.LogError("Failed to update {TypeName} from {Endpoint}: {ReasonPhrase}\n\t{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                    m_logger.LogError("Failed to update {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
                 }
             }
         }
@@ -141,7 +144,7 @@ namespace KepwareSync
             if (!response.IsSuccessStatusCode)
             {
                 var message = await response.Content.ReadAsStringAsync();
-                m_logger.LogError("Failed to insert {TypeName} from {Endpoint}: {ReasonPhrase}\n\t{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                m_logger.LogError("Failed to insert {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
             }
         }
 
@@ -159,7 +162,7 @@ namespace KepwareSync
             var collectionEndpoint = ResolveEndpoint<T>(owner).TrimEnd('/');
             foreach (var item in items)
             {
-                var endpoint = $"{collectionEndpoint}/{item.Name}";
+                var endpoint = $"{collectionEndpoint}/{Uri.EscapeDataString(item.Name)}";
 
                 m_logger.LogInformation("Deleting {TypeName} on {Endpoint}...", typeof(K).Name, endpoint);
 
@@ -167,7 +170,7 @@ namespace KepwareSync
                 if (!response.IsSuccessStatusCode)
                 {
                     var message = await response.Content.ReadAsStringAsync();
-                    m_logger.LogError("Failed to delete {TypeName} from {Endpoint}: {ReasonPhrase}\n\t{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                    m_logger.LogError("Failed to delete {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
                 }
             }
         }
