@@ -71,7 +71,7 @@ namespace KepwareSync
 
             var kepServerClient = host.Services.GetRequiredService<KepServerClient>();
             var project = await kepServerClient.LoadProject();
-
+            
             var storage = host.Services.GetRequiredService<KepFolderStorage>();
 
             await storage.ExportProjecAsync(project);

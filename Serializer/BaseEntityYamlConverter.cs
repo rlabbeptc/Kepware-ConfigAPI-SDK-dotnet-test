@@ -100,6 +100,9 @@ namespace KepwareSync.Serializer
             {
                 case Scalar scalar:
                     string? scalarValue = scalar.Value;
+
+                    if(scalar.Style == ScalarStyle.DoubleQuoted || scalar.Style == ScalarStyle.SingleQuoted)
+                        return scalarValue;
                     if (int.TryParse(scalarValue, out var intValue))
                         return intValue;
                     if (long.TryParse(scalarValue, out var longValue))
@@ -215,7 +218,7 @@ namespace KepwareSync.Serializer
                             break;
 
                         case JsonValueKind.String:
-                            emitter.Emit(new Scalar(element.GetString() ?? string.Empty));
+                            emitter.Emit(new Scalar(AnchorName.Empty, TagName.Empty, element.GetString() ?? string.Empty, ScalarStyle.DoubleQuoted, true, true));
                             break;
 
                         case JsonValueKind.Number:

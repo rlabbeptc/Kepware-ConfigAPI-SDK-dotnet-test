@@ -11,13 +11,15 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using static System.Net.WebRequestMethods;
 
 namespace KepwareSync
 {
-    public class KepServerClient
+    public partial class KepServerClient
     {
         private readonly ILogger<KepServerClient> m_logger;
         private readonly HttpClient m_httpClient;
+        private readonly Regex m_pathplaceHolderRegex = EndpointPlaceholderRegex();
 
         public KepServerClient(ILogger<KepServerClient> logger, HttpClient httpClient)
         {
@@ -154,6 +156,16 @@ namespace KepwareSync
                     var message = await response.Content.ReadAsStringAsync();
                     m_logger.LogError("Failed to insert {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
                 }
+                else if (response.StatusCode == System.Net.HttpStatusCode.MultiStatus)
+                {
+                    // When a POST includes multiple objects, if one or more cannot be processed due to a parsing failure or 
+                    // some other non - property validation error, the HTTPS status code 207(Multi - Status) will be returned along
+                    // with a JSON object array containing the status for each object in the request.
+                    var results = await JsonSerializer.DeserializeAsync(response.Content.ReadAsStream(), KepJsonContext.Default.ListApiResult);
+                    var failedEntries = results?.Where(r => !r.IsSuccessStatusCode)?.ToList() ?? [];
+                    m_logger.LogError("{numSuccessFull} were successfull, failed to insert {numFailed} {TypeName} from {Endpoint}: {ReasonPhrase}\nFailed:\n{Message}",
+                        (results?.Count ?? 0) - failedEntries.Count, failedEntries.Count, typeof(T).Name, endpoint, response.ReasonPhrase, JsonSerializer.Serialize(failedEntries, KepJsonContext.Default.ListApiResult));
+                }
             }
         }
 
@@ -215,10 +227,7 @@ namespace KepwareSync
 
                                 if (device.TagGroups != null)
                                 {
-                                    await Task.WhenAll(device.TagGroups.Select(async tagGroup =>
-                                    {
-                                        tagGroup.Tags = await LoadCollectionAsync<DeviceTagGroupTagCollection, Tag>(tagGroup);
-                                    }));
+                                    await LoadTagGroupsRecursiveAsync(device.TagGroups);
                                 }
                             }));
                         }
@@ -344,22 +353,25 @@ namespace KepwareSync
             }
         }
 
-        private string ResolveEndpoint<T>(NamedEntity? owner)
+
+        private async Task LoadTagGroupsRecursiveAsync(IEnumerable<DeviceTagGroup> tagGroups)
         {
-            var endpointTemplate = typeof(T).GetCustomAttributes(typeof(EndpointAttribute), false)
-                .OfType<EndpointAttribute>()
-                .FirstOrDefault()?.EndpointTemplate;
-
-            if (endpointTemplate == null)
+            foreach (var tagGroup in tagGroups)
             {
-                throw new InvalidOperationException($"No endpoint defined for {typeof(T).Name}");
+                // Lade die TagGroups der aktuellen TagGroup
+                tagGroup.TagGroups = await LoadCollectionAsync<DeviceTagGroupCollection, DeviceTagGroup>(tagGroup);
+                tagGroup.Tags = await LoadCollectionAsync<DeviceTagGroupTagCollection, Tag>(tagGroup);
+
+                // Rekursiver Aufruf für die geladenen TagGroups
+                if (tagGroup.TagGroups != null && tagGroup.TagGroups.Items.Count > 0)
+                {
+                    await LoadTagGroupsRecursiveAsync(tagGroup.TagGroups);
+                }
             }
-
-            // Regex to find all placeholders in the endpoint template
-            var placeholders = Regex.Matches(endpointTemplate, @"\{(.+?)\}")
-                .Reverse();
-
-            // owner -> owner.Owner -> owner.Owner.Owner -> ... to replace the placeholders in the endpoint template by reverse order
+        }
+        private string ReplacePlaceholders(string template, NamedEntity? owner)
+        {
+            var placeholders = m_pathplaceHolderRegex.Matches(template).Reverse();
 
             foreach (Match placeholder in placeholders)
             {
@@ -368,7 +380,7 @@ namespace KepwareSync
                 string? placeholderValue = owner?.Name;
                 if (!string.IsNullOrEmpty(placeholderValue))
                 {
-                    endpointTemplate = endpointTemplate.Replace(placeholder.Value, Uri.EscapeDataString(placeholderValue));
+                    template = template.Replace(placeholder.Value, Uri.EscapeDataString(placeholderValue));
 
                     if (owner is IHaveOwner ownable && ownable.Owner != null)
                         owner = ownable.Owner;
@@ -377,13 +389,54 @@ namespace KepwareSync
                 }
                 else
                 {
-                    throw new InvalidOperationException($"Placeholder '{placeholderName}' in endpoint template '{endpointTemplate}' could not be resolved.");
+                    throw new InvalidOperationException($"Placeholder '{placeholderName}' in template '{template}' could not be resolved.");
                 }
             }
 
-            return endpointTemplate;
+            return template;
+        }
+
+        private string ResolveRecursiveEndpoint<T>(RecursiveEndpointAttribute attribute, NamedEntity? owner)
+        {
+            var recursivePath = string.Empty;
+
+            while (owner != null && attribute.RecursiveOwnerType == owner?.GetType())
+            {
+                var currentEndpointPart = ReplacePlaceholders(attribute.RecursiveEnd, owner);
+                recursivePath = currentEndpointPart + recursivePath;
+
+                if (owner is IHaveOwner ownable && ownable.Owner is NamedEntity nextOwner)
+                    owner = nextOwner;
+                else
+                    owner = null;
+            }
+
+            // Combine with the base endpoint template
+            var baseEndpoint = ReplacePlaceholders(attribute.EndpointTemplate, owner);
+            return baseEndpoint + recursivePath;
+        }
+
+        private string ResolveEndpoint<T>(NamedEntity? owner)
+        {
+            var endpointTemplateAttribute = typeof(T).GetCustomAttributes(typeof(EndpointAttribute), false)
+                .OfType<EndpointAttribute>()
+                .FirstOrDefault();
+
+            if (endpointTemplateAttribute == null)
+            {
+                throw new InvalidOperationException($"No endpoint defined for {typeof(T).Name}");
+            }
+
+            if (endpointTemplateAttribute is RecursiveEndpointAttribute recursiveEndpointAttribute && recursiveEndpointAttribute.RecursiveOwnerType == owner?.GetType())
+            {
+                return ResolveRecursiveEndpoint<T>(recursiveEndpointAttribute, owner) + endpointTemplateAttribute.Suffix;
+            }
+
+            return ReplacePlaceholders(endpointTemplateAttribute.EndpointTemplate, owner) + endpointTemplateAttribute.Suffix;
         }
 
 
+        [GeneratedRegex(@"\{(.+?)\}", RegexOptions.Compiled)]
+        private static partial Regex EndpointPlaceholderRegex();
     }
 }

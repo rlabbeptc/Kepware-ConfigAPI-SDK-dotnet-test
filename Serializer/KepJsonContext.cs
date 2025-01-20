@@ -7,22 +7,26 @@ using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using System.Collections;
 using System.Text.Json;
+using KepwareSync.Serializer;
 
 namespace KepwareSync.Model
 {
     [JsonSerializable(typeof(Project))]
+    [JsonSerializable(typeof(JsonProjectRoot))]
     [JsonSerializable(typeof(List<Channel>))]
     [JsonSerializable(typeof(List<Device>))]
     [JsonSerializable(typeof(List<Tag>))]
     [JsonSerializable(typeof(List<DeviceTagGroup>))]
     [JsonSerializable(typeof(List<DefaultEntity>))]
     [JsonSerializable(typeof(List<object?>))]
+    [JsonSerializable(typeof(List<ApiResult>))]
     [JsonSerializable(typeof(int))]
     [JsonSerializable(typeof(long))]
     [JsonSerializable(typeof(float))]
     [JsonSerializable(typeof(double))]
     [JsonSerializable(typeof(bool))]
     [JsonSerializable(typeof(Dictionary<string, object?>))]
+    [JsonSourceGenerationOptions(WriteIndented = true)]
     public partial class KepJsonContext : JsonSerializerContext
     {
         public static JsonTypeInfo<T> GetJsonTypeInfo<T>()

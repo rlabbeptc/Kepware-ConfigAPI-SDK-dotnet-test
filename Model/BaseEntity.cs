@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Options;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -136,6 +137,21 @@ namespace KepwareSync.Model
         protected virtual ISet<string>? ConditionalNonSerialized()
         {
             return null;
+        }
+
+        public virtual void Cleanup(bool blnRemoveProjectId = false)
+        {
+            DynamicProperties = DynamicProperties.Except(Properties.NonSerialized.AsHashSet, ConditionalNonSerialized()).ToDictionary(x => x.Key, x => x.Value);
+            if (DynamicProperties.TryGetValue(Properties.Description, out var descriptionElement) &&
+                KepJsonContext.Unwrap(descriptionElement) is string description && string.IsNullOrEmpty(description))
+            {
+                DynamicProperties.Remove(Properties.Description);
+            }
+
+            if (blnRemoveProjectId)
+            {
+                ProjectId = null; 
+            }
         }
     }
 
