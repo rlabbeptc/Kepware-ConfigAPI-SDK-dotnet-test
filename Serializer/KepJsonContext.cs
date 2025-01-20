@@ -13,6 +13,7 @@ namespace KepwareSync.Model
 {
     [JsonSerializable(typeof(Project))]
     [JsonSerializable(typeof(JsonProjectRoot))]
+    [JsonSerializable(typeof(ProductInfo))]
     [JsonSerializable(typeof(List<Channel>))]
     [JsonSerializable(typeof(List<Device>))]
     [JsonSerializable(typeof(List<Tag>))]

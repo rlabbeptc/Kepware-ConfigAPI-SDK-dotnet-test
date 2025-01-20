@@ -71,7 +71,7 @@ namespace KepwareSync
 
             var kepServerClient = host.Services.GetRequiredService<KepServerClient>();
             var project = await kepServerClient.LoadProject();
-            
+
             var storage = host.Services.GetRequiredService<KepFolderStorage>();
 
             await storage.ExportProjecAsync(project);
@@ -97,9 +97,9 @@ namespace KepwareSync
             var prjCompare = EntityCompare.Compare(projectFromDisk, projectFromApi);
             try
             {
-                if(projectFromDisk.Hash != projectFromApi.Hash)
+                if (projectFromDisk.Hash != projectFromApi.Hash)
                 {
-                   //TODO update project
+                    //TODO update project
                 }
 
                 var channelCompare = await kepServerClient.CompareAndApply<ChannelCollection, Channel>(projectFromDisk.Channels, projectFromApi.Channels);
@@ -115,9 +115,8 @@ namespace KepwareSync
 
                         foreach (var tagGroup in tagGroupCompare.UnchangedItems.Concat(tagGroupCompare.ChangedItems))
                         {
-                            var tagGroupTagCompare = await kepServerClient.CompareAndApply<DeviceTagGroupTagCollection, Tag>(tagGroup.Left!.Tags, tagGroup.Right!.Tags, tagGroup.Right);
-
-
+                            if (tagGroup.Left?.TagGroups != null)
+                                await RecusivlyCompareTagGroup(kepServerClient, tagGroup.Left!.TagGroups, tagGroup.Right!.TagGroups, tagGroup.Right);
                         }
                     }
                 }
@@ -129,7 +128,18 @@ namespace KepwareSync
             Console.WriteLine("Sync from disk completed.");
         }
 
+        private static async Task RecusivlyCompareTagGroup(KepServerClient kepServerClient, DeviceTagGroupCollection left, DeviceTagGroupCollection? right, NamedEntity owner)
+        {
+            var tagGroupCompare = await kepServerClient.CompareAndApply<DeviceTagGroupCollection, DeviceTagGroup>(left, right, owner);
 
+            foreach (var tagGroup in tagGroupCompare.UnchangedItems.Concat(tagGroupCompare.ChangedItems))
+            {
+                var tagGroupTagCompare = await kepServerClient.CompareAndApply<DeviceTagGroupTagCollection, Tag>(tagGroup.Left!.Tags, tagGroup.Right!.Tags, tagGroup.Right);
+
+                if (tagGroup.Left!.TagGroups != null)
+                    await RecusivlyCompareTagGroup(kepServerClient, tagGroup.Left!.TagGroups, tagGroup.Right!.TagGroups, tagGroup.Right);
+            }
+        }
 
         #region BuildHost
         private static Task<IHost> BuildHost(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions)

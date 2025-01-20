@@ -1,4 +1,5 @@
 ﻿using KepwareSync.Model;
+using KepwareSync.Serializer;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -27,18 +28,24 @@ namespace KepwareSync
             m_httpClient = httpClient;
         }
 
-        public async Task<string> GetFullProjectAsync()
+        public async Task<ProductInfo?> GetProductInfoAsync()
         {
-            m_logger.LogInformation("Downloading full project from KepServer...");
-            // Retrieve full project JSON from KepServer REST API
-            return await Task.FromResult("{\"project\":\"example\"}"); // Placeholder
-        }
+            var response = await m_httpClient.GetAsync("/config/v1/about");
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var prodInfo = JsonSerializer.Deserialize(content, KepJsonContext.Default.ProductInfo);
 
-        public async Task UpdateFullProjectAsync(string projectJson)
-        {
-            m_logger.LogInformation("Uploading full project to KepServer...");
-            // Upload full project JSON to KepServer REST API
-            await Task.CompletedTask;
+                m_logger.LogInformation("Successfully connected to {ProductName} {ProductVersion} on {BaseAddress}", prodInfo?.ProductName, prodInfo?.ProductVersion, m_httpClient.BaseAddress);
+
+                return prodInfo;
+            }
+            else
+            {
+                m_logger.LogWarning("Failed to get product info from endpoint {Endpoint}, Reason: {ReasonPhrase}", "/config/v1/about", response.ReasonPhrase);
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -196,66 +203,111 @@ namespace KepwareSync
             }
         }
 
+
         public async Task<Project> LoadProject(bool blnDeep = true)
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
-            var project = await LoadEntityAsync<Project>();
 
-            if (project == null)
+            var productInfo = await GetProductInfoAsync();
+
+            if (productInfo?.SupportsJsonProjectLoadService == true)
             {
+                var response = await m_httpClient.GetAsync("/config/v1/project?content=serialize");
+                if (response.IsSuccessStatusCode)
+                {
+                    var prjRoot = await JsonSerializer.DeserializeAsync(response.Content.ReadAsStream(), KepJsonContext.Default.JsonProjectRoot);
+
+
+                    if (prjRoot?.Project != null)
+                    {
+                        if (prjRoot.Project.Channels != null)
+                            foreach (var channel in prjRoot.Project.Channels)
+                            {
+                                if (channel.Devices != null)
+                                    foreach (var device in channel.Devices)
+                                    {
+                                        device.Owner = channel;
+
+                                        if (device.Tags != null)
+                                            foreach (var tag in device.Tags)
+                                                tag.Owner = device;
+
+                                        if (device.TagGroups != null)
+                                            SetOwnerRecursive(device.TagGroups);
+                                    }
+                            }
+
+                        return prjRoot.Project;
+                    }
+                }
+
                 m_logger.LogWarning("Failed to load project");
                 return new Project();
             }
             else
             {
-                project.Channels = await LoadCollectionAsync<ChannelCollection, Channel>();
+                var project = await LoadEntityAsync<Project>();
 
-                if (blnDeep && project.Channels != null)
+                if (project == null)
                 {
-                    int totalChannelCount = project.Channels.Items.Count;
-                    int loadedChannelCount = 0;
-                    await Task.WhenAll(project.Channels.Select(async channel =>
-                    {
-                        channel.Devices = await LoadCollectionAsync<DeviceCollection, Device>(channel);
-
-                        if (channel.Devices != null)
-                        {
-                            await Task.WhenAll(channel.Devices.Select(async device =>
-                            {
-                                device.Tags = await LoadCollectionAsync<DeviceTagCollection, Tag>(device);
-                                device.TagGroups = await LoadCollectionAsync<DeviceTagGroupCollection, DeviceTagGroup>(device);
-
-                                if (device.TagGroups != null)
-                                {
-                                    await LoadTagGroupsRecursiveAsync(device.TagGroups);
-                                }
-                            }));
-                        }
-                        // Log information, loaded channel <Name> x of y
-                        loadedChannelCount++;
-                        if (totalChannelCount == 1)
-                        {
-                            m_logger.LogInformation("Loaded channel {ChannelName}", channel.Name);
-                        }
-                        else
-                        {
-                            m_logger.LogInformation("Loaded channel {ChannelName} {LoadedChannelCount} of {TotalChannelCount}", channel.Name, loadedChannelCount, totalChannelCount);
-                        }
-
-                    }));
+                    m_logger.LogWarning("Failed to load project");
+                    return new Project();
                 }
+                else
+                {
+                    project.Channels = await LoadCollectionAsync<ChannelCollection, Channel>();
 
-                m_logger.LogInformation("Loaded project in {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
+                    if (blnDeep && project.Channels != null)
+                    {
+                        int totalChannelCount = project.Channels.Items.Count;
+                        int loadedChannelCount = 0;
+                        await Task.WhenAll(project.Channels.Select(async channel =>
+                        {
+                            channel.Devices = await LoadCollectionAsync<DeviceCollection, Device>(channel);
 
-                return project;
+                            if (channel.Devices != null)
+                            {
+                                await Task.WhenAll(channel.Devices.Select(async device =>
+                                {
+                                    device.Tags = await LoadCollectionAsync<DeviceTagCollection, Tag>(device);
+                                    device.TagGroups = await LoadCollectionAsync<DeviceTagGroupCollection, DeviceTagGroup>(device);
+
+                                    if (device.TagGroups != null)
+                                    {
+                                        await LoadTagGroupsRecursiveAsync(device.TagGroups);
+                                    }
+                                }));
+                            }
+                            // Log information, loaded channel <Name> x of y
+                            loadedChannelCount++;
+                            if (totalChannelCount == 1)
+                            {
+                                m_logger.LogInformation("Loaded channel {ChannelName}", channel.Name);
+                            }
+                            else
+                            {
+                                m_logger.LogInformation("Loaded channel {ChannelName} {LoadedChannelCount} of {TotalChannelCount}", channel.Name, loadedChannelCount, totalChannelCount);
+                            }
+
+                        }));
+                    }
+
+                    m_logger.LogInformation("Loaded project in {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
+
+                    return project;
+                }
             }
         }
 
-        public Task<T?> LoadEntityAsync<T>(NamedEntity? owner = null)
+        public Task<T?> LoadEntityAsync<T>(NamedEntity? owner = null, IEnumerable<KeyValuePair<string, string>>? queryParams = null)
           where T : BaseEntity, new()
         {
-
             var endpoint = ResolveEndpoint<T>(owner);
+            if (queryParams != null)
+            {
+                var queryString = string.Join("&", queryParams.Select(kvp => $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(kvp.Value)}"));
+                endpoint += "?" + queryString;
+            }
             return LoadEntityAsync<T>(endpoint, owner);
         }
 
@@ -353,6 +405,20 @@ namespace KepwareSync
             }
         }
 
+        private void SetOwnerRecursive(IEnumerable<DeviceTagGroup> tagGroups)
+        {
+            foreach (var tagGroup in tagGroups)
+            {
+                tagGroup.Owner = tagGroup.Owner;
+
+                if (tagGroup.Tags != null)
+                    foreach (var tag in tagGroup.Tags)
+                        tag.Owner = tagGroup; ;
+
+                if (tagGroup.TagGroups != null)
+                    SetOwnerRecursive(tagGroup.TagGroups);
+            }
+        }
 
         private async Task LoadTagGroupsRecursiveAsync(IEnumerable<DeviceTagGroup> tagGroups)
         {

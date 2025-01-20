@@ -64,20 +64,20 @@ namespace KepwareSync
         private async Task SyncFromKepServerAsync()
         {
             m_logger.LogInformation("Fetching full project from KepServer...");
-            var projectJson = await m_kepServerClient.GetFullProjectAsync();
+            //var projectJson = await m_kepServerClient.GetFullProjectAsync();
 
-            // Save project locally
-            if (await m_projectStorage.SaveFromJson(projectJson))
-            {
-                m_logger.LogInformation($"Saved KepServer project");
+            //// Save project locally
+            //if (await m_projectStorage.SaveFromJson(projectJson))
+            //{
+            //    m_logger.LogInformation($"Saved KepServer project");
 
-                // Commit and push to GIT
-                await m_gitClient.CommitAndPushAsync("Synced KepServer project to GIT");
-            }
-            else
-            {
-                m_logger.LogError($"Failed to save KepServer project");
-            }
+            //    // Commit and push to GIT
+            //    await m_gitClient.CommitAndPushAsync("Synced KepServer project to GIT");
+            //}
+            //else
+            //{
+            //    m_logger.LogError($"Failed to save KepServer project");
+            //}
         }
 
         private async Task SyncFromGitAsync()
@@ -86,7 +86,7 @@ namespace KepwareSync
             var projectJson = await m_gitClient.GetFullProjectAsync();
 
             // Update KepServer
-            await m_kepServerClient.UpdateFullProjectAsync(projectJson);
+            //await m_kepServerClient.UpdateFullProjectAsync(projectJson);
             m_logger.LogInformation("Updated KepServer with project from GIT");
         }
 
@@ -96,7 +96,7 @@ namespace KepwareSync
             var projectJson = await m_projectStorage.LoadAsJson();
 
             // Update KepServer
-            await m_kepServerClient.UpdateFullProjectAsync(projectJson);
+            //await m_kepServerClient.UpdateFullProjectAsync(projectJson);
             m_logger.LogInformation("Updated KepServer with local project file");
 
             // Commit and push to GIT
