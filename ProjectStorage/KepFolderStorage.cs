@@ -11,10 +11,11 @@ using YamlDotNet.Serialization.NodeTypeResolvers;
 using System.Security.AccessControl;
 using KepwareSync.Configuration;
 using System.Text.Json;
+using System.Reactive.Linq;
 
-namespace KepwareSync
+namespace KepwareSync.ProjectStorage
 {
-    internal class KepFolderStorage
+    internal class KepFolderStorage : IProjectStorage
     {
         private readonly YamlSerializer m_yamlSerializer;
         private readonly CsvTagSerializer m_csvTagSerializer;
@@ -22,6 +23,7 @@ namespace KepwareSync
         private readonly ILogger<KepFolderStorage> m_logger;
         private readonly KepStorageOptions m_kepStorageOptions;
         private readonly DirectoryInfo m_baseDirectory;
+        private bool m_suppressEvents = false;
 
         public KepFolderStorage(ILogger<KepFolderStorage> logger, KepStorageOptions kepStorageOptions, YamlSerializer yamlSerializer, CsvTagSerializer csvTagSerializer)
         {
@@ -129,10 +131,11 @@ namespace KepwareSync
             return m_csvTagSerializer.ImportTagsAsync(tagFile, dataTypeConverter);
         }
 
-        internal async Task ExportProjecAsync(Project project)
+        public async Task ExportProjecAsync(Project project)
         {
             try
             {
+                SuppressEvents();
                 var projectFile = Path.Combine(m_baseDirectory.FullName, "project.yaml");
                 await m_yamlSerializer.SaveAsYaml(projectFile, project);
                 await ExportChannelsAsync(project.Channels);
@@ -146,8 +149,12 @@ namespace KepwareSync
             {
                 m_logger.LogError(ex, "Error exporting project");
             }
+            finally
+            {
+                ResumeEvents();
+            }
         }
-        public async Task ExportChannelsAsync(ChannelCollection? channels)
+        protected async Task ExportChannelsAsync(ChannelCollection? channels)
         {
             if (channels == null) return;
 
@@ -222,7 +229,6 @@ namespace KepwareSync
             }
         }
 
-
         private void DeleteDirectories(string baseDir, IEnumerable<string> names)
         {
             // Delete all channel directories that are not in the current project   
@@ -237,7 +243,7 @@ namespace KepwareSync
             }
         }
 
-        public async Task ExportDevices(Channel channel, DeviceCollection? devices)
+        protected async Task ExportDevices(Channel channel, DeviceCollection? devices)
         {
             string channelFolder = Path.Combine(m_baseDirectory.FullName, channel.Name.EscapeDiskEntry());
 
@@ -309,6 +315,81 @@ namespace KepwareSync
                 }
             DeleteDirectories(parentFolder, tagGrpDirsToDelete);
             return exportedTags;
+        }
+
+        protected void SuppressEvents()
+        {
+            m_suppressEvents = true;
+        }
+
+        protected void ResumeEvents()
+        {
+            m_suppressEvents = false;
+        }
+
+        public IObservable<StorageChangeEvent> ObserveChanges()
+        {
+            return Observable.Create<StorageChangeEvent>(observer =>
+                {
+                    var watcher = new FileSystemWatcher(m_baseDirectory.FullName)
+                    {
+                        NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
+                        IncludeSubdirectories = true,
+                        EnableRaisingEvents = true
+                    };
+
+                    // Event handlers
+                    FileSystemEventHandler onChanged = (s, e) =>
+                    {
+                        if (!m_suppressEvents)
+                        {
+                            observer.OnNext(new StorageChangeEvent(StorageChangeEvent.ChangeType.changed));
+                        }
+                    };
+
+                    FileSystemEventHandler onCreated = (s, e) =>
+                    {
+                        if (!m_suppressEvents)
+                        {
+                            observer.OnNext(new StorageChangeEvent(StorageChangeEvent.ChangeType.added));
+                        }
+                    };
+
+                    FileSystemEventHandler onDeleted = (s, e) =>
+                    {
+                        if (!m_suppressEvents)
+                        {
+                            observer.OnNext(new StorageChangeEvent(StorageChangeEvent.ChangeType.removed));
+                        }
+                    };
+
+                    RenamedEventHandler onRenamed = (s, e) =>
+                    {
+                        if (!m_suppressEvents)
+                        {
+                            observer.OnNext(new StorageChangeEvent(StorageChangeEvent.ChangeType.changed));
+                        }
+                    };
+
+                    // Subscribe to events
+                    watcher.Changed += onChanged;
+                    watcher.Created += onCreated;
+                    watcher.Deleted += onDeleted;
+                    watcher.Renamed += onRenamed;
+                  
+                    // Cleanup
+                    return () =>
+                    {
+                        watcher.Changed -= onChanged;
+                        watcher.Created -= onCreated;
+                        watcher.Deleted -= onDeleted;
+                        watcher.Renamed -= onRenamed;
+
+                        watcher.EnableRaisingEvents = false;
+                        watcher.Dispose();
+                    };
+                }
+            );
         }
     }
 }

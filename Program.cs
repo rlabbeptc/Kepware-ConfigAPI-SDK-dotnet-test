@@ -30,12 +30,15 @@ namespace KepwareSync
             var kepApiBinder = new KepApiOptionsBinder();
             var kepStorageBinder = new KepStorageOptionsBinder();
 
+            var kepSyncBinder = new KepSyncOptionsBinder();
+
             // Root Command
             var rootCommand = new RootCommand("KepwareSync CLI Tool");
             kepApiBinder.BindTo(rootCommand);
             kepStorageBinder.BindTo(rootCommand);
+            kepSyncBinder.BindTo(rootCommand);
 
-            rootCommand.SetHandler(RunRootCommand, kepApiBinder, kepStorageBinder);
+            rootCommand.SetHandler(RunRootCommand, kepApiBinder, kepStorageBinder, kepSyncBinder);
 
             // SyncToDisk Command
             var syncToDiskCommand = new Command("SyncToDisk", "Synchronize data to disk");
@@ -59,97 +62,50 @@ namespace KepwareSync
         }
 
 
-        private static async Task RunRootCommand(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions)
+        private static async Task RunRootCommand(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions, KepSyncOptions syncOption)
         {
-            var host = await BuildHost(apiOptions, kepStorageOptions);
+            var builder = ConfigureHost(apiOptions, kepStorageOptions, syncOption);
+
+            builder.Services.AddHostedService<SyncService>();
+
+            var host = builder.Build();
 
             await host.RunAsync();
         }
 
+        private static SyncService CreateSyncService(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions, KepSyncOptions? syncOptions = null)
+        {
+            var builder = ConfigureHost(apiOptions, kepStorageOptions, syncOptions);
+            builder.Services.AddSingleton<SyncService>();
+            var host = builder.Build();
+            return host.Services.GetRequiredService<SyncService>();
+        }
+
         private static async Task SyncToDisk(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions)
         {
-            var host = await BuildHost(apiOptions, kepStorageOptions);
-
-            var kepServerClient = host.Services.GetRequiredService<KepServerClient>();
-            var project = await kepServerClient.LoadProject(true);
-
-            var storage = host.Services.GetRequiredService<KepFolderStorage>();
-
-            await storage.ExportProjecAsync(project);
-
-            var syncService = host.Services.GetRequiredService<SyncService>();
-
+            var syncService = CreateSyncService(apiOptions, kepStorageOptions);
+            await syncService.SyncFromKepServerAsync();
 
             Console.WriteLine("Sync to disk completed.");
         }
 
         private static async Task SyncFromDisk(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions)
         {
-            var host = await BuildHost(apiOptions, kepStorageOptions);
+            var syncService = CreateSyncService(apiOptions, kepStorageOptions);
+            await syncService.SyncFromLocalFileAsync();
 
-            var storage = host.Services.GetRequiredService<KepFolderStorage>();
-
-            var projectFromDisk = await storage.LoadProject(true);
-
-            var kepServerClient = host.Services.GetRequiredService<KepServerClient>();
-            var projectFromApi = await kepServerClient.LoadProject(true);
-
-
-            var prjCompare = EntityCompare.Compare(projectFromDisk, projectFromApi);
-            try
-            {
-                if (projectFromDisk.Hash != projectFromApi.Hash)
-                {
-                    //TODO update project
-                }
-
-                var channelCompare = await kepServerClient.CompareAndApply<ChannelCollection, Channel>(projectFromDisk.Channels, projectFromApi.Channels);
-
-                foreach (var channel in channelCompare.UnchangedItems.Concat(channelCompare.ChangedItems))
-                {
-                    var deviceCompare = await kepServerClient.CompareAndApply<DeviceCollection, Device>(channel.Left!.Devices, channel.Right!.Devices, channel.Right);
-
-                    foreach (var device in deviceCompare.UnchangedItems.Concat(deviceCompare.ChangedItems))
-                    {
-                        var tagCompare = await kepServerClient.CompareAndApply<DeviceTagCollection, Tag>(device.Left!.Tags, device.Right!.Tags, device.Right);
-                        var tagGroupCompare = await kepServerClient.CompareAndApply<DeviceTagGroupCollection, DeviceTagGroup>(device.Left!.TagGroups, device.Right!.TagGroups, device.Right);
-
-                        foreach (var tagGroup in tagGroupCompare.UnchangedItems.Concat(tagGroupCompare.ChangedItems))
-                        {
-                            if (tagGroup.Left?.TagGroups != null)
-                                await RecusivlyCompareTagGroup(kepServerClient, tagGroup.Left!.TagGroups, tagGroup.Right!.TagGroups, tagGroup.Right);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
             Console.WriteLine("Sync from disk completed.");
         }
 
-        private static async Task RecusivlyCompareTagGroup(KepServerClient kepServerClient, DeviceTagGroupCollection left, DeviceTagGroupCollection? right, NamedEntity owner)
-        {
-            var tagGroupCompare = await kepServerClient.CompareAndApply<DeviceTagGroupCollection, DeviceTagGroup>(left, right, owner);
-
-            foreach (var tagGroup in tagGroupCompare.UnchangedItems.Concat(tagGroupCompare.ChangedItems))
-            {
-                var tagGroupTagCompare = await kepServerClient.CompareAndApply<DeviceTagGroupTagCollection, Tag>(tagGroup.Left!.Tags, tagGroup.Right!.Tags, tagGroup.Right);
-
-                if (tagGroup.Left!.TagGroups != null)
-                    await RecusivlyCompareTagGroup(kepServerClient, tagGroup.Left!.TagGroups, tagGroup.Right!.TagGroups, tagGroup.Right);
-            }
-        }
 
         #region BuildHost
-        private static Task<IHost> BuildHost(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions)
+        private static HostApplicationBuilder ConfigureHost(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions, KepSyncOptions? syncOptions = null)
         {
             var builder = Host.CreateApplicationBuilder();
             var configuration = builder.Configuration;
 
             configuration
-                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
                 .AddEnvironmentVariables();
 
@@ -175,17 +131,17 @@ namespace KepwareSync
                     .Enrich.FromLogContext()
                     .WriteTo.Console();
             });
-            builder.Services.AddSingleton<YamlSerializer>();
-            builder.Services.AddSingleton<CsvTagSerializer>();
+
+            builder.Services.AddSingleton(syncOptions ?? new KepSyncOptions());
             builder.Services.AddSingleton(apiOptions);
             builder.Services.AddSingleton(kepStorageOptions);
-            builder.Services.AddSingleton<IProjectStorage, JsonFlatFileProjectStorage>();
-            builder.Services.AddSingleton<SyncService>();
-            builder.Services.AddSingleton<KepFolderStorage>();
+            builder.Services.AddSingleton<YamlSerializer>();
+            builder.Services.AddSingleton<CsvTagSerializer>();
+            builder.Services.AddSingleton<IProjectStorage, KepFolderStorage>();
             builder.Services.AddHttpClient<KepServerClient>(client =>
             {
                 client.BaseAddress = new Uri(apiOptions.Host);
-                client.Timeout = TimeSpan.FromSeconds(30);
+                client.Timeout = TimeSpan.FromSeconds(apiOptions.TimeoutInSeconds);
                 client.DefaultRequestHeaders.Add("Accept", "application/json");
                 client.DefaultRequestHeaders.Add("User-Agent", "KepwareSync");
 
@@ -200,12 +156,7 @@ namespace KepwareSync
             })
             .AddPolicyHandler(GetRetryPolicy());
 
-            builder.Services.AddSingleton<GitClient>();
-            builder.Services.AddHostedService<Worker>();
-
-            var host = builder.Build();
-
-            return Task.FromResult(host);
+            return builder;
         }
         #endregion
 

@@ -21,6 +21,7 @@ namespace KepwareSync
         private readonly ILogger<KepServerClient> m_logger;
         private readonly HttpClient m_httpClient;
         private readonly Regex m_pathplaceHolderRegex = EndpointPlaceholderRegex();
+        private bool m_blnIsConnected = false;
 
         public KepServerClient(ILogger<KepServerClient> logger, HttpClient httpClient)
         {
@@ -36,8 +37,10 @@ namespace KepwareSync
                 var content = await response.Content.ReadAsStringAsync();
                 var prodInfo = JsonSerializer.Deserialize(content, KepJsonContext.Default.ProductInfo);
 
-                m_logger.LogInformation("Successfully connected to {ProductName} {ProductVersion} on {BaseAddress}", prodInfo?.ProductName, prodInfo?.ProductVersion, m_httpClient.BaseAddress);
+                if (!m_blnIsConnected)
+                    m_logger.LogInformation("Successfully connected to {ProductName} {ProductVersion} on {BaseAddress}", prodInfo?.ProductName, prodInfo?.ProductVersion, m_httpClient.BaseAddress);
 
+                m_blnIsConnected = true;
                 return prodInfo;
             }
             else
@@ -251,13 +254,13 @@ namespace KepwareSync
                 if (project == null)
                 {
                     m_logger.LogWarning("Failed to load project");
-                    return new Project();
+                    project = new Project();
                 }
-                else
+                else if (blnLoadFullProject)
                 {
                     project.Channels = await LoadCollectionAsync<ChannelCollection, Channel>();
 
-                    if (blnLoadFullProject && project.Channels != null)
+                    if (project.Channels != null)
                     {
                         int totalChannelCount = project.Channels.Count;
                         int loadedChannelCount = 0;
@@ -293,9 +296,9 @@ namespace KepwareSync
                     }
 
                     m_logger.LogInformation("Loaded project in {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
-
-                    return project;
                 }
+
+                return project;
             }
         }
 

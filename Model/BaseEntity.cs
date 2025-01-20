@@ -30,7 +30,7 @@ namespace KepwareSync.Model
     [DebuggerDisplay("{TypeName} - {Description}")]
     public abstract class BaseEntity : IEquatable<BaseEntity>
     {
-        private ulong? _hash;
+        protected ulong? _hash;
 
         [JsonIgnore]
         [YamlIgnore]
@@ -212,5 +212,10 @@ namespace KepwareSync.Model
         public long UniqueId => GetDynamicProperty<long>(UniqueIdKey);
 
         protected abstract string UniqueIdKey { get; }
+
+        public void RemoveUniqueId()
+        {
+            DynamicProperties.Remove(UniqueIdKey);
+        }
     }
 }

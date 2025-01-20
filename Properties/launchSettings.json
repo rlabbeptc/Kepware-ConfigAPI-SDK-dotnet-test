@@ -1,5 +1,12 @@
 {
   "profiles": {
+    "KepwareSync (monitor)": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      },
+      "dotnetRunMessages": true
+    },
     "KepwareSync from Disk": {
       "commandName": "Project",
       "commandLineArgs": "SyncFromDisk",

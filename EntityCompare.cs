@@ -56,14 +56,83 @@ namespace KepwareSync
             }
             else
             {
-                var leftItems = left.ToDictionary(keySelector);
-                var rightItems = right.ToDictionary(keySelector);
+                //var leftItems = left.ToDictionary(keySelector);
+                //var rightItems = right.ToDictionary(keySelector);
+                Dictionary<string, K> leftItems, rightItems;
                 Dictionary<long, K>? leftByUid = null, rightByUid = null;
 
                 if (typeof(K).IsAssignableTo(typeof(NamedUidEntity)))
                 {
-                    leftByUid = left.Cast<NamedUidEntity>().Where(u => u.UniqueId != 0).ToDictionary(k => k.UniqueId, k => (K)(object)k);
-                    rightByUid = right.Cast<NamedUidEntity>().Where(u => u.UniqueId != 0).ToDictionary(k => k.UniqueId, k => (K)(object)k);
+                    //leftByUid = left.Cast<NamedUidEntity>().Where(u => u.UniqueId != 0).ToDictionary(k => k.UniqueId, k => (K)(object)k);
+                    //rightByUid = right.Cast<NamedUidEntity>().Where(u => u.UniqueId != 0).ToDictionary(k => k.UniqueId, k => (K)(object)k);
+
+                    leftItems = new Dictionary<string, K>(left.Count);
+                    rightItems = new Dictionary<string, K>(right.Count);
+                    leftByUid = new Dictionary<long, K>(left.Count);
+                    rightByUid = new Dictionary<long, K>(right.Count);
+
+                    foreach (var rightItem in right)
+                    {
+                        rightItems.Add(keySelector(rightItem), rightItem);
+                        if (rightItem is NamedUidEntity rightUidItem)
+                        {
+                            if (rightByUid.TryGetValue(rightUidItem.UniqueId, out var collisionItem) && collisionItem is NamedUidEntity collisionUidItem)
+                            {
+                                //collision in UniqueId -> happens when a folder or file is copied
+                                throw new InvalidOperationException($"Collision in unique id found on the right side: {rightItem.TypeName} UniqueId {rightUidItem.UniqueId} with name {rightUidItem.Name} collides with {collisionUidItem.Name}");
+                            }
+                            else
+                            {
+                                rightByUid[rightUidItem.UniqueId] = rightItem;
+                            }
+                        }
+                    }
+
+                    foreach (var leftItem in left)
+                    {
+                        leftItems.Add(keySelector(leftItem), leftItem);
+
+                        if (leftItem is NamedUidEntity leftUidItem)
+                        {
+                            if (leftByUid.TryGetValue(leftUidItem.UniqueId, out var collisionItem) && collisionItem is NamedUidEntity collisionUidItem)
+                            {
+                                //collision in UniqueId -> happens when a folder or file is copied; on the left side we are able to fix this we need to find the right item by uid on the right side
+
+                                if (rightByUid.TryGetValue(leftUidItem.UniqueId, out var rightItemByUid) && rightItemByUid is NamedUidEntity rightUidItem)
+                                {
+                                    if (rightUidItem.Name == collisionUidItem.Name)
+                                    {
+                                        leftUidItem.RemoveUniqueId();
+                                    }
+                                    else if (rightUidItem.Name == leftUidItem.Name)
+                                    {
+                                        collisionUidItem.RemoveUniqueId();
+                                    }
+                                    else
+                                    {
+                                        // multiple collision none of the both matches
+                                        collisionUidItem.RemoveUniqueId();
+                                        leftUidItem.RemoveUniqueId();
+                                    }
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException($"Collision in unique id found on the left side: {leftItem.TypeName} UniqueId {leftUidItem.UniqueId} with name {leftUidItem.Name}");
+                                }
+                            }
+                            else
+                            {
+                                leftByUid[leftUidItem.UniqueId] = leftItem;
+                            }
+                        }
+                    }
+
+
+                }
+                else
+                {
+                    leftItems = left.ToDictionary(keySelector);
+                    rightItems = right.ToDictionary(keySelector);
                 }
 
                 foreach (var leftItem in left)
