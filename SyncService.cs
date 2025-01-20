@@ -45,6 +45,8 @@ namespace KepwareSync
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            m_logger.LogInformation("Starting SyncService...");
+
             await InititalizeAsync();
 
             if (m_syncOptions.SyncDirection == SyncDirection.DiskToKepware)
@@ -55,30 +57,45 @@ namespace KepwareSync
             {
                 NotifyChange(new ChangeEvent { Source = ChangeSource.KepServer, Reason = "Initial sync from KepServer" });
             }
-
+            bool blnFirstDisconnect = true;
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
-                    if (m_syncOptions.SyncMode == SyncMode.TwoWay ||
-                        m_syncOptions.SyncDirection == SyncDirection.KepwareToDisk)
+                    if (await m_kepServerClient.TestConnectionAsync())
                     {
-                        if (m_changeQueue.TryDequeue(out var changeEvent))
+                        if (m_syncOptions.SyncMode == SyncMode.TwoWay ||
+                            m_syncOptions.SyncDirection == SyncDirection.KepwareToDisk)
                         {
-                            while (m_changeQueue.TryPeek(out var nextPending) && nextPending.Source == changeEvent!.Source)
+                            if (m_changeQueue.TryDequeue(out var changeEvent))
                             {
-                                m_changeQueue.TryDequeue(out changeEvent);
+                                while (m_changeQueue.TryPeek(out var nextPending) && nextPending.Source == changeEvent!.Source)
+                                {
+                                    m_changeQueue.TryDequeue(out changeEvent);
+                                }
+                                await ProcessChangeAsync(changeEvent!);
                             }
-                            await ProcessChangeAsync(changeEvent!);
+                            else
+                            {
+                                var currentProjectId = await FetchCurrentProjectIdAsync();
+                                if (m_lastProjectId != currentProjectId)
+                                {
+                                    await ProcessChangeAsync(new ChangeEvent { Source = ChangeSource.KepServer, Reason = "Project changed" });
+                                }
+                            }
                         }
-                        else
+
+                        blnFirstDisconnect = true;
+                    }
+                    else
+                    {
+                        // no connection to kepserver - wait and try again
+                        if(blnFirstDisconnect)
                         {
-                            var currentProjectId = await FetchCurrentProjectIdAsync();
-                            if (m_lastProjectId != currentProjectId)
-                            {
-                                await ProcessChangeAsync(new ChangeEvent { Source = ChangeSource.KepServer, Reason = "Project changed" });
-                            }
+                            m_logger.LogWarning("No connection to KepServer. Waiting for connection...");
+                            blnFirstDisconnect = false;
                         }
+                        await Task.Delay(5000, stoppingToken);
                     }
                 }
                 catch (Exception ex)
@@ -98,8 +115,8 @@ namespace KepwareSync
 
         public void NotifyChange(ChangeEvent changeEvent)
         {
-            m_logger.LogInformation("Change notification: {ChangeSource} - {Change}", changeEvent.Source, changeEvent.Reason);
-            //m_changePipeline.OnNext(changeEvent);
+            var target = changeEvent.Source == ChangeSource.KepServer ? ChangeSource.LocalFile : ChangeSource.KepServer;
+            m_logger.LogInformation("Enqueued sync request: {ChangeSource} -> {Target} ({Change})", changeEvent.Source, target, changeEvent.Reason);
             m_changeQueue.Enqueue(changeEvent);
         }
 

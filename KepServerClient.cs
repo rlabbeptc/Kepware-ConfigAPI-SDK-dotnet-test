@@ -1,18 +1,8 @@
 ﻿using KepwareSync.Model;
-using KepwareSync.Serializer;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using static System.Net.WebRequestMethods;
 
 namespace KepwareSync
 {
@@ -21,7 +11,7 @@ namespace KepwareSync
         private readonly ILogger<KepServerClient> m_logger;
         private readonly HttpClient m_httpClient;
         private readonly Regex m_pathplaceHolderRegex = EndpointPlaceholderRegex();
-        private bool m_blnIsConnected = false;
+        private bool? m_blnIsConnected = null;
 
         public KepServerClient(ILogger<KepServerClient> logger, HttpClient httpClient)
         {
@@ -29,23 +19,70 @@ namespace KepwareSync
             m_httpClient = httpClient;
         }
 
+        public async Task<bool> TestConnectionAsync()
+        {
+            bool blnIsConnected = false;
+            try
+            {
+                if (m_blnIsConnected == null) // first time after connection change
+                {
+                    m_logger.LogInformation("Connecting to {BaseAddress}...", m_httpClient.BaseAddress);
+                }
+                var response = await m_httpClient.GetAsync("/config/v1/status");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var status = await JsonSerializer.DeserializeAsync(response.Content.ReadAsStream(), KepJsonContext.Default.ListApiStatus);
+                    if (status?.FirstOrDefault()?.Healthy == true)
+                    {
+                        blnIsConnected = true;
+                    }
+                }
+
+                if (m_blnIsConnected == null) // first time after connection change
+                {
+                    if (!blnIsConnected)
+                    {
+                        m_logger.LogWarning("Failed to connect to {BaseAddress}, Reason: {ReasonPhrase}", m_httpClient.BaseAddress, response.ReasonPhrase);
+                    }
+                    else
+                    {
+                        var prodInfo = await GetProductInfoAsync();
+                        m_logger.LogInformation("Successfully connected to {ProductName} {ProductVersion} on {BaseAddress}", prodInfo?.ProductName, prodInfo?.ProductVersion, m_httpClient.BaseAddress);
+                    }
+                }
+            }
+            catch (HttpRequestException httpEx)
+            {
+                m_logger.LogWarning("Failed to connect to {BaseAddress}: {Message}", m_httpClient.BaseAddress, httpEx.Message);
+
+            }
+            m_blnIsConnected = blnIsConnected;
+            return blnIsConnected;
+        }
+
         public async Task<ProductInfo?> GetProductInfoAsync()
         {
-            var response = await m_httpClient.GetAsync("/config/v1/about");
-            if (response.IsSuccessStatusCode)
+            try
             {
-                var content = await response.Content.ReadAsStringAsync();
-                var prodInfo = JsonSerializer.Deserialize(content, KepJsonContext.Default.ProductInfo);
+                var response = await m_httpClient.GetAsync("/config/v1/about");
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    var prodInfo = JsonSerializer.Deserialize(content, KepJsonContext.Default.ProductInfo);
 
-                if (!m_blnIsConnected)
-                    m_logger.LogInformation("Successfully connected to {ProductName} {ProductVersion} on {BaseAddress}", prodInfo?.ProductName, prodInfo?.ProductVersion, m_httpClient.BaseAddress);
-
-                m_blnIsConnected = true;
-                return prodInfo;
+                    m_blnIsConnected = true;
+                    return prodInfo;
+                }
+                else
+                {
+                    m_logger.LogWarning("Failed to get product info from endpoint {Endpoint}, Reason: {ReasonPhrase}", "/config/v1/about", response.ReasonPhrase);
+                }
             }
-            else
+            catch (HttpRequestException httpEx)
             {
-                m_logger.LogWarning("Failed to get product info from endpoint {Endpoint}, Reason: {ReasonPhrase}", "/config/v1/about", response.ReasonPhrase);
+                m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
+                m_blnIsConnected = null;
             }
 
             return null;
@@ -83,23 +120,36 @@ namespace KepwareSync
         }
 
 
-        public async Task UpdateItemAsync<T>(T item, T? oldItem = default)
+        public async Task<bool> UpdateItemAsync<T>(T item, T? oldItem = default)
            where T : NamedEntity, new()
         {
-            var endpoint = ResolveEndpoint<T>(oldItem ?? item);
-
-            m_logger.LogInformation("Updating {TypeName} on {Endpoint}...", typeof(T).Name, endpoint);
-
-            var currentEntity = await LoadEntityAsync<T>(oldItem ?? item);
-            item.ProjectId = currentEntity?.ProjectId;
-
-            HttpContent httpContent = new StringContent(JsonSerializer.Serialize(item, KepJsonContext.GetJsonTypeInfo<T>()), Encoding.UTF8, "application/json");
-            var response = await m_httpClient.PutAsync(endpoint, httpContent);
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                var message = await response.Content.ReadAsStringAsync();
-                m_logger.LogError("Failed to update {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                var endpoint = ResolveEndpoint<T>(oldItem ?? item);
+
+                m_logger.LogInformation("Updating {TypeName} on {Endpoint}...", typeof(T).Name, endpoint);
+
+                var currentEntity = await LoadEntityAsync<T>(oldItem ?? item);
+                item.ProjectId = currentEntity?.ProjectId;
+
+                HttpContent httpContent = new StringContent(JsonSerializer.Serialize(item, KepJsonContext.GetJsonTypeInfo<T>()), Encoding.UTF8, "application/json");
+                var response = await m_httpClient.PutAsync(endpoint, httpContent);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var message = await response.Content.ReadAsStringAsync();
+                    m_logger.LogError("Failed to update {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                }
+                else
+                {
+                    return true;
+                }
             }
+            catch (HttpRequestException httpEx)
+            {
+                m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
+                m_blnIsConnected = null;
+            }
+            return false;
         }
 
         public Task UpdateItemAsync<T, K>(K item, K? oldItem = default, NamedEntity? owner = null)
@@ -112,30 +162,39 @@ namespace KepwareSync
         {
             if (items.Count == 0)
                 return;
-            var collectionEndpoint = ResolveEndpoint<T>(owner).TrimEnd('/');
-            foreach (var pair in items)
+
+            try
             {
-                var endpoint = $"{collectionEndpoint}/{Uri.EscapeDataString(pair.oldItem!.Name)}";
-                var currentEntity = await LoadEntityAsync<K>(endpoint, owner);
-                if (currentEntity == null)
+                var collectionEndpoint = ResolveEndpoint<T>(owner).TrimEnd('/');
+                foreach (var pair in items)
                 {
-                    m_logger.LogError("Failed to load {TypeName} from {Endpoint}", typeof(K).Name, endpoint);
-                }
-                else
-                {
-                    pair.item.ProjectId = currentEntity.ProjectId;
-                    var diff = pair.item.GetUpdateDiff(currentEntity);
-
-                    m_logger.LogInformation("Updating {TypeName} on {Endpoint}, values {Diff}", typeof(T).Name, endpoint, diff);
-
-                    HttpContent httpContent = new StringContent(JsonSerializer.Serialize(diff, KepJsonContext.Default.DictionaryStringJsonElement), Encoding.UTF8, "application/json");
-                    var response = await m_httpClient.PutAsync(endpoint, httpContent);
-                    if (!response.IsSuccessStatusCode)
+                    var endpoint = $"{collectionEndpoint}/{Uri.EscapeDataString(pair.oldItem!.Name)}";
+                    var currentEntity = await LoadEntityAsync<K>(endpoint, owner);
+                    if (currentEntity == null)
                     {
-                        var message = await response.Content.ReadAsStringAsync();
-                        m_logger.LogError("Failed to update {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                        m_logger.LogError("Failed to load {TypeName} from {Endpoint}", typeof(K).Name, endpoint);
+                    }
+                    else
+                    {
+                        pair.item.ProjectId = currentEntity.ProjectId;
+                        var diff = pair.item.GetUpdateDiff(currentEntity);
+
+                        m_logger.LogInformation("Updating {TypeName} on {Endpoint}, values {Diff}", typeof(T).Name, endpoint, diff);
+
+                        HttpContent httpContent = new StringContent(JsonSerializer.Serialize(diff, KepJsonContext.Default.DictionaryStringJsonElement), Encoding.UTF8, "application/json");
+                        var response = await m_httpClient.PutAsync(endpoint, httpContent);
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            var message = await response.Content.ReadAsStringAsync();
+                            m_logger.LogError("Failed to update {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                        }
                     }
                 }
+            }
+            catch (HttpRequestException httpEx)
+            {
+                m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
+                m_blnIsConnected = null;
             }
         }
 
@@ -151,31 +210,39 @@ namespace KepwareSync
             if (items.Count == 0)
                 return;
 
-            var endpoint = ResolveEndpoint<T>(owner);
-            var totalPageCount = (int)Math.Ceiling((double)items.Count / pageSize);
-            for (int i = 0; i < totalPageCount; i++)
+            try
             {
-                var pageItems = items.Skip(i * pageSize).Take(pageSize).ToList();
-                m_logger.LogInformation("Inserting {numItems} {TypeName} on {Endpoint} in batch {batchNr} of {totalBatches} ...", pageItems.Count, typeof(K).Name, endpoint, i + 1, totalPageCount);
+                var endpoint = ResolveEndpoint<T>(owner);
+                var totalPageCount = (int)Math.Ceiling((double)items.Count / pageSize);
+                for (int i = 0; i < totalPageCount; i++)
+                {
+                    var pageItems = items.Skip(i * pageSize).Take(pageSize).ToList();
+                    m_logger.LogInformation("Inserting {numItems} {TypeName} on {Endpoint} in batch {batchNr} of {totalBatches} ...", pageItems.Count, typeof(K).Name, endpoint, i + 1, totalPageCount);
 
-                var jsonContent = JsonSerializer.Serialize(pageItems, KepJsonContext.GetJsonListTypeInfo<K>());
-                HttpContent httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-                var response = await m_httpClient.PostAsync(endpoint, httpContent);
-                if (!response.IsSuccessStatusCode)
-                {
-                    var message = await response.Content.ReadAsStringAsync();
-                    m_logger.LogError("Failed to insert {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                    var jsonContent = JsonSerializer.Serialize(pageItems, KepJsonContext.GetJsonListTypeInfo<K>());
+                    HttpContent httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+                    var response = await m_httpClient.PostAsync(endpoint, httpContent);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var message = await response.Content.ReadAsStringAsync();
+                        m_logger.LogError("Failed to insert {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                    }
+                    else if (response.StatusCode == System.Net.HttpStatusCode.MultiStatus)
+                    {
+                        // When a POST includes multiple objects, if one or more cannot be processed due to a parsing failure or 
+                        // some other non - property validation error, the HTTPS status code 207(Multi - Status) will be returned along
+                        // with a JSON object array containing the status for each object in the request.
+                        var results = await JsonSerializer.DeserializeAsync(response.Content.ReadAsStream(), KepJsonContext.Default.ListApiResult);
+                        var failedEntries = results?.Where(r => !r.IsSuccessStatusCode)?.ToList() ?? [];
+                        m_logger.LogError("{numSuccessFull} were successfull, failed to insert {numFailed} {TypeName} from {Endpoint}: {ReasonPhrase}\nFailed:\n{Message}",
+                            (results?.Count ?? 0) - failedEntries.Count, failedEntries.Count, typeof(T).Name, endpoint, response.ReasonPhrase, JsonSerializer.Serialize(failedEntries, KepJsonContext.Default.ListApiResult));
+                    }
                 }
-                else if (response.StatusCode == System.Net.HttpStatusCode.MultiStatus)
-                {
-                    // When a POST includes multiple objects, if one or more cannot be processed due to a parsing failure or 
-                    // some other non - property validation error, the HTTPS status code 207(Multi - Status) will be returned along
-                    // with a JSON object array containing the status for each object in the request.
-                    var results = await JsonSerializer.DeserializeAsync(response.Content.ReadAsStream(), KepJsonContext.Default.ListApiResult);
-                    var failedEntries = results?.Where(r => !r.IsSuccessStatusCode)?.ToList() ?? [];
-                    m_logger.LogError("{numSuccessFull} were successfull, failed to insert {numFailed} {TypeName} from {Endpoint}: {ReasonPhrase}\nFailed:\n{Message}",
-                        (results?.Count ?? 0) - failedEntries.Count, failedEntries.Count, typeof(T).Name, endpoint, response.ReasonPhrase, JsonSerializer.Serialize(failedEntries, KepJsonContext.Default.ListApiResult));
-                }
+            }
+            catch (HttpRequestException httpEx)
+            {
+                m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
+                m_blnIsConnected = null;
             }
         }
 
@@ -190,19 +257,27 @@ namespace KepwareSync
         {
             if (items.Count == 0)
                 return;
-            var collectionEndpoint = ResolveEndpoint<T>(owner).TrimEnd('/');
-            foreach (var item in items)
+            try
             {
-                var endpoint = $"{collectionEndpoint}/{Uri.EscapeDataString(item.Name)}";
-
-                m_logger.LogInformation("Deleting {TypeName} on {Endpoint}...", typeof(K).Name, endpoint);
-
-                var response = await m_httpClient.DeleteAsync(endpoint);
-                if (!response.IsSuccessStatusCode)
+                var collectionEndpoint = ResolveEndpoint<T>(owner).TrimEnd('/');
+                foreach (var item in items)
                 {
-                    var message = await response.Content.ReadAsStringAsync();
-                    m_logger.LogError("Failed to delete {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                    var endpoint = $"{collectionEndpoint}/{Uri.EscapeDataString(item.Name)}";
+
+                    m_logger.LogInformation("Deleting {TypeName} on {Endpoint}...", typeof(K).Name, endpoint);
+
+                    var response = await m_httpClient.DeleteAsync(endpoint);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var message = await response.Content.ReadAsStringAsync();
+                        m_logger.LogError("Failed to delete {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                    }
                 }
+            }
+            catch (HttpRequestException httpEx)
+            {
+                m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
+                m_blnIsConnected = null;
             }
         }
 
@@ -215,33 +290,41 @@ namespace KepwareSync
 
             if (blnLoadFullProject && productInfo?.SupportsJsonProjectLoadService == true)
             {
-                var response = await m_httpClient.GetAsync("/config/v1/project?content=serialize");
-                if (response.IsSuccessStatusCode)
+                try
                 {
-                    var prjRoot = await JsonSerializer.DeserializeAsync(response.Content.ReadAsStream(), KepJsonContext.Default.JsonProjectRoot);
-
-                    if (prjRoot?.Project != null)
+                    var response = await m_httpClient.GetAsync("/config/v1/project?content=serialize");
+                    if (response.IsSuccessStatusCode)
                     {
-                        if (prjRoot.Project.Channels != null)
-                            foreach (var channel in prjRoot.Project.Channels)
-                            {
-                                if (channel.Devices != null)
-                                    foreach (var device in channel.Devices)
-                                    {
-                                        device.Owner = channel;
+                        var prjRoot = await JsonSerializer.DeserializeAsync(response.Content.ReadAsStream(), KepJsonContext.Default.JsonProjectRoot);
 
-                                        if (device.Tags != null)
-                                            foreach (var tag in device.Tags)
-                                                tag.Owner = device;
+                        if (prjRoot?.Project != null)
+                        {
+                            if (prjRoot.Project.Channels != null)
+                                foreach (var channel in prjRoot.Project.Channels)
+                                {
+                                    if (channel.Devices != null)
+                                        foreach (var device in channel.Devices)
+                                        {
+                                            device.Owner = channel;
 
-                                        if (device.TagGroups != null)
-                                            SetOwnerRecursive(device.TagGroups, device);
-                                    }
-                            }
+                                            if (device.Tags != null)
+                                                foreach (var tag in device.Tags)
+                                                    tag.Owner = device;
 
-                        m_logger.LogInformation("Loaded project via JsonProjectLoad Service in {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
-                        return prjRoot.Project;
+                                            if (device.TagGroups != null)
+                                                SetOwnerRecursive(device.TagGroups, device);
+                                        }
+                                }
+
+                            m_logger.LogInformation("Loaded project via JsonProjectLoad Service in {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
+                            return prjRoot.Project;
+                        }
                     }
+                }
+                catch (HttpRequestException httpEx)
+                {
+                    m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
+                    m_blnIsConnected = null;
                 }
 
                 m_logger.LogWarning("Failed to load project");
@@ -318,21 +401,32 @@ namespace KepwareSync
           where T : BaseEntity, new()
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
-            m_logger.LogDebug("Loading {TypeName} from {Endpoint}...", typeof(T).Name, endpoint);
-            var response = await m_httpClient.GetAsync(endpoint);
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                m_logger.LogError("Failed to load {TypeName} from {Endpoint}: {ReasonPhrase}", typeof(T).Name, endpoint, response.ReasonPhrase);
+                m_logger.LogDebug("Loading {TypeName} from {Endpoint}...", typeof(T).Name, endpoint);
+
+                var response = await m_httpClient.GetAsync(endpoint);
+                if (!response.IsSuccessStatusCode)
+                {
+                    m_logger.LogError("Failed to load {TypeName} from {Endpoint}: {ReasonPhrase}", typeof(T).Name, endpoint, response.ReasonPhrase);
+                    return default;
+                }
+
+                var entity = await DeserializeJsonAsync<T>(response);
+                if (entity != null && entity is IHaveOwner ownable)
+                {
+                    ownable.Owner = owner;
+                }
+
+                return entity;
+            }
+            catch (HttpRequestException httpEx)
+            {
+                m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
+                m_blnIsConnected = null;
                 return default;
             }
 
-            var entity = await DeserializeJsonAsync<T>(response);
-            if (entity != null && entity is IHaveOwner ownable)
-            {
-                ownable.Owner = owner;
-            }
-
-            return entity;
         }
 
 
@@ -345,39 +439,47 @@ namespace KepwareSync
             where K : BaseEntity, new()
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
+
             var endpoint = ResolveEndpoint<T>(owner);
-
-            m_logger.LogDebug("Loading {TypeName} from {Endpoint}...", typeof(T).Name, endpoint);
-            var response = await m_httpClient.GetAsync(endpoint);
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                m_logger.LogError("Failed to load {TypeName} from {Endpoint}: {ReasonPhrase}", typeof(T).Name, endpoint, response.ReasonPhrase);
-                return default;
-            }
-
-            var collection = await DeserializeJsonArrayAsync<K>(response);
-            if (collection != null)
-            {
-                // if generic type K implements IHaveOwner
-                if (collection.OfType<IHaveOwner>().Any())
+                m_logger.LogDebug("Loading {TypeName} from {Endpoint}...", typeof(T).Name, endpoint);
+                var response = await m_httpClient.GetAsync(endpoint);
+                if (!response.IsSuccessStatusCode)
                 {
-                    foreach (var item in collection.OfType<IHaveOwner>())
-                    {
-                        item.Owner = owner;
-                    }
+                    m_logger.LogError("Failed to load {TypeName} from {Endpoint}: {ReasonPhrase}", typeof(T).Name, endpoint, response.ReasonPhrase);
+                    return default;
                 }
 
-                var resultCollection = new T() { Owner = owner };
-                resultCollection.AddRange(collection);
-                return resultCollection;
+                var collection = await DeserializeJsonArrayAsync<K>(response);
+                if (collection != null)
+                {
+                    // if generic type K implements IHaveOwner
+                    if (collection.OfType<IHaveOwner>().Any())
+                    {
+                        foreach (var item in collection.OfType<IHaveOwner>())
+                        {
+                            item.Owner = owner;
+                        }
+                    }
+
+                    var resultCollection = new T() { Owner = owner };
+                    resultCollection.AddRange(collection);
+                    return resultCollection;
+                }
+                else
+                {
+                    m_logger.LogError("Failed to deserialize {TypeName} from {Endpoint}", typeof(T).Name, endpoint);
+                    return default;
+                }
             }
-            else
+            catch (HttpRequestException httpEx)
             {
-                m_logger.LogError("Failed to deserialize {TypeName} from {Endpoint}", typeof(T).Name, endpoint);
+                m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
+                m_blnIsConnected = null;
                 return default;
             }
         }
-
         protected async Task<K?> DeserializeJsonAsync<K>(HttpResponseMessage httpResponse)
           where K : BaseEntity, new()
         {

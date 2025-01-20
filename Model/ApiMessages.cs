@@ -28,6 +28,12 @@ namespace KepwareSync.Model
         public bool IsSuccessStatusCode => Code >= 200 && Code < 300;
     }
 
+    public class ApiStatus
+    {
+        public string Name { get; set; } = string.Empty;
+        public bool Healthy { get; set; } = false;
+    }
+
     public enum ProductType
     {
         Unknown = 0,
