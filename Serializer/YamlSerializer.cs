@@ -13,9 +13,12 @@ namespace KepwareSync.Serializer
     {
         private readonly ISerializer _serializer;
         private readonly IDeserializer _deserializer;
+        private readonly ILogger<YamlSerializer> _logger;
 
-        public YamlSerializer()
+        public YamlSerializer(ILogger<YamlSerializer> logger)
         {
+            _logger = logger;
+
             var context = new KepYamlContext();
 
             var converter = new BaseEntityYamlTypeConverter(Properties.NonSerialized.AsHashSet);
@@ -67,6 +70,7 @@ namespace KepwareSync.Serializer
                 if (File.Exists(filePath))
                 {
                     File.Delete(filePath);
+                    _logger.LogInformation("File {filePath} was empty and has been deleted", filePath);
                 }
             }
             else

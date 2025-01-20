@@ -18,6 +18,7 @@ using Microsoft.Extensions.Configuration;
 using Serilog;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 using System.Linq;
+using KepwareSync.Serializer;
 
 namespace KepwareSync
 {
@@ -70,7 +71,7 @@ namespace KepwareSync
             var host = await BuildHost(apiOptions, kepStorageOptions);
 
             var kepServerClient = host.Services.GetRequiredService<KepServerClient>();
-            var project = await kepServerClient.LoadProject();
+            var project = await kepServerClient.LoadProject(true);
 
             var storage = host.Services.GetRequiredService<KepFolderStorage>();
 
@@ -88,10 +89,10 @@ namespace KepwareSync
 
             var storage = host.Services.GetRequiredService<KepFolderStorage>();
 
-            var projectFromDisk = await storage.LoadProject();
+            var projectFromDisk = await storage.LoadProject(true);
 
             var kepServerClient = host.Services.GetRequiredService<KepServerClient>();
-            var projectFromApi = await kepServerClient.LoadProject();
+            var projectFromApi = await kepServerClient.LoadProject(true);
 
 
             var prjCompare = EntityCompare.Compare(projectFromDisk, projectFromApi);
@@ -174,6 +175,8 @@ namespace KepwareSync
                     .Enrich.FromLogContext()
                     .WriteTo.Console();
             });
+            builder.Services.AddSingleton<YamlSerializer>();
+            builder.Services.AddSingleton<CsvTagSerializer>();
             builder.Services.AddSingleton(apiOptions);
             builder.Services.AddSingleton(kepStorageOptions);
             builder.Services.AddSingleton<IProjectStorage, JsonFlatFileProjectStorage>();

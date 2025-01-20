@@ -48,25 +48,25 @@ namespace KepwareSync
             }
             else if (left == null)
             {
-                results.AddRange(right!.Items.Select(ResultBucket<K>.PresentInRight));
+                results.AddRange(right!.Select(ResultBucket<K>.PresentInRight));
             }
             else if (right == null)
             {
-                results.AddRange(left.Items.Select(ResultBucket<K>.PresentInLeft));
+                results.AddRange(left.Select(ResultBucket<K>.PresentInLeft));
             }
             else
             {
-                var leftItems = left.Items.ToDictionary(keySelector);
-                var rightItems = right.Items.ToDictionary(keySelector);
+                var leftItems = left.ToDictionary(keySelector);
+                var rightItems = right.ToDictionary(keySelector);
                 Dictionary<long, K>? leftByUid = null, rightByUid = null;
 
                 if (typeof(K).IsAssignableTo(typeof(NamedUidEntity)))
                 {
-                    leftByUid = left.Items.Cast<NamedUidEntity>().Where(u => u.UniqueId != 0).ToDictionary(k => k.UniqueId, k => (K)(object)k);
-                    rightByUid = right.Items.Cast<NamedUidEntity>().Where(u => u.UniqueId != 0).ToDictionary(k => k.UniqueId, k => (K)(object)k);
+                    leftByUid = left.Cast<NamedUidEntity>().Where(u => u.UniqueId != 0).ToDictionary(k => k.UniqueId, k => (K)(object)k);
+                    rightByUid = right.Cast<NamedUidEntity>().Where(u => u.UniqueId != 0).ToDictionary(k => k.UniqueId, k => (K)(object)k);
                 }
 
-                foreach (var leftItem in left.Items)
+                foreach (var leftItem in left)
                 {
                     if (rightItems.TryGetValue(keySelector(leftItem), out var rightItem))
                     {
@@ -83,7 +83,7 @@ namespace KepwareSync
                     }
                 }
 
-                foreach (var rightItem in right.Items)
+                foreach (var rightItem in right)
                 {
                     if (!leftItems.ContainsKey(keySelector(rightItem)))
                     {
@@ -101,8 +101,8 @@ namespace KepwareSync
             var retValue = new CollectionResultBucket<T, K>(results);
 #if DEBUG
             // do logical assertations based on the found item counts
-            var leftCount = left?.Items.Count ?? 0;
-            var rightCount = right?.Items.Count ?? 0;
+            var leftCount = left?.Count ?? 0;
+            var rightCount = right?.Count ?? 0;
             var addedCount = retValue.ItemsOnlyInRight.Count;
             var removedCount = retValue.ItemsOnlyInLeft.Count;
             var changedCount = retValue.ChangedItems.Count;

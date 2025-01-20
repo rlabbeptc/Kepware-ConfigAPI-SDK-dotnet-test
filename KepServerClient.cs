@@ -204,19 +204,18 @@ namespace KepwareSync
         }
 
 
-        public async Task<Project> LoadProject(bool blnDeep = true)
+        public async Task<Project> LoadProject(bool blnLoadFullProject = false)
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             var productInfo = await GetProductInfoAsync();
 
-            if (productInfo?.SupportsJsonProjectLoadService == true)
+            if (blnLoadFullProject && productInfo?.SupportsJsonProjectLoadService == true)
             {
                 var response = await m_httpClient.GetAsync("/config/v1/project?content=serialize");
                 if (response.IsSuccessStatusCode)
                 {
                     var prjRoot = await JsonSerializer.DeserializeAsync(response.Content.ReadAsStream(), KepJsonContext.Default.JsonProjectRoot);
-
 
                     if (prjRoot?.Project != null)
                     {
@@ -233,10 +232,11 @@ namespace KepwareSync
                                                 tag.Owner = device;
 
                                         if (device.TagGroups != null)
-                                            SetOwnerRecursive(device.TagGroups);
+                                            SetOwnerRecursive(device.TagGroups, device);
                                     }
                             }
 
+                        m_logger.LogInformation("Loaded project via JsonProjectLoad Service in {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
                         return prjRoot.Project;
                     }
                 }
@@ -257,9 +257,9 @@ namespace KepwareSync
                 {
                     project.Channels = await LoadCollectionAsync<ChannelCollection, Channel>();
 
-                    if (blnDeep && project.Channels != null)
+                    if (blnLoadFullProject && project.Channels != null)
                     {
-                        int totalChannelCount = project.Channels.Items.Count;
+                        int totalChannelCount = project.Channels.Count;
                         int loadedChannelCount = 0;
                         await Task.WhenAll(project.Channels.Select(async channel =>
                         {
@@ -364,7 +364,8 @@ namespace KepwareSync
                     }
                 }
 
-                var resultCollection = new T() { Owner = owner, Items = collection };
+                var resultCollection = new T() { Owner = owner };
+                resultCollection.AddRange(collection);
                 return resultCollection;
             }
             else
@@ -405,18 +406,18 @@ namespace KepwareSync
             }
         }
 
-        private void SetOwnerRecursive(IEnumerable<DeviceTagGroup> tagGroups)
+        private void SetOwnerRecursive(IEnumerable<DeviceTagGroup> tagGroups, NamedEntity owner)
         {
             foreach (var tagGroup in tagGroups)
             {
-                tagGroup.Owner = tagGroup.Owner;
+                tagGroup.Owner = owner;
 
                 if (tagGroup.Tags != null)
                     foreach (var tag in tagGroup.Tags)
-                        tag.Owner = tagGroup; ;
+                        tag.Owner = tagGroup;
 
                 if (tagGroup.TagGroups != null)
-                    SetOwnerRecursive(tagGroup.TagGroups);
+                    SetOwnerRecursive(tagGroup.TagGroups, tagGroup);
             }
         }
 
@@ -429,7 +430,7 @@ namespace KepwareSync
                 tagGroup.Tags = await LoadCollectionAsync<DeviceTagGroupTagCollection, Tag>(tagGroup);
 
                 // Rekursiver Aufruf für die geladenen TagGroups
-                if (tagGroup.TagGroups != null && tagGroup.TagGroups.Items.Count > 0)
+                if (tagGroup.TagGroups != null && tagGroup.TagGroups.Count > 0)
                 {
                     await LoadTagGroupsRecursiveAsync(tagGroup.TagGroups);
                 }

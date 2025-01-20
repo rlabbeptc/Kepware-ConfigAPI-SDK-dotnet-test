@@ -23,28 +23,28 @@ namespace KepwareSync
         private readonly KepStorageOptions m_kepStorageOptions;
         private readonly DirectoryInfo m_baseDirectory;
 
-        public KepFolderStorage(ILogger<KepFolderStorage> logger, KepStorageOptions kepStorageOptions)
+        public KepFolderStorage(ILogger<KepFolderStorage> logger, KepStorageOptions kepStorageOptions, YamlSerializer yamlSerializer, CsvTagSerializer csvTagSerializer)
         {
             m_logger = logger;
             m_kepStorageOptions = kepStorageOptions;
-            m_yamlSerializer = new YamlSerializer();
-            m_csvTagSerializer = new CsvTagSerializer();
+            m_yamlSerializer = yamlSerializer;
+            m_csvTagSerializer = csvTagSerializer;
             m_dataTypeEnumConverterProvider = new DataTypeEnumConverterProvider();
             m_baseDirectory = new DirectoryInfo(m_kepStorageOptions.Directory ?? "ExportedYaml");
             if (!m_baseDirectory.Exists)
                 m_baseDirectory.Create();
         }
 
-        public async Task<Project> LoadProject(bool blnLoadDeep = true)
+        public async Task<Project> LoadProject(bool blnLoadFullProject = true)
         {
             var projectFile = Path.Combine(m_baseDirectory.FullName, "project.yaml");
 
             var project = await m_yamlSerializer.LoadFromYaml<Project>(projectFile);
             if (project == null) return new Project();
 
-            if (blnLoadDeep)
+            if (blnLoadFullProject)
             {
-                project.Channels = await LoadChannels(blnLoadDeep);
+                project.Channels = await LoadChannels(blnLoadFullProject);
             }
 
             return project;
@@ -56,7 +56,7 @@ namespace KepwareSync
             var channels = new ChannelCollection();
             foreach (var channelDir in channelDirs)
             {
-                channels.Items.Add(await LoadChannel(channelDir.Name, blnLoadDeep));
+                channels.Add(await LoadChannel(channelDir.Name, blnLoadDeep));
             }
             return channels;
         }
@@ -83,7 +83,7 @@ namespace KepwareSync
             var deviceDirs = channelDir.GetDirectories();
             foreach (var deviceDir in deviceDirs)
             {
-                devices.Items.Add(await LoadDevice(deviceDir, blnLoadDeep));
+                devices.Add(await LoadDevice(deviceDir, blnLoadDeep));
             }
             return devices;
         }
@@ -95,7 +95,7 @@ namespace KepwareSync
             if (device == null) return new Device();
             if (blnLoadDeep)
             {
-                device.Tags = new DeviceTagCollection { Items = await LoadTags(device, deviceDir) };
+                device.Tags = [.. await LoadTags(device, deviceDir)];
                 device.TagGroups = await LoadTagGroups(device, deviceDir);
             }
             return device;
@@ -110,10 +110,10 @@ namespace KepwareSync
             {
                 var tagGroupFile = Path.Combine(grpDir.FullName, "tagGroup.yaml");
                 var tagGroup = await m_yamlSerializer.LoadFromYaml<DeviceTagGroup>(tagGroupFile);
-                tagGroup.Tags = new DeviceTagGroupTagCollection { Items = await LoadTags(device, grpDir) };
+                tagGroup.Tags = [.. await LoadTags(device, grpDir)];
                 tagGroup.TagGroups = await LoadTagGroups(device, grpDir);
 
-                tagGroups.Items.Add(tagGroup);
+                tagGroups.Add(tagGroup);
             }
 
             return tagGroups;
@@ -185,6 +185,9 @@ namespace KepwareSync
                             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
                         var count = await ExportDevices(channel, channelFolder.FullName, deviceDirsToDelete);
+
+                        exportedDevices += count.exportedDevices;
+                        exportedTags += count.exportedTags;
 
                         foldersToDelete.Add((channelFolder.FullName, deviceDirsToDelete));
                     }
@@ -270,16 +273,9 @@ namespace KepwareSync
                     var deviceFile = Path.Combine(deviceFolder, "device.yaml");
                     await m_yamlSerializer.SaveAsYaml(deviceFile, device);
 
-                    if (device.Tags != null)
-                    {
-                        await m_csvTagSerializer.ExportTagsAsync(Path.Combine(deviceFolder, "tags.csv"), device.Tags.Items, dataTypeConverter);
-                        exportedTags += device.Tags.Items.Count;
-                    }
-
-                    if (device.TagGroups != null)
-                    {
-                        exportedTags += await ExportTagGroups(deviceFolder, device.TagGroups, dataTypeConverter);
-                    }
+                    await m_csvTagSerializer.ExportTagsAsync(Path.Combine(deviceFolder, "tags.csv"), device.Tags, dataTypeConverter);
+                    exportedTags += device.Tags?.Count ?? 0;
+                    exportedTags += await ExportTagGroups(deviceFolder, device.TagGroups, dataTypeConverter);
                 }
                 catch (Exception ex)
                 {
@@ -289,28 +285,29 @@ namespace KepwareSync
             return (exportedDevices, exportedTags);
         }
 
-        private async Task<int> ExportTagGroups(string parentFolder, IEnumerable<DeviceTagGroup> tagGroups, IDataTypeEnumConverter dataTypeConverter)
+        private async Task<int> ExportTagGroups(string parentFolder, IEnumerable<DeviceTagGroup>? tagGroups, IDataTypeEnumConverter dataTypeConverter)
         {
+            var tagGrpDirsToDelete = new DirectoryInfo(parentFolder).GetDirectories().Select(dir => dir.Name)
+                            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
             int exportedTags = 0;
-            foreach (var tagGroup in tagGroups)
-            {
-                var tagGroupFolder = Path.Combine(parentFolder, tagGroup.Name.EscapeDiskEntry());
-
-                // Export TagGroup
-                var tagGroupFile = Path.Combine(tagGroupFolder, "tagGroup.yaml");
-                await m_yamlSerializer.SaveAsYaml(tagGroupFile, tagGroup);
-
-                if (tagGroup.Tags != null)
+            if (tagGroups != null)
+                foreach (var tagGroup in tagGroups)
                 {
-                    await m_csvTagSerializer.ExportTagsAsync(Path.Combine(tagGroupFolder, "tags.csv"), tagGroup.Tags.Items, dataTypeConverter);
-                    exportedTags += tagGroup.Tags.Items.Count;
-                }
+                    string fileSaveName = tagGroup.Name.EscapeDiskEntry();
+                    var tagGroupFolder = Path.Combine(parentFolder, fileSaveName);
+                    tagGrpDirsToDelete.Remove(fileSaveName);
 
-                if (tagGroup.TagGroups != null && tagGroup.TagGroups.Items.Count > 0)
-                {
-                    exportedTags += await ExportTagGroups(tagGroupFolder, tagGroup.TagGroups.Items, dataTypeConverter);
+                    // Export TagGroup
+                    var tagGroupFile = Path.Combine(tagGroupFolder, "tagGroup.yaml");
+                    await m_yamlSerializer.SaveAsYaml(tagGroupFile, tagGroup);
+
+                    await m_csvTagSerializer.ExportTagsAsync(Path.Combine(tagGroupFolder, "tags.csv"), tagGroup.Tags, dataTypeConverter);
+                    exportedTags += tagGroup.Tags?.Count ?? 0;
+
+                    exportedTags += await ExportTagGroups(tagGroupFolder, tagGroup.TagGroups, dataTypeConverter);
                 }
-            }
+            DeleteDirectories(parentFolder, tagGrpDirsToDelete);
             return exportedTags;
         }
     }

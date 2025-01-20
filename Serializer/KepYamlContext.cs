@@ -12,11 +12,6 @@ namespace KepwareSync.Model
     [YamlSerializable(typeof(Device))]
     [YamlSerializable(typeof(DeviceTagGroup))]
     [YamlSerializable(typeof(DefaultEntity))]
-    [YamlSerializable(typeof(ChannelCollection))]
-    [YamlSerializable(typeof(DeviceCollection))]
-    [YamlSerializable(typeof(DeviceTagCollection))]
-    [YamlSerializable(typeof(DeviceTagGroupCollection))]
-    [YamlSerializable(typeof(DeviceTagGroupTagCollection))]
     public partial class KepYamlContext : StaticContext
     {
        

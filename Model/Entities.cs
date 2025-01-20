@@ -160,6 +160,11 @@ namespace KepwareSync.Model
     public class DeviceTagCollection : EntityCollection<Tag>
     {
         public DeviceTagCollection() { }
+        public DeviceTagCollection(IEnumerable<Tag> collection)
+            : base(collection)
+        {
+            
+        }
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}/consumer_exchange_groups")]
@@ -215,6 +220,12 @@ namespace KepwareSync.Model
     public class DeviceTagGroupTagCollection : EntityCollection<Tag>
     {
         public DeviceTagGroupTagCollection() { }
+
+        public DeviceTagGroupTagCollection(IEnumerable<Tag> collection)
+            : base(collection)
+        {
+            
+        }
     }
 
     [Endpoint("/config/v1/project/channels/{channelName}/phonebooks")]

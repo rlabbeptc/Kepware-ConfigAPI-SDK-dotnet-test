@@ -9,19 +9,28 @@ using YamlDotNet.Serialization;
 
 namespace KepwareSync.Model
 {
-    public abstract class EntityCollection<T> : IHaveOwner, IEnumerable<T>
+    public abstract class EntityCollection<T> : List<T>, IHaveOwner
         where T : BaseEntity
     {
         [JsonIgnore]
         [YamlIgnore]
         public NamedEntity? Owner { get; set; }
 
-        public List<T> Items { get; set; } = new();
+        protected EntityCollection()
+        {
+            
+        }
 
-        public IEnumerator<T> GetEnumerator()
-        => Items.GetEnumerator();
+        protected EntityCollection(IEnumerable<T> collection)
+            : base(collection)
+        {
+            
+        }
 
-        IEnumerator IEnumerable.GetEnumerator()
-        => (Items as IEnumerable).GetEnumerator();
+        //public IEnumerator<T> GetEnumerator()
+        //=> Items.GetEnumerator();
+
+        //IEnumerator IEnumerable.GetEnumerator()
+        //=> (Items as IEnumerable).GetEnumerator();
     }
 }
