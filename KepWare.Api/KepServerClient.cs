@@ -11,6 +11,10 @@ namespace Kepware.Api
 {
     public partial class KepServerClient
     {
+        private const string ENDPOINT_STATUS = "/config/v1/status";
+        private const string ENDPOINT_ABOUT = "/config/v1/about";
+        private const string ENDPONT_FULL_PROJECT = "/config/v1/project?content=serialize";
+
         private readonly ILogger<KepServerClient> m_logger;
         private readonly HttpClient m_httpClient;
         private readonly Regex m_pathplaceHolderRegex = EndpointPlaceholderRegex();
@@ -31,11 +35,11 @@ namespace Kepware.Api
                 {
                     m_logger.LogInformation("Connecting to {BaseAddress}...", m_httpClient.BaseAddress);
                 }
-                var response = await m_httpClient.GetAsync("/config/v1/status");
+                var response = await m_httpClient.GetAsync(ENDPOINT_STATUS);
 
                 if (response.IsSuccessStatusCode)
                 {
-                    var status = await JsonSerializer.DeserializeAsync(response.Content.ReadAsStream(), KepJsonContext.Default.ListApiStatus);
+                    var status = await JsonSerializer.DeserializeAsync(await response.Content.ReadAsStreamAsync(), KepJsonContext.Default.ListApiStatus);
                     if (status?.FirstOrDefault()?.Healthy == true)
                     {
                         blnIsConnected = true;
@@ -68,7 +72,7 @@ namespace Kepware.Api
         {
             try
             {
-                var response = await m_httpClient.GetAsync("/config/v1/about");
+                var response = await m_httpClient.GetAsync(ENDPOINT_ABOUT);
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
@@ -220,7 +224,7 @@ namespace Kepware.Api
                 for (int i = 0; i < totalPageCount; i++)
                 {
                     var pageItems = items.Skip(i * pageSize).Take(pageSize).ToList();
-                    m_logger.LogInformation("Inserting {numItems} {TypeName} on {Endpoint} in batch {batchNr} of {totalBatches} ...", pageItems.Count, typeof(K).Name, endpoint, i + 1, totalPageCount);
+                    m_logger.LogInformation("Inserting {NumItems} {TypeName} on {Endpoint} in batch {BatchNr} of {TotalBatches} ...", pageItems.Count, typeof(K).Name, endpoint, i + 1, totalPageCount);
 
                     var jsonContent = JsonSerializer.Serialize(pageItems, KepJsonContext.GetJsonListTypeInfo<K>());
                     HttpContent httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
@@ -235,9 +239,9 @@ namespace Kepware.Api
                         // When a POST includes multiple objects, if one or more cannot be processed due to a parsing failure or 
                         // some other non - property validation error, the HTTPS status code 207(Multi - Status) will be returned along
                         // with a JSON object array containing the status for each object in the request.
-                        var results = await JsonSerializer.DeserializeAsync(response.Content.ReadAsStream(), KepJsonContext.Default.ListApiResult);
+                        var results = await JsonSerializer.DeserializeAsync(await response.Content.ReadAsStreamAsync(), KepJsonContext.Default.ListApiResult);
                         var failedEntries = results?.Where(r => !r.IsSuccessStatusCode)?.ToList() ?? [];
-                        m_logger.LogError("{numSuccessFull} were successfull, failed to insert {numFailed} {TypeName} from {Endpoint}: {ReasonPhrase}\nFailed:\n{Message}",
+                        m_logger.LogError("{NumSuccessFull} were successfull, failed to insert {NumFailed} {TypeName} from {Endpoint}: {ReasonPhrase}\nFailed:\n{Message}",
                             (results?.Count ?? 0) - failedEntries.Count, failedEntries.Count, typeof(T).Name, endpoint, response.ReasonPhrase, JsonSerializer.Serialize(failedEntries, KepJsonContext.Default.ListApiResult));
                     }
                 }
@@ -295,10 +299,10 @@ namespace Kepware.Api
             {
                 try
                 {
-                    var response = await m_httpClient.GetAsync("/config/v1/project?content=serialize");
+                    var response = await m_httpClient.GetAsync(ENDPONT_FULL_PROJECT);
                     if (response.IsSuccessStatusCode)
                     {
-                        var prjRoot = await JsonSerializer.DeserializeAsync(response.Content.ReadAsStream(), KepJsonContext.Default.JsonProjectRoot);
+                        var prjRoot = await JsonSerializer.DeserializeAsync(await response.Content.ReadAsStreamAsync(), KepJsonContext.Default.JsonProjectRoot);
 
                         if (prjRoot?.Project != null)
                         {
@@ -403,7 +407,6 @@ namespace Kepware.Api
         private async Task<T?> LoadEntityAsync<T>(string endpoint, NamedEntity? owner = null)
           where T : BaseEntity, new()
         {
-            Stopwatch stopwatch = Stopwatch.StartNew();
             try
             {
                 m_logger.LogDebug("Loading {TypeName} from {Endpoint}...", typeof(T).Name, endpoint);
@@ -416,7 +419,7 @@ namespace Kepware.Api
                 }
 
                 var entity = await DeserializeJsonAsync<T>(response);
-                if (entity != null && entity is IHaveOwner ownable)
+                if (entity is IHaveOwner ownable)
                 {
                     ownable.Owner = owner;
                 }
@@ -441,8 +444,6 @@ namespace Kepware.Api
             where T : EntityCollection<K>, new()
             where K : BaseEntity, new()
         {
-            Stopwatch stopwatch = Stopwatch.StartNew();
-
             var endpoint = ResolveEndpoint<T>(owner);
             try
             {
@@ -493,7 +494,7 @@ namespace Kepware.Api
             }
             catch (JsonException ex)
             {
-                m_logger.LogError("JSON Deserialization failed: {Message}", ex.Message);
+                m_logger.LogError(ex, "JSON Deserialization failed");
                 return null;
             }
         }
@@ -509,7 +510,7 @@ namespace Kepware.Api
             }
             catch (JsonException ex)
             {
-                m_logger.LogError("JSON Deserialization failed: {Message}", ex.Message);
+                m_logger.LogError(ex, "JSON Deserialization failed");
                 return null;
             }
         }
@@ -573,12 +574,11 @@ namespace Kepware.Api
 
         private string ResolveRecursiveEndpoint<T>(RecursiveEndpointAttribute attribute, NamedEntity? owner)
         {
-            var recursivePath = string.Empty;
-
+            LinkedList<string> recursivePath = new LinkedList<string>();
             while (owner != null && attribute.RecursiveOwnerType == owner?.GetType())
             {
                 var currentEndpointPart = ReplacePlaceholders(attribute.RecursiveEnd, owner);
-                recursivePath = currentEndpointPart + recursivePath;
+                recursivePath.AddFirst(currentEndpointPart);
 
                 if (owner is IHaveOwner ownable && ownable.Owner is NamedEntity nextOwner)
                     owner = nextOwner;
@@ -588,7 +588,8 @@ namespace Kepware.Api
 
             // Combine with the base endpoint template
             var baseEndpoint = ReplacePlaceholders(attribute.EndpointTemplate, owner);
-            return baseEndpoint + recursivePath;
+
+            return baseEndpoint + string.Concat(recursivePath);
         }
 
         private string ResolveEndpoint<T>(NamedEntity? owner)
