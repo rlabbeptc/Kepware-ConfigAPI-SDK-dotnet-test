@@ -54,11 +54,6 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Use Release Drafter
-      uses: release-drafter/release-drafter@v5
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
     # Herunterladen von Artefakten für jede Plattform
     - name: Download Windows Artifacts
       uses: actions/download-artifact@v4
@@ -92,3 +87,8 @@ jobs:
         asset_path: artifacts/linux
         asset_name: ${{ steps.nbgv.outputs.SemVer2 }}-ubuntu.zip
         asset_content_type: application/zip
+
+    - name: Use Release Drafter
+      uses: release-drafter/release-drafter@v5
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
