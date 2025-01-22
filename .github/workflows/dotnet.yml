@@ -13,8 +13,8 @@ jobs:
   build:
     strategy:
       matrix:
-        plattform: [windows-latest, ubuntu-latest]
-    runs-on: ${{ matrix.plattform }}
+        plattform: [windows, ubuntu]
+    runs-on: ${{ matrix.plattform }}-latest
 
     steps:
     - uses: actions/checkout@v4
@@ -30,3 +30,12 @@ jobs:
       run: dotnet build --no-restore --configuration release
     # - name: Test
     #   run: dotnet test --no-build --verbosity normal
+    - name: dotnet publish
+    
+      run: dotnet publish ./Kepware.SyncService/Kepware.SyncService.csproj --configuration release -o /app/publish /p:UseAppHost=true
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.plattform }} Package
+        path: /app/publish
+    
