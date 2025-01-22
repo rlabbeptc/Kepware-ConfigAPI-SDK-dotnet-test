@@ -89,37 +89,10 @@ namespace Kepware.Api.Serializer
                 };
         }
 
-        private static Tag CreateTagFromDictionary(Dictionary<string, object?> tagDict, IDataTypeEnumConverter dataTypeEnumConverter)
-        {
-            var tag = new Tag
-            {
-                Name = tagDict[CsvHeaders.TagName] as string ?? string.Empty,
-                Description = tagDict[CsvHeaders.Description] as string ?? string.Empty
-            };
-            tag.SetDynamicProperty(Properties.Tag.Address, tagDict.GetValue<string>(CsvHeaders.Address));
-            tag.SetDynamicProperty(Properties.Tag.DataType, dataTypeEnumConverter.ConvertFromString(tagDict.GetValue<string>(CsvHeaders.DataType) ?? string.Empty));
-            tag.SetDynamicProperty(Properties.Tag.ReadWriteAccess, tagDict.GetValue<string>(CsvHeaders.ClientAccess) == "R/W" ? 1 : 0);
-            tag.SetDynamicProperty(Properties.Tag.ScanRateMilliseconds, tagDict.GetValue<int>(CsvHeaders.ScanRate));
-            tag.SetDynamicProperty(Properties.Tag.ScalingType, tagDict.GetValue<int>(CsvHeaders.Scaling));
-            tag.SetDynamicProperty(Properties.Tag.ScalingRawLow, tagDict.GetValue<int>(CsvHeaders.RawLow));
-            tag.SetDynamicProperty(Properties.Tag.ScalingRawHigh, tagDict.GetValue<int>(CsvHeaders.RawHigh));
-            tag.SetDynamicProperty(Properties.Tag.ScalingScaledLow, tagDict.GetValue<int>(CsvHeaders.ScaledLow));
-            tag.SetDynamicProperty(Properties.Tag.ScalingScaledHigh, tagDict.GetValue<int>(CsvHeaders.ScaledHigh));
-            tag.SetDynamicProperty(Properties.Tag.ScalingScaledDataType, tagDict.GetValue<int>(CsvHeaders.ScaledDataType));
-            tag.SetDynamicProperty(Properties.Tag.ScalingClampLow, tagDict.GetValue<bool>(CsvHeaders.ClampLow));
-            tag.SetDynamicProperty(Properties.Tag.ScalingClampHigh, tagDict.GetValue<bool>(CsvHeaders.ClampHigh));
-            tag.SetDynamicProperty(Properties.Tag.ScalingUnits, tagDict.GetValue<string>(CsvHeaders.EngUnits));
-            tag.SetDynamicProperty(Properties.Tag.ScalingNegateValue, tagDict.GetValue<bool>(CsvHeaders.NegateValue));
-            return tag;
-        }
 
-        private ILogger<CsvTagSerializer> _logger;
 
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CsvHelper.Expressions.RecordManager))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CsvHelper.Expressions.RecordCreatorFactory))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CsvHelper.Expressions.RecordHydrator))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CsvHelper.Expressions.ExpressionManager))]
-        [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CsvHelper.TypeConversion.StringConverter))]
+        private readonly ILogger<CsvTagSerializer> _logger;
+
         public CsvTagSerializer(ILogger<CsvTagSerializer> logger)
         {
             _logger = logger;
@@ -154,16 +127,16 @@ namespace Kepware.Api.Serializer
                     {
                         foreach (var header in _headers)
                         {
-                            csv.WriteField(tag.ContainsKey(header) ? tag[header] : null);
+                            csv.WriteField(tag.TryGetValue(header, out object? value) ? value : null);
                         }
                         await csv.NextRecordAsync();
                     }
                 }
             }
-            else if(File.Exists(filePath))
+            else if (File.Exists(filePath))
             {
                 File.Delete(filePath);
-                _logger.LogInformation("File {filePath} was empty and has been deleted", filePath);
+                _logger.LogInformation("File {FilePath} was empty and has been deleted", filePath);
             }
         }
 
@@ -177,11 +150,49 @@ namespace Kepware.Api.Serializer
                 HasHeaderRecord = true,
             });
 
-            var records = csv.GetRecords<dynamic>();
-            foreach (var record in records)
+            csv.Read();
+            csv.ReadHeader();
+
+            while (csv.Read())
             {
-                var dict = ((IDictionary<string, object?>)record).ToDictionary(k => k.Key, v => v.Value);
-                tags.Add(CreateTagFromDictionary(dict, dataTypeEnumConverter));
+                
+                csv.TryGetField<string>(CsvHeaders.TagName, out var tagName);
+                try
+                {
+                    var tag = new Tag
+                    {
+                        Name = tagName ?? string.Empty,
+                        Description = csv.GetField(CsvHeaders.Description)
+                    };
+
+                    tag.SetDynamicProperty(Properties.Tag.Address, csv.GetField(CsvHeaders.Address));
+                    var strDataType = csv.GetField(CsvHeaders.DataType);
+                    if (strDataType != null)
+                        tag.SetDynamicProperty(Properties.Tag.DataType, dataTypeEnumConverter.ConvertFromString(strDataType));
+                    tag.SetDynamicProperty(Properties.Tag.ReadWriteAccess, csv.GetField(CsvHeaders.ClientAccess) == "R/W" ? 1 : 0);
+
+                    tag.SetDynamicProperty(Properties.Tag.ScanRateMilliseconds, csv.TryGetField<int>(CsvHeaders.ScanRate, out var scanRate) ? scanRate : 0);
+                    tag.SetDynamicProperty(Properties.Tag.ScalingType, csv.TryGetField<int>(CsvHeaders.Scaling, out var scaling) ? scaling : 0);
+
+                    if (scaling != 0)
+                    {
+                        tag.SetDynamicProperty(Properties.Tag.ScalingRawLow, csv.TryGetField<int>(CsvHeaders.RawLow, out var rawLow) ? rawLow : 0);
+                        tag.SetDynamicProperty(Properties.Tag.ScalingRawHigh, csv.TryGetField<int>(CsvHeaders.RawHigh, out var rawHigh) ? rawHigh : 0);
+                        tag.SetDynamicProperty(Properties.Tag.ScalingScaledLow, csv.TryGetField<int>(CsvHeaders.ScaledLow, out var scaledLow) ? scaledLow : 0);
+                        tag.SetDynamicProperty(Properties.Tag.ScalingScaledHigh, csv.TryGetField<int>(CsvHeaders.ScaledHigh, out var scaledHigh) ? scaledHigh : 0);
+                        tag.SetDynamicProperty(Properties.Tag.ScalingScaledDataType, csv.TryGetField<int>(CsvHeaders.ScaledDataType, out var scaledDataType) ? scaledDataType : 0);
+                        tag.SetDynamicProperty(Properties.Tag.ScalingClampLow, csv.TryGetField<bool>(CsvHeaders.ClampLow, out var clampLow) && clampLow);
+                        tag.SetDynamicProperty(Properties.Tag.ScalingClampHigh, csv.TryGetField<bool>(CsvHeaders.ClampHigh, out var clampHigh) && clampHigh);
+                        tag.SetDynamicProperty(Properties.Tag.ScalingUnits, csv.GetField(CsvHeaders.EngUnits));
+                        tag.SetDynamicProperty(Properties.Tag.ScalingNegateValue, csv.TryGetField<bool>(CsvHeaders.NegateValue, out var negateValue) && negateValue);
+                    }
+
+                    tags.Add(tag);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error while reading index: {CurrentIndex}, tag {TagName} from CSV {FileName}", csv.CurrentIndex, tagName, filePath);
+                }
             }
 
             return Task.FromResult(tags);

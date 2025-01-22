@@ -79,7 +79,9 @@ namespace Kepware.Api
             catch (HttpRequestException httpEx)
             {
                 if (m_blnIsConnected == null) // first time after connection change
+#pragma warning disable S6667 // Logging in a catch clause should pass the caught exception as a parameter.
                     m_logger.LogWarning("Failed to connect to {BaseAddress}: {Message}", m_httpClient.BaseAddress, httpEx.Message);
+#pragma warning restore S6667 // Logging in a catch clause should pass the caught exception as a parameter.
             }
             m_blnIsConnected = blnIsConnected;
             return blnIsConnected;
@@ -616,7 +618,7 @@ namespace Kepware.Api
             return template;
         }
 
-        private string ResolveRecursiveEndpoint<T>(RecursiveEndpointAttribute attribute, NamedEntity? owner)
+        private string ResolveRecursiveEndpoint(RecursiveEndpointAttribute attribute, NamedEntity? owner)
         {
             LinkedList<string> recursivePath = new LinkedList<string>();
             while (owner != null && attribute.RecursiveOwnerType == owner?.GetType())
@@ -649,7 +651,7 @@ namespace Kepware.Api
 
             if (endpointTemplateAttribute is RecursiveEndpointAttribute recursiveEndpointAttribute && recursiveEndpointAttribute.RecursiveOwnerType == owner?.GetType())
             {
-                return ResolveRecursiveEndpoint<T>(recursiveEndpointAttribute, owner) + endpointTemplateAttribute.Suffix;
+                return ResolveRecursiveEndpoint(recursiveEndpointAttribute, owner) + endpointTemplateAttribute.Suffix;
             }
 
             return ReplacePlaceholders(endpointTemplateAttribute.EndpointTemplate, owner) + endpointTemplateAttribute.Suffix;
