@@ -92,7 +92,7 @@ jobs:
         name: Release ${{ github.ref_name }} # Der Name des Releases
         body_path: changelog.md # Changelog als Beschreibung hinzufügen
         draft: true # Release als Entwurf markieren
-        prerelease: ${{ steps.nbgv.outputs.SemVer2 | contains('-') }} # Pre-Release, wenn Version ein Suffix hat
+        prerelease: ${{ steps.nbgv.outputs.PrereleaseVersion != '' }} 
   
     # Artefakte hochladen
     - name: Upload Windows Artifacts
