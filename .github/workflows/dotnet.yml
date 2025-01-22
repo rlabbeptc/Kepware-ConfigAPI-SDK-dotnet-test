@@ -32,10 +32,10 @@ jobs:
     #   run: dotnet test --no-build --verbosity normal
     - name: dotnet publish
     
-      run: dotnet publish ./Kepware.SyncService/Kepware.SyncService.csproj --configuration release -o /app/publish /p:UseAppHost=true
+      run: dotnet publish KepwareSync.Service/Kepware.SyncService.csproj --configuration release -o publish /p:UseAppHost=true
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.plattform }} Package
-        path: /app/publish
+        path: publish
     
