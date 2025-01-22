@@ -48,6 +48,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v') # Nur für Tags ausführen
+    permissions:
+      # write permission is required to create a github release
+      contents: write
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
@@ -70,13 +73,21 @@ jobs:
         name: ${{ steps.nbgv.outputs.SemVer2 }}-ubuntu
         path: artifacts/linux
 
+    - name: Use Release Drafter
+      id: drafter
+      uses: release-drafter/release-drafter@v5
+      with:
+        version: ${{ steps.nbgv.outputs.SemVer2 }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     # Artefakte hochladen
     - name: Upload Windows Artifacts
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ github.event.release.upload_url }}
+        upload_url: ${{ steps.drafter.outputs.upload_url }}
         asset_path: artifacts/windows
         asset_name: ${{ steps.nbgv.outputs.SemVer2 }}-windows.zip
         asset_content_type: application/zip
@@ -86,12 +97,9 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ github.event.release.upload_url }}
+        upload_url: ${{ steps.drafter.outputs.upload_url }}
         asset_path: artifacts/linux
         asset_name: ${{ steps.nbgv.outputs.SemVer2 }}-ubuntu.zip
         asset_content_type: application/zip
 
-    - name: Use Release Drafter
-      uses: release-drafter/release-drafter@v5
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
