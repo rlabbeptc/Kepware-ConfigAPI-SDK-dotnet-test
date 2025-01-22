@@ -6,9 +6,13 @@ name: .NET
 on:
   push:
     branches: [ "master" ]
+    tags:
+      - "v*.*.*" # Trigger für Tags wie v1.0.0
   pull_request:
     branches: [ "master" ]
-
+  release:
+    types: [ "published" ] 
+    
 jobs:
   build:
     strategy:
@@ -43,3 +47,66 @@ jobs:
         name: ${{ steps.nbgv.outputs.SemVer2 }}-${{ matrix.plattform }}
         path: publish
     
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') # Sicherstellen, dass der Job nur für Tags ausgeführt wird
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    # Herunterladen von Artefakten für jede Plattform
+    - name: Download Windows Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ needs.build.outputs.nbgv }}-windows
+        path: artifacts/windows
+    - name: Download Linux Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ needs.build.outputs.nbgv }}-ubuntu
+        path: artifacts/linux
+
+    # Changelog generieren
+    - name: Generate Changelog
+      id: changelog
+      run: |
+        nbgv cloud --releaseNotes > changelog.md
+      env:
+        NBGV_Version: ${{ needs.build.outputs.nbgv }}
+
+    # Release erstellen
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ needs.build.outputs.nbgv }}
+        release_name: Release ${{ needs.build.outputs.nbgv }}
+        body: ${{ steps.changelog.outputs }}
+        draft: false
+        prerelease: false
+
+    # Artefakte hochladen
+    - name: Upload Windows Artifacts
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: artifacts/windows
+        asset_name: ${{ needs.build.outputs.nbgv }}-windows.zip
+        asset_content_type: application/zip
+
+    - name: Upload Linux Artifacts
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: artifacts/linux
+        asset_name: ${{ needs.build.outputs.nbgv }}-ubuntu.zip
+        asset_content_type: application/zip
