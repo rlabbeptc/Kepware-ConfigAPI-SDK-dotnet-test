@@ -11,8 +11,10 @@ on:
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        plattform: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.plattform }}
 
     steps:
     - uses: actions/checkout@v4
