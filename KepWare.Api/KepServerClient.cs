@@ -9,6 +9,9 @@ using System.Text.RegularExpressions;
 
 namespace Kepware.Api
 {
+    /// <summary>
+    /// Client for interacting with the Kepware server.
+    /// </summary>
     public partial class KepServerClient
     {
         private const string ENDPOINT_STATUS = "/config/v1/status";
@@ -20,11 +23,22 @@ namespace Kepware.Api
         private readonly Regex m_pathplaceHolderRegex = EndpointPlaceholderRegex();
         private bool? m_blnIsConnected = null;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="KepServerClient"/> class.
+        /// </summary>
+        /// <param name="logger">The logger instance.</param>
+        /// <param name="httpClient">The HTTP client instance.</param>
         public KepServerClient(ILogger<KepServerClient> logger, HttpClient httpClient)
         {
             m_logger = logger;
             m_httpClient = httpClient;
         }
+
+        /// <summary>
+        /// Tests the connection to the Kepware server.
+        /// </summary>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a boolean indicating whether the connection was successful.</returns>
 
         public async Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default)
         {
@@ -71,6 +85,11 @@ namespace Kepware.Api
             return blnIsConnected;
         }
 
+        /// <summary>
+        /// Gets the product information from the Kepware server.
+        /// </summary>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains the product information.</returns>
         public async Task<ProductInfo?> GetProductInfoAsync(CancellationToken cancellationToken = default)
         {
             try
@@ -102,6 +121,14 @@ namespace Kepware.Api
         /// Compares two collections of entities and applies the changes to the target collection.
         /// Left should represent the source and Right should represent the API (target).
         /// </summary>
+        /// <typeparam name="T">The type of the entity collection.</typeparam>
+        /// <typeparam name="K">The type of the entity.</typeparam>
+        /// <param name="sourceCollection">The source collection.</param>
+        /// <param name="apiCollection">The collection representing the current state of the API</param>
+        /// <param name="owner">The owner of the entities.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains the comparison result.</returns>
+
         public async Task<EntityCompare.CollectionResultBucket<T, K>> CompareAndApply<T, K>(T? sourceCollection, T? apiCollection, NamedEntity? owner = null, CancellationToken cancellationToken = default)
           where T : EntityCollection<K>
           where K : NamedEntity, new()
@@ -123,7 +150,14 @@ namespace Kepware.Api
             return compareResult;
         }
 
-
+        /// <summary>
+        /// Updates an item in the Kepware server.
+        /// </summary>
+        /// <typeparam name="T">The type of the item.</typeparam>
+        /// <param name="item">The item to update.</param>
+        /// <param name="oldItem">The old item.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a boolean indicating whether the update was successful.</returns>
         public async Task<bool> UpdateItemAsync<T>(T item, T? oldItem = default, CancellationToken cancellationToken = default)
            where T : NamedEntity, new()
         {
@@ -156,10 +190,21 @@ namespace Kepware.Api
             return false;
         }
 
+        /// <summary>
+        /// Updates an item in the Kepware server.
+        /// </summary>
+        /// <typeparam name="T">The type of the entity collection.</typeparam>
+        /// <typeparam name="K">The type of the item.</typeparam>
+        /// <param name="item">The item to update.</param>
+        /// <param name="oldItem">The old item.</param>
+        /// <param name="owner">The owner of the entities.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         public Task UpdateItemAsync<T, K>(K item, K? oldItem = default, NamedEntity? owner = null, CancellationToken cancellationToken = default)
             where T : EntityCollection<K>
-          where K : NamedEntity, new()
+            where K : NamedEntity, new()
             => UpdateItemsAsync<T, K>([(item, oldItem)], owner, cancellationToken);
+
         public async Task UpdateItemsAsync<T, K>(List<(K item, K? oldItem)> items, NamedEntity? owner = null, CancellationToken cancellationToken = default)
           where T : EntityCollection<K>
           where K : NamedEntity, new()
@@ -433,9 +478,7 @@ namespace Kepware.Api
                 m_blnIsConnected = null;
                 return default;
             }
-
         }
-
 
         public Task<T?> LoadCollectionAsync<T>(NamedEntity? owner = null, CancellationToken cancellationToken = default)
           where T : EntityCollection<DefaultEntity>, new()
