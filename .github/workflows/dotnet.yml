@@ -50,46 +50,50 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') # Sicherstellen, dass der Job nur für Tags ausgeführt wird
+    if: startsWith(github.ref, 'refs/tags/v') # Nur für Tags ausführen
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-
+  
+    - name: Determine Version with nbgv
+      uses: dotnet/nbgv@master
+      id: nbgv
+      with:
+        setAllVars: true
+  
     # Herunterladen von Artefakten für jede Plattform
     - name: Download Windows Artifacts
       uses: actions/download-artifact@v4
       with:
-        name: ${{ needs.build.outputs.nbgv }}-windows
+        name: ${{ steps.nbgv.outputs.SemVer2 }}-windows
         path: artifacts/windows
+  
     - name: Download Linux Artifacts
       uses: actions/download-artifact@v4
       with:
-        name: ${{ needs.build.outputs.nbgv }}-ubuntu
+        name: ${{ steps.nbgv.outputs.SemVer2 }}-ubuntu
         path: artifacts/linux
-
+  
     # Changelog generieren
     - name: Generate Changelog
       id: changelog
       run: |
         nbgv cloud --releaseNotes > changelog.md
-      env:
-        NBGV_Version: ${{ needs.build.outputs.nbgv }}
-
-    # Release erstellen
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
+  
+    # Release erstellen oder aktualisieren
+    - name: Create or Update Release
+      uses: softprops/action-gh-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ needs.build.outputs.nbgv }}
-        release_name: Release ${{ needs.build.outputs.nbgv }}
-        body: ${{ steps.changelog.outputs }}
-        draft: false
-        prerelease: false
-
+        tag_name: ${{ github.ref_name }} # Der aktuelle Git-Tag
+        name: Release ${{ github.ref_name }} # Der Name des Releases
+        body_path: changelog.md # Changelog als Beschreibung hinzufügen
+        draft: true # Release als Entwurf markieren
+        prerelease: ${{ steps.nbgv.outputs.SemVer2 | contains('-') }} # Pre-Release, wenn Version ein Suffix hat
+  
     # Artefakte hochladen
     - name: Upload Windows Artifacts
       uses: actions/upload-release-asset@v1
@@ -98,9 +102,9 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: artifacts/windows
-        asset_name: ${{ needs.build.outputs.nbgv }}-windows.zip
+        asset_name: ${{ steps.nbgv.outputs.SemVer2 }}-windows.zip
         asset_content_type: application/zip
-
+  
     - name: Upload Linux Artifacts
       uses: actions/upload-release-asset@v1
       env:
@@ -108,5 +112,5 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: artifacts/linux
-        asset_name: ${{ needs.build.outputs.nbgv }}-ubuntu.zip
+        asset_name: ${{ steps.nbgv.outputs.SemVer2 }}-ubuntu.zip
         asset_content_type: application/zip
