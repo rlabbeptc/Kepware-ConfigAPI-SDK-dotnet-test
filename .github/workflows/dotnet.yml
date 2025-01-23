@@ -16,7 +16,9 @@ jobs:
       matrix:
         plattform: [windows, ubuntu]
     runs-on: ${{ matrix.plattform }}-latest
-
+    permissions:
+      # write permission is required to create a github release
+      contents: write
     steps:
     - uses: actions/checkout@v4
       with:
