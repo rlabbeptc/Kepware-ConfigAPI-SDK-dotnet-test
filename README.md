@@ -23,10 +23,10 @@ Example:
 ExportedYaml/
   project.yaml
   Kanal1/
-    Gerät1/
+    Gerï¿½t1/
       device.yaml
       tags.csv
-    Gerät2/
+    Gerï¿½t2/
       device.yaml
       tags.csv
 ```
@@ -110,8 +110,7 @@ For issues or feature requests, please contact the developer or refer to the doc
 ### Commit Message Convention
 We follow the [Conventional Commits](https://www.conventionalcommits.org/) standard to ensure clear and consistent commit messages.
 
-**Format:**
-<type>(<scope>): <short summary>
+**Format:** ``<type>(<scope>): <short summary>``
 
 **Examples:**
 - `feat(sync): add bi-directional synchronization for Kepware servers`
