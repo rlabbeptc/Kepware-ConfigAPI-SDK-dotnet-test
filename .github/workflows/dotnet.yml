@@ -14,8 +14,8 @@ jobs:
   build:
     strategy:
       matrix:
-        plattform: [windows, ubuntu]
-    runs-on: ${{ matrix.plattform }}-latest
+        platform: [windows, ubuntu]
+    runs-on: ${{ matrix.platform }}-latest
     permissions:
       # write permission is required to create a github release
       contents: write

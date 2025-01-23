@@ -105,3 +105,28 @@ This tool is provided "as is". Use at your own risk. The authors are not liable 
 ## Support
 For issues or feature requests, please contact the developer or refer to the documentation.
 
+## Contribution Guidelines
+
+### Commit Message Convention
+We follow the [Conventional Commits](https://www.conventionalcommits.org/) standard to ensure clear and consistent commit messages.
+
+**Format:**
+<type>(<scope>): <short summary>
+
+**Examples:**
+- `feat(sync): add bi-directional synchronization for Kepware servers`
+- `fix(api): resolve authentication issue with Kepware REST API`
+- `docs(filesystem): update documentation for local directory structure`
+- `refactor(service): optimize change detection logic`
+- `test(cli): add tests for command-line synchronization`
+
+**Types:**
+- `feat`: Introduces a new feature (e.g., new sync modes or API support)
+- `fix`: Fixes a bug (e.g., REST API issues, file parsing errors)
+- `docs`: Documentation changes (e.g., README or usage guides)
+- `style`: Code style/formatting changes (no logic, e.g., renaming variables)
+- `refactor`: Code restructuring (no functional changes, e.g., optimizing sync logic)
+- `test`: Adds or modifies tests (e.g., CLI or service behavior)
+- `chore`: Maintenance tasks (e.g., dependency updates or CI improvements)
+
+For more details, see the [Conventional Commits Specification](https://www.conventionalcommits.org/).
