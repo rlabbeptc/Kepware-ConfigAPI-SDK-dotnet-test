@@ -11,3 +11,17 @@ version-resolver:
     labels:
       - 'patch'
   default: patch
+categories:
+  - title: 🚀 Features
+    labels:
+      - feature
+  - title: 🐛 Bug Fixes
+    labels:
+      - bug
+  - title: 🛠 Maintenance
+    labels:
+      - chore
+change-template: '- ${{ change.title }} (#${{ change.number }})'
+template: |
+  # What's Changed
+  ${{ changes }}
