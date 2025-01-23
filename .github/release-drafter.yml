@@ -1,16 +1,13 @@
-﻿name-template: 'Release ${{ version }}'
-tag-template: 'v${{ version }}'
-categories:
-  - title: 🚀 Features
+﻿name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+version-resolver:
+  major:
     labels:
-      - feature
-  - title: 🐛 Bug Fixes
+      - 'major'
+  minor:
     labels:
-      - bug
-  - title: 🛠 Maintenance
+      - 'minor'
+  patch:
     labels:
-      - chore
-change-template: '- ${{ change.title }} (#${{ change.number }})'
-template: |
-  # What's Changed
-  ${{ changes }}
+      - 'patch'
+  default: patch

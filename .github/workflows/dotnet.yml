@@ -25,6 +25,13 @@ jobs:
       id: nbgv
       with:
         setAllVars: true
+    - name: Use Release Drafter
+      id: drafter
+      uses: release-drafter/release-drafter@v6
+      with:
+        version: ${{ steps.nbgv.outputs.SemVer2 }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -38,68 +45,27 @@ jobs:
     - name: dotnet publish
     
       run: dotnet publish KepwareSync.Service/Kepware.SyncService.csproj --configuration release -o publish /p:UseAppHost=true
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ steps.nbgv.outputs.SemVer2 }}-${{ matrix.plattform }}
-        path: publish
-    
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') # Nur für Tags ausführen
-    permissions:
-      # write permission is required to create a github release
-      contents: write
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    - uses: dotnet/nbgv@master
-      id: nbgv
-      with:
-        setAllVars: true
-    # Herunterladen von Artefakten für jede Plattform
-    - name: Download Windows Artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: ${{ steps.nbgv.outputs.SemVer2 }}-windows
-        path: artifacts/windows
 
-    - name: Download Linux Artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: ${{ steps.nbgv.outputs.SemVer2 }}-ubuntu
-        path: artifacts/linux
-
-    - name: Use Release Drafter
-      id: drafter
-      uses: release-drafter/release-drafter@v5
-      with:
-        version: ${{ steps.nbgv.outputs.SemVer2 }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    # Artefakte hochladen
-    - name: Upload Windows Artifacts
+    - name: Upload Windows artifacts to release
+      if: ${{ matrix.platform == 'windows' }}
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.drafter.outputs.upload_url }}
-        asset_path: artifacts/windows
-        asset_name: ${{ steps.nbgv.outputs.SemVer2 }}-windows.zip
-        asset_content_type: application/zip
+        asset_path: publish/Kepware.SyncService.exe
+        asset_name: Kepware.SyncService-${{ steps.nbgv.outputs.SemVer2 }}-windows.exe
+        asset_content_type: application/octet-stream
 
-    - name: Upload Linux Artifacts
+    - name: Upload Ubuntu artifacts to release
+      if: ${{ matrix.platform == 'ubuntu' }}
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.drafter.outputs.upload_url }}
-        asset_path: artifacts/linux
-        asset_name: ${{ steps.nbgv.outputs.SemVer2 }}-ubuntu.zip
-        asset_content_type: application/zip
-
+        asset_path: publish/Kepware.SyncService
+        asset_name: Kepware.SyncService-${{ steps.nbgv.outputs.SemVer2 }}-linux
+        asset_content_type: application/octet-stream
     
+  
