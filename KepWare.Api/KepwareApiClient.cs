@@ -73,7 +73,7 @@ namespace Kepware.Api
                     }
                 }
 
-                if (m_blnIsConnected == null) // first time after connection change
+                if (m_blnIsConnected == null || (m_blnIsConnected != null && m_blnIsConnected != blnIsConnected)) // first time after connection change or when connection is lost
                 {
                     if (!blnIsConnected)
                     {
@@ -88,7 +88,7 @@ namespace Kepware.Api
             }
             catch (HttpRequestException httpEx)
             {
-                if (m_blnIsConnected == null) // first time after connection change
+                if (m_blnIsConnected == null || m_blnIsConnected == true) // first time after connection change or when connection is lost
                     m_logger.LogWarning(httpEx, "Failed to connect to {ClientName}-client at {BaseAddress}", ClientName, m_httpClient.BaseAddress);
             }
             m_blnIsConnected = blnIsConnected;
@@ -366,7 +366,10 @@ namespace Kepware.Api
                         // with a JSON object array containing the status for each object in the request.
                         var results = await JsonSerializer.DeserializeAsync(
                             await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false),
-                            KepJsonContext.Default.ListApiResult, cancellationToken).ConfigureAwait(false);
+                            KepJsonContext.Default.ListApiResult, cancellationToken).ConfigureAwait(false) ?? [];
+
+                        //List<(K item, ApiResult result)> mappedResults = [.. pageItems.Zip(results, (item, result) => (item, result))];
+
                         var failedEntries = results?.Where(r => !r.IsSuccessStatusCode)?.ToList() ?? [];
                         m_logger.LogError("{NumSuccessFull} were successfull, failed to insert {NumFailed} {TypeName} from {Endpoint}: {ReasonPhrase}\nFailed:\n{Message}",
                             (results?.Count ?? 0) - failedEntries.Count, failedEntries.Count, typeof(T).Name, endpoint, response.ReasonPhrase, JsonSerializer.Serialize(failedEntries, KepJsonContext.Default.ListApiResult));

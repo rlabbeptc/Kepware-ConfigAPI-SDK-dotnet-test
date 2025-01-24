@@ -59,11 +59,13 @@ namespace Kepware.Api.Model
         [YamlIgnore]
         [JsonPropertyName("tags")]
         [JsonPropertyOrder(100)]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public DeviceTagCollection? Tags { get; set; }
 
         [YamlIgnore]
         [JsonPropertyName("tag_groups")]
         [JsonPropertyOrder(200)]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public DeviceTagGroupCollection? TagGroups { get; set; }
         protected override string UniqueIdKey => Properties.NonUpdatable.DeviceUniqueId;
 
@@ -95,10 +97,12 @@ namespace Kepware.Api.Model
     {
         [YamlIgnore]
         [JsonPropertyName("tags")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public DeviceTagGroupTagCollection? Tags { get; set; }
 
         [YamlIgnore]
         [JsonPropertyName("tag_groups")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public DeviceTagGroupCollection? TagGroups { get; set; }
 
         [YamlIgnore]
