@@ -17,6 +17,7 @@ jobs:
     permissions:
       # write permission is required to create a github release
       contents: write
+      pull-requests: write
     steps:
     - uses: actions/checkout@v4
       with:
@@ -54,7 +55,7 @@ jobs:
       with:
         upload_url: ${{ steps.drafter.outputs.upload_url }}
         asset_path: publish/Kepware.SyncService.exe
-        asset_name: Kepware.SyncService-${{ steps.nbgv.outputs.SemVer2 }}-windows.exe
+        asset_name: windows/Kepware.SyncService..exe
         asset_content_type: application/octet-stream
 
     - name: Upload Ubuntu artifacts to release
@@ -65,7 +66,7 @@ jobs:
       with:
         upload_url: ${{ steps.drafter.outputs.upload_url }}
         asset_path: publish/Kepware.SyncService
-        asset_name: Kepware.SyncService-${{ steps.nbgv.outputs.SemVer2 }}-linux
+        asset_name: linux/Kepware.SyncService
         asset_content_type: application/octet-stream
     
   
