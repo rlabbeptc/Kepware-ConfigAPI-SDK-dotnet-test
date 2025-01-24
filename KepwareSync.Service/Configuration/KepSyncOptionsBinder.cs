@@ -14,11 +14,20 @@ namespace Kepware.SyncService.Configuration
         private readonly Option<SyncMode> _syncMode;
         private readonly Option<int> _syncThortteling;
 
-        public KepSyncOptionsBinder()
+        public KepSyncOptionsBinder(IConfiguration configuration)
         {
             _syncDirection = new Option<SyncDirection>("--kep-sync-direction", "The primary sync direction (kepware -> disk oder disk -> kepware)");
             _syncMode = new Option<SyncMode>("--kep-sync-mode", "The sync mode (one- or twoway)");
             _syncThortteling = new Option<int>("--kep-sync-throtteling", "The throtteling time in milliseconds after a event has been detected before a sync starts");
+
+            var settingValue = configuration.GetSection("Sync").Get<KepSyncOptions>();
+
+            if (settingValue != null)
+            {
+                _syncDirection.SetDefaultValue(settingValue.SyncDirection);
+                _syncMode.SetDefaultValue(settingValue.SyncMode);
+                _syncThortteling.SetDefaultValue(settingValue.SyncThrottlingMs);
+            }
         }
         public void BindTo(Command command)
         {

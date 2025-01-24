@@ -98,11 +98,11 @@ namespace Kepware.Api.Serializer
             _logger = logger;
         }
 
-        public Task ExportTagsAsync(string filePath, List<Tag>? tags, IDataTypeEnumConverter dataTypeEnumConverter)
+        public Task ExportTagsAsync(string filePath, List<Tag>? tags, IDataTypeEnumConverter dataTypeEnumConverter, CancellationToken cancellationToken = default)
             => ExportTagsAsync(filePath, tags?
-                .Select(tag => CreateTagDictionary(tag, dataTypeEnumConverter)));
+                .Select(tag => CreateTagDictionary(tag, dataTypeEnumConverter)), cancellationToken);
 
-        public async Task ExportTagsAsync(string filePath, IEnumerable<Dictionary<string, object?>>? tags)
+        public async Task ExportTagsAsync(string filePath, IEnumerable<Dictionary<string, object?>>? tags, CancellationToken cancellationToken = default)
         {
             if (tags?.Any() == true)
             {
@@ -140,7 +140,7 @@ namespace Kepware.Api.Serializer
             }
         }
 
-        public Task<List<Tag>> ImportTagsAsync(string filePath, IDataTypeEnumConverter dataTypeEnumConverter)
+        public Task<List<Tag>> ImportTagsAsync(string filePath, IDataTypeEnumConverter dataTypeEnumConverter, CancellationToken cancellationToken = default)
         {
             var tags = new List<Tag>();
 
@@ -153,9 +153,9 @@ namespace Kepware.Api.Serializer
             csv.Read();
             csv.ReadHeader();
 
-            while (csv.Read())
+            while (csv.Read() && !cancellationToken.IsCancellationRequested)
             {
-                
+
                 csv.TryGetField<string>(CsvHeaders.TagName, out var tagName);
                 try
                 {

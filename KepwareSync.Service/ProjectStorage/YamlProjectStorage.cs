@@ -9,17 +9,17 @@ namespace Kepware.SyncService.ProjectStorage
 {
     internal class YamlProjectStorage : IProjectStorage
     {
-        public Task ExportProjecAsync(Project project)
+        public Task ExportProjecAsync(Project project, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
-        public Task<string> LoadAsJson()
+        public Task<string> LoadAsJson(CancellationToken cancellationToken = default)
         {
             return Task.FromResult("{\"project\":\"example\"}"); // Placeholder
         }
 
-        public Task<Project> LoadProject(bool blnLoadFullProject = true)
+        public Task<Project> LoadProject(bool blnLoadFullProject = true, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
@@ -29,7 +29,7 @@ namespace Kepware.SyncService.ProjectStorage
             throw new NotImplementedException();
         }
 
-        public Task<bool> SaveFromJson(string projectJson)
+        public Task<bool> SaveFromJson(string projectJson, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(true);
         }

@@ -12,26 +12,36 @@ namespace Kepware.Api
     /// <summary>
     /// Client for interacting with the Kepware server.
     /// </summary>
-    public partial class KepServerClient
+    public partial class KepwareApiClient
     {
+        public const string UNKNOWN = "Unknown";
         private const string ENDPOINT_STATUS = "/config/v1/status";
         private const string ENDPOINT_ABOUT = "/config/v1/about";
         private const string ENDPONT_FULL_PROJECT = "/config/v1/project?content=serialize";
 
-        private readonly ILogger<KepServerClient> m_logger;
+        private readonly ILogger<KepwareApiClient> m_logger;
         private readonly HttpClient m_httpClient;
         private readonly Regex m_pathplaceHolderRegex = EndpointPlaceholderRegex();
         private bool? m_blnIsConnected = null;
 
+        public string ClientName { get; } // Name des Clients
+        public string ClientHostName => m_httpClient.BaseAddress?.Host ?? UNKNOWN;
+
         /// <summary>
-        /// Initializes a new instance of the <see cref="KepServerClient"/> class.
+        /// Initializes a new instance of the <see cref="KepwareApiClient"/> class.
         /// </summary>
         /// <param name="logger">The logger instance.</param>
         /// <param name="httpClient">The HTTP client instance.</param>
-        public KepServerClient(ILogger<KepServerClient> logger, HttpClient httpClient)
+        public KepwareApiClient(ILogger<KepwareApiClient> logger, HttpClient httpClient)
+            : this(UNKNOWN, logger, httpClient)
         {
-            m_logger = logger;
-            m_httpClient = httpClient;
+        }
+
+        internal KepwareApiClient(string name, ILogger<KepwareApiClient> logger, HttpClient httpClient)
+        {
+            m_logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            m_httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            ClientName = name;
         }
 
         /// <summary>
@@ -47,7 +57,7 @@ namespace Kepware.Api
             {
                 if (m_blnIsConnected == null) // first time after connection change
                 {
-                    m_logger.LogInformation("Connecting to {BaseAddress}...", m_httpClient.BaseAddress);
+                    m_logger.LogInformation("Connecting to {ClientName}-client at {BaseAddress}...", ClientName, m_httpClient.BaseAddress);
                 }
                 var response = await m_httpClient.GetAsync(ENDPOINT_STATUS, cancellationToken).ConfigureAwait(false);
 
@@ -67,21 +77,19 @@ namespace Kepware.Api
                 {
                     if (!blnIsConnected)
                     {
-                        m_logger.LogWarning("Failed to connect to {BaseAddress}, Reason: {ReasonPhrase}", m_httpClient.BaseAddress, response.ReasonPhrase);
+                        m_logger.LogWarning("Failed to connect to {ClientName}-client at {BaseAddress}, Reason: {ReasonPhrase}", ClientName, m_httpClient.BaseAddress, response.ReasonPhrase);
                     }
                     else
                     {
                         var prodInfo = await GetProductInfoAsync(cancellationToken).ConfigureAwait(false);
-                        m_logger.LogInformation("Successfully connected to {ProductName} {ProductVersion} on {BaseAddress}", prodInfo?.ProductName, prodInfo?.ProductVersion, m_httpClient.BaseAddress);
+                        m_logger.LogInformation("Successfully connected to {ClientName}-client: {ProductName} {ProductVersion} on {BaseAddress}", ClientName, prodInfo?.ProductName, prodInfo?.ProductVersion, m_httpClient.BaseAddress);
                     }
                 }
             }
             catch (HttpRequestException httpEx)
             {
                 if (m_blnIsConnected == null) // first time after connection change
-#pragma warning disable S6667 // Logging in a catch clause should pass the caught exception as a parameter.
-                    m_logger.LogWarning("Failed to connect to {BaseAddress}: {Message}", m_httpClient.BaseAddress, httpEx.Message);
-#pragma warning restore S6667 // Logging in a catch clause should pass the caught exception as a parameter.
+                    m_logger.LogWarning(httpEx, "Failed to connect to {ClientName}-client at {BaseAddress}", ClientName, m_httpClient.BaseAddress);
             }
             m_blnIsConnected = blnIsConnected;
             return blnIsConnected;
@@ -118,6 +126,79 @@ namespace Kepware.Api
 
             return null;
         }
+
+        /// <summary>
+        /// Compares the source project with the project from the API and applies the changes to the API.
+        /// </summary>
+        /// <param name="sourceProject"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task<(int inserts, int updates, int deletes)> CompareAndApply(Project sourceProject, CancellationToken cancellationToken = default)
+         => await CompareAndApply(sourceProject, await LoadProject(blnLoadFullProject: true, cancellationToken: cancellationToken), cancellationToken).ConfigureAwait(false);
+
+        /// <summary>
+        /// Compares the source project with the project from the API and applies the changes to the API.
+        /// </summary>
+        /// <param name="sourceProject"></param>
+        /// <param name="projectFromApi"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task<(int inserts, int updates, int deletes)> CompareAndApply(Project sourceProject, Project projectFromApi, CancellationToken cancellationToken = default)
+        {
+            if (sourceProject.Hash != projectFromApi.Hash)
+            {
+                //TODO update project
+                m_logger.LogInformation("[not implemented] Project has changed. Updating project...");
+            }
+            int inserts = 0, updates = 0, deletes = 0;
+
+            var channelCompare = await CompareAndApply<ChannelCollection, Channel>(sourceProject.Channels, projectFromApi.Channels,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            updates += channelCompare.ChangedItems.Count;
+            inserts += channelCompare.ItemsOnlyInLeft.Count;
+            deletes += channelCompare.ItemsOnlyInRight.Count;
+
+            foreach (var channel in channelCompare.UnchangedItems.Concat(channelCompare.ChangedItems))
+            {
+                var deviceCompare = await CompareAndApply<DeviceCollection, Device>(channel.Left!.Devices, channel.Right!.Devices, channel.Right,
+                cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                updates += deviceCompare.ChangedItems.Count;
+                inserts += deviceCompare.ItemsOnlyInLeft.Count;
+                deletes += deviceCompare.ItemsOnlyInRight.Count;
+
+                foreach (var device in deviceCompare.UnchangedItems.Concat(deviceCompare.ChangedItems))
+                {
+                    var tagCompare = await CompareAndApply<DeviceTagCollection, Tag>(device.Left!.Tags, device.Right!.Tags, device.Right, cancellationToken).ConfigureAwait(false);
+
+                    updates += tagCompare.ChangedItems.Count;
+                    inserts += tagCompare.ItemsOnlyInLeft.Count;
+                    deletes += tagCompare.ItemsOnlyInRight.Count;
+
+                    var tagGroupCompare = await CompareAndApply<DeviceTagGroupCollection, DeviceTagGroup>(device.Left!.TagGroups, device.Right!.TagGroups, device.Right, cancellationToken).ConfigureAwait(false);
+
+                    updates += tagGroupCompare.ChangedItems.Count;
+                    inserts += tagGroupCompare.ItemsOnlyInLeft.Count;
+                    deletes += tagGroupCompare.ItemsOnlyInRight.Count;
+
+
+                    foreach (var tagGroup in tagGroupCompare.UnchangedItems.Concat(tagGroupCompare.ChangedItems))
+                    {
+                        if (tagGroup.Left?.TagGroups != null)
+                        {
+                            var result = await RecusivlyCompareTagGroup(tagGroup.Left!.TagGroups, tagGroup.Right!.TagGroups, tagGroup.Right, cancellationToken).ConfigureAwait(false);
+                            updates += result.updates;
+                            inserts += result.inserts;
+                            deletes += result.deletes;
+                        }
+                    }
+                }
+            }
+
+            return (inserts, updates, deletes);
+        }
+
 
         /// <summary>
         /// Compares two collections of entities and applies the changes to the target collection.
@@ -574,6 +655,36 @@ namespace Kepware.Api
                 if (tagGroup.TagGroups != null)
                     SetOwnerRecursive(tagGroup.TagGroups, tagGroup);
             }
+        }
+
+        private async Task<(int inserts, int updates, int deletes)> RecusivlyCompareTagGroup(DeviceTagGroupCollection left, DeviceTagGroupCollection? right, NamedEntity owner, CancellationToken cancellationToken)
+        {
+            (int inserts, int updates, int deletes) ret = (0, 0, 0);
+
+            var tagGroupCompare = await CompareAndApply<DeviceTagGroupCollection, DeviceTagGroup>(left, right, owner, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+            ret.inserts = tagGroupCompare.ItemsOnlyInLeft.Count;
+            ret.updates = tagGroupCompare.ChangedItems.Count;
+            ret.deletes = tagGroupCompare.ItemsOnlyInRight.Count;
+
+            foreach (var tagGroup in tagGroupCompare.UnchangedItems.Concat(tagGroupCompare.ChangedItems))
+            {
+                var tagGroupTagCompare = await CompareAndApply<DeviceTagGroupTagCollection, Tag>(tagGroup.Left!.Tags, tagGroup.Right!.Tags, tagGroup.Right, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                ret.inserts = tagGroupTagCompare.ItemsOnlyInLeft.Count;
+                ret.updates = tagGroupTagCompare.ChangedItems.Count;
+                ret.deletes = tagGroupTagCompare.ItemsOnlyInRight.Count;
+
+                if (tagGroup.Left!.TagGroups != null)
+                {
+                    var result = await RecusivlyCompareTagGroup(tagGroup.Left!.TagGroups, tagGroup.Right!.TagGroups, tagGroup.Right, cancellationToken: cancellationToken).ConfigureAwait(false);
+                    ret.updates += result.updates;
+                    ret.deletes += result.deletes;
+                    ret.inserts += result.inserts;
+                }
+            }
+
+            return ret;
         }
 
         private async Task LoadTagGroupsRecursiveAsync(IEnumerable<DeviceTagGroup> tagGroups, CancellationToken cancellationToken = default)

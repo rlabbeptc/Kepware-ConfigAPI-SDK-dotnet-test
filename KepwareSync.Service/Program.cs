@@ -1,25 +1,14 @@
-﻿using Kepware.Api.Model;
-using Kepware.SyncService.ProjectStorage;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+﻿using Kepware.SyncService.ProjectStorage;
 using Polly;
 using Polly.Extensions.Http;
-using System;
-using System.CommandLine.Invocation;
 using System.CommandLine;
-using System.Net.Http;
 using System.Text;
-using System.CommandLine.Builder;
-//using System.CommandLine.NamingConventionBinder;
-//using System.CommandLine.Hosting;
 using Kepware.SyncService.Configuration;
-using Microsoft.Extensions.Configuration;
 using Serilog;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
-using System.Linq;
 using Kepware.Api.Serializer;
 using Kepware.Api;
+using Microsoft.Extensions.Configuration;
 
 namespace Kepware.SyncService
 {
@@ -27,11 +16,24 @@ namespace Kepware.SyncService
     {
         static Task Main(string[] args)
         {
-            // Binder
-            var kepApiBinder = new KepApiOptionsBinder();
-            var kepStorageBinder = new KepStorageOptionsBinder();
 
-            var kepSyncBinder = new KepSyncOptionsBinder();
+            var builder = Host.CreateApplicationBuilder();
+
+            var cfgBuilder = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+                .AddEnvironmentVariables();
+
+            var configuration = cfgBuilder.Build();
+            builder.Configuration.AddConfiguration(configuration);
+
+            var app = new AppRunner(builder);
+
+            // Binder
+            var kepApiBinder = new KepApiOptionsBinder(configuration);
+            var kepStorageBinder = new KepStorageOptionsBinder(configuration);
+            var kepSyncBinder = new KepSyncOptionsBinder(configuration);
 
             // Root Command
             var rootCommand = new RootCommand("KepwareSync CLI Tool");
@@ -39,21 +41,21 @@ namespace Kepware.SyncService
             kepStorageBinder.BindTo(rootCommand);
             kepSyncBinder.BindTo(rootCommand);
 
-            rootCommand.SetHandler(RunRootCommand, kepApiBinder, kepStorageBinder, kepSyncBinder);
+            rootCommand.SetHandler(app.RunRootCommand, kepApiBinder, kepStorageBinder, kepSyncBinder);
 
             // SyncToDisk Command
             var syncToDiskCommand = new Command("SyncToDisk", "Synchronize data to disk");
             kepApiBinder.BindTo(syncToDiskCommand);
             kepStorageBinder.BindTo(syncToDiskCommand);
 
-            syncToDiskCommand.SetHandler(SyncToDisk, kepApiBinder, kepStorageBinder);
+            syncToDiskCommand.SetHandler(app.SyncToDisk, kepApiBinder, kepStorageBinder);
 
             // SyncFromDisk Command
             var syncFromDiskCommand = new Command("SyncFromDisk", "Synchronize data from disk");
             kepApiBinder.BindTo(syncFromDiskCommand);
             kepStorageBinder.BindTo(syncFromDiskCommand);
 
-            syncFromDiskCommand.SetHandler(SyncFromDisk, kepApiBinder, kepStorageBinder);
+            syncFromDiskCommand.SetHandler(app.SyncFromDisk, kepApiBinder, kepStorageBinder);
 
             // Commands hinzufügen
             rootCommand.AddCommand(syncToDiskCommand);
@@ -61,118 +63,119 @@ namespace Kepware.SyncService
 
             return rootCommand.InvokeAsync(args);
         }
-
-
-        private static async Task RunRootCommand(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions, KepSyncOptions syncOption)
+        private sealed class AppRunner(HostApplicationBuilder builder)
         {
-            var builder = ConfigureHost(apiOptions, kepStorageOptions, syncOption);
 
-            builder.Services.AddHostedService<SyncService>();
-
-            var host = builder.Build();
-
-            await host.RunAsync();
-        }
-
-        private static SyncService CreateSyncService(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions, KepSyncOptions? syncOptions = null)
-        {
-            var builder = ConfigureHost(apiOptions, kepStorageOptions, syncOptions);
-            builder.Services.AddSingleton<SyncService>();
-            var host = builder.Build();
-            return host.Services.GetRequiredService<SyncService>();
-        }
-
-        private static async Task SyncToDisk(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions)
-        {
-            var syncService = CreateSyncService(apiOptions, kepStorageOptions);
-            await syncService.SyncFromKepServerAsync();
-
-            Console.WriteLine("Sync to disk completed.");
-        }
-
-        private static async Task SyncFromDisk(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions)
-        {
-            var syncService = CreateSyncService(apiOptions, kepStorageOptions);
-            await syncService.SyncFromLocalFileAsync();
-
-            Console.WriteLine("Sync from disk completed.");
-        }
-
-
-        #region BuildHost
-        private static HostApplicationBuilder ConfigureHost(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions, KepSyncOptions? syncOptions = null)
-        {
-            var builder = Host.CreateApplicationBuilder();
-            var configuration = builder.Configuration;
-
-            configuration
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
-                .AddEnvironmentVariables();
-
-            apiOptions.UserName ??= configuration["KepApi:Username"];
-            apiOptions.Password ??= configuration["KepApi:Password"];
-            apiOptions.Host ??= configuration["KepApi:Host"];
-
-            kepStorageOptions.Directory ??= configuration["KepStorage:Directory"];
-#pragma warning disable IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
-            kepStorageOptions.PersistDefaultValue ??= configuration.GetValue<bool>("KepStorage:PersistDefaultValue");
-#pragma warning restore IL2026 // Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code
-
-            if (apiOptions.UserName == null || apiOptions.Password == null || apiOptions.Host == null)
+            public async Task RunRootCommand(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions, KepSyncOptions syncOption)
             {
-                throw new InvalidOperationException("Missing configuration for KepApiOptions");
+                ConfigureHost(apiOptions, kepStorageOptions, syncOption);
+
+                builder.Services.AddHostedService<SyncService>();
+
+                var host = builder.Build();
+
+                await host.RunAsync();
             }
 
-            builder.Services.AddLogging();
-            builder.Services.AddSerilog((services, loggerConfiguration) =>
+            private SyncService CreateSyncService(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions, KepSyncOptions? syncOptions = null)
             {
-                loggerConfiguration
-                    .ReadFrom.Configuration(builder.Configuration)
-                    .Enrich.FromLogContext()
-                    .WriteTo.Console();
-            });
+                ConfigureHost(apiOptions, kepStorageOptions, syncOptions);
+                builder.Services.AddSingleton<SyncService>();
+                var host = builder.Build();
+                return host.Services.GetRequiredService<SyncService>();
+            }
 
-            builder.Services.AddSingleton(syncOptions ?? new KepSyncOptions());
-            builder.Services.AddSingleton(apiOptions);
-            builder.Services.AddSingleton(kepStorageOptions);
-            builder.Services.AddSingleton<YamlSerializer>();
-            builder.Services.AddSingleton<CsvTagSerializer>();
-            builder.Services.AddSingleton<IProjectStorage, KepFolderStorage>();
-            builder.Services.AddHttpClient<KepServerClient>(client =>
+            public async Task SyncToDisk(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions)
             {
-                client.BaseAddress = new Uri(apiOptions.Host);
-                client.Timeout = TimeSpan.FromSeconds(apiOptions.TimeoutInSeconds);
-                client.DefaultRequestHeaders.Add("Accept", "application/json");
-                client.DefaultRequestHeaders.Add("User-Agent", "KepwareSync");
+                var syncService = CreateSyncService(apiOptions, kepStorageOptions);
+                await syncService.SyncFromPrimaryKepServerAsync();
 
-                string credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{apiOptions.UserName}:{apiOptions.Password}"));
-                client.DefaultRequestHeaders.Add("Authorization", $"Basic {credentials}");
-            })
-            .ConfigurePrimaryHttpMessageHandler(() =>
+                Console.WriteLine("Sync to disk completed.");
+            }
+
+            public async Task SyncFromDisk(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions)
             {
-                var handler = new HttpClientHandler();
-                handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
-                return handler;
-            })
-            .AddPolicyHandler(GetRetryPolicy());
+                var syncService = CreateSyncService(apiOptions, kepStorageOptions);
+                await syncService.SyncFromLocalFileAsync();
 
-            return builder;
-        }
-        #endregion
+                Console.WriteLine("Sync from disk completed.");
+            }
 
-        #region retryPolicy
-        static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
-        {
-            return HttpPolicyExtensions
-                .HandleTransientHttpError()
-                .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
-                    onRetry: (outcome, timespan, retryAttempt, context) =>
+            #region BuildHost
+            private void ConfigureHost(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions, KepSyncOptions? syncOptions = null)
+            {
+                builder.Services.AddLogging();
+                builder.Services.AddSerilog((services, loggerConfiguration) =>
+                {
+                    loggerConfiguration
+                        .ReadFrom.Configuration(builder.Configuration)
+                        .Enrich.FromLogContext()
+                        .WriteTo.Console();
+                });
+
+                builder.Services.AddSingleton(syncOptions ?? new KepSyncOptions());
+                builder.Services.AddSingleton(apiOptions);
+                builder.Services.AddSingleton(kepStorageOptions);
+                builder.Services.AddSingleton<YamlSerializer>();
+                builder.Services.AddSingleton<CsvTagSerializer>();
+                builder.Services.AddSingleton<IProjectStorage, KepFolderStorage>();
+
+                if (string.IsNullOrEmpty(apiOptions.Primary.Host))
+                    throw new ArgumentException("Primary Host is required");
+
+                builder.Services.AddKepwareApiClient(nameof(apiOptions.Primary),
+                    new KepwareApiClientOptions
                     {
-                        if (context.TryGetValue("Logger", out var objLogger) && objLogger is ILogger logger)
-                            logger.LogWarning($"Delaying for {timespan.TotalSeconds} seconds, then making retry {retryAttempt}");
+                        HostUri = new Uri(apiOptions.Primary.Host),
+                        Username = apiOptions.Primary.UserName,
+                        Password = apiOptions.Primary.Password,
+                        Timeout = TimeSpan.FromSeconds(apiOptions.TimeoutInSeconds),
+                        DisableCertifcateValidation = apiOptions.DisableCertificateValidation,
+                        ConfigureClientBuilder = ConfigureRetryPolicy
                     });
+
+                Dictionary<string, KepwareApiClientOptions> secondaryClients = [];
+                for (int i = 0; i < apiOptions.Secondary.Count; i++)
+                {
+                    var secondaryClient = apiOptions.Secondary[i];
+
+                    if (string.IsNullOrEmpty(secondaryClient.Host))
+                        throw new ArgumentException($"Secondary Host {i + 1} is required");
+
+                    secondaryClients.Add($"{nameof(apiOptions.Secondary)}-{i + 1:00}",
+                        new KepwareApiClientOptions
+                        {
+                            HostUri = new Uri(secondaryClient.Host),
+                            Username = secondaryClient.UserName,
+                            Password = secondaryClient.Password,
+                            Timeout = TimeSpan.FromSeconds(apiOptions.TimeoutInSeconds),
+                            DisableCertifcateValidation = apiOptions.DisableCertificateValidation,
+                            ConfigureClientBuilder = ConfigureRetryPolicy
+                        });
+                }
+
+                builder.Services.AddKepwareApiClients(secondaryClients);
+            }
+            #endregion
+
+            #region retryPolicy
+
+            private static void ConfigureRetryPolicy(IHttpClientBuilder httpClientBuilder)
+                => httpClientBuilder.AddPolicyHandler(GetRetryPolicy());
+
+            private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+            {
+                return HttpPolicyExtensions
+                    .HandleTransientHttpError()
+                    .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                        onRetry: (outcome, timespan, retryAttempt, context) =>
+                        {
+                            if (context.TryGetValue("Logger", out var objLogger) && objLogger is ILogger logger)
+                                logger.LogWarning("Delaying for {DelayTime} seconds, then making retry {RetryAttempt}", timespan.TotalSeconds, retryAttempt);
+                        });
+            }
+            #endregion
+
         }
-        #endregion
     }
 }
