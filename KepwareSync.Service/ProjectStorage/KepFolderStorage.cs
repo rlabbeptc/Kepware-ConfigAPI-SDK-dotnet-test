@@ -140,11 +140,6 @@ namespace Kepware.SyncService.ProjectStorage
                 var projectFile = Path.Combine(m_baseDirectory.FullName, "project.yaml");
                 await m_yamlSerializer.SaveAsYaml(projectFile, project, cancellationToken);
                 await ExportChannelsAsync(project.Channels, cancellationToken);
-
-#if DEBUG
-                project.Cleanup(true);
-                await File.WriteAllTextAsync(Path.Combine(m_baseDirectory.FullName, "project.json"), JsonSerializer.Serialize(new JsonProjectRoot { Project = project }, KepJsonContext.Default.JsonProjectRoot), cancellationToken);
-#endif
             }
             catch (Exception ex)
             {

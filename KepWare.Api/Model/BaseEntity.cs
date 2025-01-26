@@ -3,6 +3,7 @@ using Kepware.Api.Util;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -21,6 +22,7 @@ namespace Kepware.Api.Model
         [YamlIgnore]
         public NamedEntity? Owner { get; internal set; }
     }
+
     public interface IHaveName
     {
         public string Name { get; }
@@ -117,6 +119,18 @@ namespace Kepware.Api.Model
             _hash = null;
         }
 
+        public bool TryGetGetDynamicProperty<T>(string key, [NotNullWhen(true)] out T? value)
+        {
+            if (DynamicProperties.TryGetValue(key, out var jsonElement) &&
+                Convert.ChangeType(KepJsonContext.Unwrap(jsonElement), typeof(T)) is T convertedValue)
+            {
+                value = convertedValue;
+                return true;
+            }
+            value = default;
+            return false;
+        }
+
         protected internal virtual ulong CalculateHash()
         {
             return CustomHashGenerator.ComputeHash(
@@ -139,7 +153,7 @@ namespace Kepware.Api.Model
             return null;
         }
 
-        public virtual void Cleanup(bool blnRemoveProjectId = false)
+        public virtual async Task Cleanup(IKepwareDefaultValueProvider defaultValueProvider, bool blnRemoveProjectId = false, CancellationToken cancellationToken = default)
         {
             DynamicProperties = DynamicProperties.Except(Properties.NonSerialized.AsHashSet, ConditionalNonSerialized()).ToDictionary(x => x.Key, x => x.Value);
             if (DynamicProperties.TryGetValue(Properties.Description, out var descriptionElement) &&
@@ -148,9 +162,23 @@ namespace Kepware.Api.Model
                 DynamicProperties.Remove(Properties.Description);
             }
 
+            if (TryGetGetDynamicProperty<string>(Properties.DeviceDriver, out var driver))
+            {
+                var defaultValues = await defaultValueProvider.GetDefaultValuesAsync(driver, TypeName, cancellationToken);
+
+                foreach (var prop in DynamicProperties.ToList())
+                {
+                    if (defaultValues.TryGetValue(prop.Key, out var defaultValue) &&
+                        KepJsonContext.JsonElementEquals(prop.Value, defaultValue!))
+                    {
+                        DynamicProperties.Remove(prop.Key);
+                    }
+                }
+            }
+
             if (blnRemoveProjectId)
             {
-                ProjectId = null; 
+                ProjectId = null;
             }
         }
     }
@@ -195,7 +223,7 @@ namespace Kepware.Api.Model
             foreach (var kvp in DynamicProperties.Except(Properties.NonSerialized.AsHashSet, Properties.NonUpdatable.AsHashSet, ConditionalNonSerialized()))
             {
                 if (!other.DynamicProperties.TryGetValue(kvp.Key, out var otherValue) ||
-                    !KepJsonContext.Equals(kvp.Value, otherValue))
+                    !KepJsonContext.JsonElementEquals(kvp.Value, otherValue))
                 {
                     diff[kvp.Key] = kvp.Value;
                 }

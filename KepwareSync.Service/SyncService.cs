@@ -157,7 +157,9 @@ namespace Kepware.SyncService
         {
             m_logger.LogInformation("Synchronizing full project from primary Kepware...");
             var project = await m_kepServerClient.LoadProject(true);
+            await project.Cleanup(m_kepServerClient, true, cancellationToken);
             await m_projectStorage.ExportProjecAsync(project);
+
             m_lastProjectId = project.ProjectId;
 
 

@@ -2,9 +2,15 @@
 using Kepware.Api.Serializer;
 using Kepware.Api.Util;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Net;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using System.Text.RegularExpressions;
 
 namespace Kepware.Api
@@ -12,21 +18,27 @@ namespace Kepware.Api
     /// <summary>
     /// Client for interacting with the Kepware server.
     /// </summary>
-    public partial class KepwareApiClient
+    public partial class KepwareApiClient : IKepwareDefaultValueProvider
     {
         public const string UNKNOWN = "Unknown";
         private const string ENDPOINT_STATUS = "/config/v1/status";
         private const string ENDPOINT_ABOUT = "/config/v1/about";
         private const string ENDPONT_FULL_PROJECT = "/config/v1/project?content=serialize";
+        private static readonly Regex s_pathplaceHolderRegex = EndpointPlaceholderRegex();
 
         private readonly ILogger<KepwareApiClient> m_logger;
         private readonly HttpClient m_httpClient;
-        private readonly Regex m_pathplaceHolderRegex = EndpointPlaceholderRegex();
+
+        private List<Docs.Driver>? m_cachedSupportedDrivers = null;
+        private readonly ConcurrentDictionary<string, Docs.Channel> m_cachedSupportedChannels = [];
+        private readonly ConcurrentDictionary<string, Docs.Device> m_cachedSupportedDevices = [];
+
         private bool? m_blnIsConnected = null;
 
         public string ClientName { get; } // Name des Clients
         public string ClientHostName => m_httpClient.BaseAddress?.Host ?? UNKNOWN;
 
+        #region Constructors
         /// <summary>
         /// Initializes a new instance of the <see cref="KepwareApiClient"/> class.
         /// </summary>
@@ -43,7 +55,9 @@ namespace Kepware.Api
             m_httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             ClientName = name;
         }
+        #endregion
 
+        #region connection test & product info
         /// <summary>
         /// Tests the connection to the Kepware server.
         /// </summary>
@@ -126,6 +140,9 @@ namespace Kepware.Api
 
             return null;
         }
+        #endregion
+
+        #region CompareAndApply
 
         /// <summary>
         /// Compares the source project with the project from the API and applies the changes to the API.
@@ -134,8 +151,11 @@ namespace Kepware.Api
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         public async Task<(int inserts, int updates, int deletes)> CompareAndApply(Project sourceProject, CancellationToken cancellationToken = default)
-         => await CompareAndApply(sourceProject, await LoadProject(blnLoadFullProject: true, cancellationToken: cancellationToken), cancellationToken).ConfigureAwait(false);
-
+        {
+            var projectFromApi = await LoadProject(blnLoadFullProject: true, cancellationToken: cancellationToken);
+            await projectFromApi.Cleanup(this, true, cancellationToken).ConfigureAwait(false);
+            return await CompareAndApply(sourceProject, projectFromApi, cancellationToken).ConfigureAwait(false);
+        }
         /// <summary>
         /// Compares the source project with the project from the API and applies the changes to the API.
         /// </summary>
@@ -232,7 +252,9 @@ namespace Kepware.Api
 
             return compareResult;
         }
+        #endregion
 
+        #region Update
         /// <summary>
         /// Updates an item in the Kepware server.
         /// </summary>
@@ -329,7 +351,9 @@ namespace Kepware.Api
                 m_blnIsConnected = null;
             }
         }
+        #endregion
 
+        #region Insert
         public Task InsertItemAsync<T, K>(K item, NamedEntity? owner = null)
           where T : EntityCollection<K>
           where K : NamedEntity, new()
@@ -382,6 +406,9 @@ namespace Kepware.Api
                 m_blnIsConnected = null;
             }
         }
+        #endregion
+
+        #region Delete
 
         public Task DeleteItemAsync<T, K>(K item, NamedEntity? owner = null, CancellationToken cancellationToken = default)
             where T : EntityCollection<K>
@@ -417,8 +444,17 @@ namespace Kepware.Api
                 m_blnIsConnected = null;
             }
         }
+        #endregion
 
+        #region Load
 
+        #region LoadProject
+        /// <summary>
+        /// Loads the project from the Kepware server.
+        /// </summary>
+        /// <param name="blnLoadFullProject"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<Project> LoadProject(bool blnLoadFullProject = false, CancellationToken cancellationToken = default)
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
@@ -523,7 +559,9 @@ namespace Kepware.Api
                 return project;
             }
         }
+        #endregion
 
+        #region LoadEntity
         public Task<T?> LoadEntityAsync<T>(NamedEntity? owner = null, IEnumerable<KeyValuePair<string, string>>? queryParams = null, CancellationToken cancellationToken = default)
           where T : BaseEntity, new()
         {
@@ -565,6 +603,9 @@ namespace Kepware.Api
                 return default;
             }
         }
+        #endregion
+
+        #region LoadCollection
 
         public Task<T?> LoadCollectionAsync<T>(NamedEntity? owner = null, CancellationToken cancellationToken = default)
           where T : EntityCollection<DefaultEntity>, new()
@@ -614,18 +655,211 @@ namespace Kepware.Api
                 return default;
             }
         }
-        protected async Task<K?> DeserializeJsonAsync<K>(HttpResponseMessage httpResponse, CancellationToken cancellationToken = default)
-          where K : BaseEntity, new()
+        #endregion
+
+        #region docs
+        public async Task<List<Docs.Driver>> SupportedDriversAsync(CancellationToken cancellationToken = default)
+        {
+            if (m_cachedSupportedDrivers == null)
+            {
+                m_cachedSupportedDrivers = await LoadSupportedDriversAsync(cancellationToken).ConfigureAwait(false);
+            }
+            return m_cachedSupportedDrivers;
+        }
+
+        public Task<Docs.Channel> GetChannelPropertiesAsync(Docs.Driver driver, CancellationToken cancellationToken = default)
+         => GetChannelPropertiesAsync(driver.DisplayName!, cancellationToken);
+
+        public async Task<Docs.Channel> GetChannelPropertiesAsync(string driverName, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(driverName))
+            {
+                throw new ArgumentNullException(nameof(driverName));
+            }
+
+            if (m_cachedSupportedChannels.TryGetValue(driverName, out var channels))
+            {
+                return channels;
+            }
+            else
+            {
+                m_cachedSupportedChannels[driverName] = channels = await LoadChannelPropertiesAsync(driverName, cancellationToken).ConfigureAwait(false);
+                return channels;
+            }
+        }
+
+        public Task<Docs.Device> GetDevicePropertiesAsync(Docs.Driver driver, CancellationToken cancellationToken = default)
+            => GetDevicePropertiesAsync(driver.DisplayName!, cancellationToken);
+
+        public async Task<Docs.Device> GetDevicePropertiesAsync(string driverName, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(driverName))
+            {
+                throw new ArgumentNullException(nameof(driverName));
+            }
+
+            if (m_cachedSupportedDevices.TryGetValue(driverName, out var devices))
+            {
+                return devices;
+            }
+            else
+            {
+                m_cachedSupportedDevices[driverName] = devices = await LoadDevicePropertiesAsync(driverName, cancellationToken).ConfigureAwait(false);
+                return devices;
+            }
+        }
+        protected virtual async Task<List<Docs.Driver>> LoadSupportedDriversAsync(CancellationToken cancellationToken = default)
+        {
+            var endpoint = ResolveEndpoint<Docs.Driver>();
+
+            var response = await m_httpClient.GetAsync(endpoint, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException($"Failed to load drivers from {endpoint}: {response.ReasonPhrase}");
+            }
+
+            return await DeserializeJsonAsync(response, KepDocsJsonContext.Default.ListDriver, cancellationToken).ConfigureAwait(false) ?? [];
+        }
+
+        protected virtual async Task<Docs.Device> LoadDevicePropertiesAsync(string driverName, CancellationToken cancellationToken)
+        {
+            var endpoint = ResolveEndpoint<Docs.Device>([driverName]);
+
+            var response = await m_httpClient.GetAsync(endpoint, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException($"Failed to load device properties from {endpoint}: {response.ReasonPhrase}");
+            }
+
+            return await DeserializeJsonAsync(response, KepDocsJsonContext.Default.Device, cancellationToken).ConfigureAwait(false) ??
+                throw new HttpRequestException($"Failed to load device properties from {endpoint}: unable to desrialze");
+        }
+
+        protected virtual async Task<Docs.Channel> LoadChannelPropertiesAsync(string driverName, CancellationToken cancellationToken)
+        {
+            var endpoint = ResolveEndpoint<Docs.Channel>([driverName]);
+
+            var response = await m_httpClient.GetAsync(endpoint, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException($"Failed to load channel properties from {endpoint}: {response.ReasonPhrase}");
+            }
+
+            return await DeserializeJsonAsync(response, KepDocsJsonContext.Default.Channel, cancellationToken).ConfigureAwait(false) ??
+                throw new HttpRequestException($"Failed to load channel properties from {endpoint}: unable to desrialze");
+        }
+        #endregion
+
+        #endregion
+
+        #region ResolveEndpoint
+        public static string ResolveEndpoint<T>()
+            => ResolveEndpoint<T>([]);
+        /// <summary>
+        /// Resolves the endpoint for the specified entity type.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="owner"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public static string ResolveEndpoint<T>(NamedEntity? owner)
+        {
+            var endpointTemplateAttribute = typeof(T).GetCustomAttributes(typeof(EndpointAttribute), false)
+                .OfType<EndpointAttribute>()
+                .FirstOrDefault();
+
+            if (endpointTemplateAttribute == null)
+            {
+                throw new InvalidOperationException($"No endpoint defined for {typeof(T).Name}");
+            }
+
+            if (endpointTemplateAttribute is RecursiveEndpointAttribute recursiveEndpointAttribute && recursiveEndpointAttribute.RecursiveOwnerType == owner?.GetType())
+            {
+                return ResolveRecursiveEndpoint(recursiveEndpointAttribute, owner) + endpointTemplateAttribute.Suffix;
+            }
+
+            return ReplacePlaceholders(endpointTemplateAttribute.EndpointTemplate, owner?.Flatten().Select(n => n.Name) ?? []) + endpointTemplateAttribute.Suffix;
+        }
+
+        /// <summary>
+        /// Resolves the endpoint for the specified entity type.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="placeholderValues"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public static string ResolveEndpoint<T>(IEnumerable<string> placeholderValues)
+        {
+            var endpointTemplateAttribute = typeof(T).GetCustomAttributes(typeof(EndpointAttribute), false)
+                .OfType<EndpointAttribute>()
+                .FirstOrDefault();
+
+            if (endpointTemplateAttribute == null)
+            {
+                throw new InvalidOperationException($"No endpoint defined for {typeof(T).Name}");
+            }
+
+            return ReplacePlaceholders(endpointTemplateAttribute.EndpointTemplate, placeholderValues) + endpointTemplateAttribute.Suffix;
+        }
+
+        private static string ReplacePlaceholders(string template, IEnumerable<string> placeholderValues)
+        {
+            var placeholders = s_pathplaceHolderRegex.Matches(template).Reverse().ToArray();
+            var values = placeholderValues.ToArray();
+            if (placeholders.Length != values.Length)
+            {
+                throw new InvalidOperationException($"The number of placeholders in the template '{template}' does not match the number of values ({string.Join(",", values)}).");
+            }
+
+            foreach (var match in placeholders.Zip(values, (placeholder, value) => (placeholder, value)))
+            {
+                template = template.Replace(match.placeholder.Value, Uri.EscapeDataString(match.value));
+            }
+
+            return template;
+        }
+
+        private static string ResolveRecursiveEndpoint(RecursiveEndpointAttribute attribute, NamedEntity? owner)
+        {
+            LinkedList<string> recursivePath = new LinkedList<string>();
+            while (owner != null && attribute.RecursiveOwnerType == owner?.GetType())
+            {
+                var currentEndpointPart = ReplacePlaceholders(attribute.RecursiveEnd, [owner.Name]);
+                recursivePath.AddFirst(currentEndpointPart);
+
+                if (owner is IHaveOwner ownable && ownable.Owner is NamedEntity nextOwner)
+                    owner = nextOwner;
+                else
+                    owner = null;
+            }
+
+            // Combine with the base endpoint template 
+            var baseEndpoint = ReplacePlaceholders(attribute.EndpointTemplate, owner?.Flatten().Select(n => n.Name) ?? []);
+
+            return baseEndpoint + string.Concat(recursivePath);
+        }
+
+        [GeneratedRegex(@"\{(.+?)\}", RegexOptions.Compiled)]
+        private static partial Regex EndpointPlaceholderRegex();
+        #endregion
+
+        #region private methods
+
+        #region deserialize
+        protected Task<K?> DeserializeJsonAsync<K>(HttpResponseMessage httpResponse, CancellationToken cancellationToken = default)
+          where K : BaseEntity, new() => DeserializeJsonAsync<K>(httpResponse, KepJsonContext.GetJsonTypeInfo<K>(), cancellationToken);
+
+        protected async Task<K?> DeserializeJsonAsync<K>(HttpResponseMessage httpResponse, JsonTypeInfo<K> jsonTypeInfo, CancellationToken cancellationToken = default)
         {
             try
             {
                 using var stream = await httpResponse.Content.ReadAsStreamAsync(cancellationToken);
-                return await JsonSerializer.DeserializeAsync(stream, KepJsonContext.GetJsonTypeInfo<K>(), cancellationToken);
+                return await JsonSerializer.DeserializeAsync(stream, jsonTypeInfo, cancellationToken);
             }
             catch (JsonException ex)
             {
                 m_logger.LogError(ex, "JSON Deserialization failed");
-                return null;
+                return default;
             }
         }
 
@@ -644,7 +878,9 @@ namespace Kepware.Api
                 return null;
             }
         }
+        #endregion
 
+        #region recursive methods
         private static void SetOwnerRecursive(IEnumerable<DeviceTagGroup> tagGroups, NamedEntity owner)
         {
             foreach (var tagGroup in tagGroups)
@@ -705,74 +941,35 @@ namespace Kepware.Api
                 }
             }
         }
-        private string ReplacePlaceholders(string template, NamedEntity? owner)
+        #endregion
+        #endregion
+
+        #region IKepwareDefaultValueProvider
+        private readonly ConcurrentDictionary<string, ReadOnlyDictionary<string, JsonElement>> m_driverDefaultValues = [];
+        async Task<ReadOnlyDictionary<string, JsonElement>> IKepwareDefaultValueProvider.GetDefaultValuesAsync(string driverName, string entityName, CancellationToken cancellationToken)
         {
-            var placeholders = m_pathplaceHolderRegex.Matches(template).Reverse();
-
-            foreach (Match placeholder in placeholders)
+            var key = $"{driverName}/{entityName}";
+            if (m_driverDefaultValues.TryGetValue(key, out var deviceDefaults))
             {
-                var placeholderName = placeholder.Groups[1].Value;
-
-                string? placeholderValue = owner?.Name;
-                if (!string.IsNullOrEmpty(placeholderValue))
+                return deviceDefaults;
+            }
+            else
+            {
+                Docs.CollectionDefinition collectionDefinition = entityName switch
                 {
-                    template = template.Replace(placeholder.Value, Uri.EscapeDataString(placeholderValue));
+                    nameof(Channel) => await GetChannelPropertiesAsync(driverName, cancellationToken),
+                    nameof(Device) => await GetDevicePropertiesAsync(driverName, cancellationToken),
+                    _ => Docs.CollectionDefinition.Empty,
+                };
 
-                    if (owner is IHaveOwner ownable && ownable.Owner != null)
-                        owner = ownable.Owner;
-                    else
-                        break;
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Placeholder '{placeholderName}' in template '{template}' could not be resolved.");
-                }
+                var defaults = collectionDefinition?.PropertyDefinitions?
+                    .Where(p => !string.IsNullOrEmpty(p.SymbolicName) && p.SymbolicName != Properties.DeviceDriver)
+                    .ToDictionary(p => p.SymbolicName!, p => p.GetDefaultValue()) ?? [];
+
+                return m_driverDefaultValues[key] = new ReadOnlyDictionary<string, JsonElement>(defaults);
             }
-
-            return template;
         }
 
-        private string ResolveRecursiveEndpoint(RecursiveEndpointAttribute attribute, NamedEntity? owner)
-        {
-            LinkedList<string> recursivePath = new LinkedList<string>();
-            while (owner != null && attribute.RecursiveOwnerType == owner?.GetType())
-            {
-                var currentEndpointPart = ReplacePlaceholders(attribute.RecursiveEnd, owner);
-                recursivePath.AddFirst(currentEndpointPart);
-
-                if (owner is IHaveOwner ownable && ownable.Owner is NamedEntity nextOwner)
-                    owner = nextOwner;
-                else
-                    owner = null;
-            }
-
-            // Combine with the base endpoint template
-            var baseEndpoint = ReplacePlaceholders(attribute.EndpointTemplate, owner);
-
-            return baseEndpoint + string.Concat(recursivePath);
-        }
-
-        private string ResolveEndpoint<T>(NamedEntity? owner)
-        {
-            var endpointTemplateAttribute = typeof(T).GetCustomAttributes(typeof(EndpointAttribute), false)
-                .OfType<EndpointAttribute>()
-                .FirstOrDefault();
-
-            if (endpointTemplateAttribute == null)
-            {
-                throw new InvalidOperationException($"No endpoint defined for {typeof(T).Name}");
-            }
-
-            if (endpointTemplateAttribute is RecursiveEndpointAttribute recursiveEndpointAttribute && recursiveEndpointAttribute.RecursiveOwnerType == owner?.GetType())
-            {
-                return ResolveRecursiveEndpoint(recursiveEndpointAttribute, owner) + endpointTemplateAttribute.Suffix;
-            }
-
-            return ReplacePlaceholders(endpointTemplateAttribute.EndpointTemplate, owner) + endpointTemplateAttribute.Suffix;
-        }
-
-
-        [GeneratedRegex(@"\{(.+?)\}", RegexOptions.Compiled)]
-        private static partial Regex EndpointPlaceholderRegex();
+        #endregion
     }
 }
