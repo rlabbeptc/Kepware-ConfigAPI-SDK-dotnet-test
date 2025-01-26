@@ -2,13 +2,11 @@
 using Polly;
 using Polly.Extensions.Http;
 using System.CommandLine;
-using System.Text;
 using Kepware.SyncService.Configuration;
 using Serilog;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 using Kepware.Api.Serializer;
 using Kepware.Api;
-using Microsoft.Extensions.Configuration;
 
 namespace Kepware.SyncService
 {
@@ -16,7 +14,6 @@ namespace Kepware.SyncService
     {
         static Task Main(string[] args)
         {
-
             var builder = Host.CreateApplicationBuilder();
 
             var cfgBuilder = new ConfigurationBuilder()
@@ -69,11 +66,8 @@ namespace Kepware.SyncService
             public async Task RunRootCommand(KepApiOptions apiOptions, KepStorageOptions kepStorageOptions, KepSyncOptions syncOption)
             {
                 ConfigureHost(apiOptions, kepStorageOptions, syncOption);
-
                 builder.Services.AddHostedService<SyncService>();
-
                 var host = builder.Build();
-
                 await host.RunAsync();
             }
 
@@ -108,9 +102,12 @@ namespace Kepware.SyncService
                 builder.Services.AddSerilog((services, loggerConfiguration) =>
                 {
                     loggerConfiguration
-                        .ReadFrom.Configuration(builder.Configuration)
                         .Enrich.FromLogContext()
-                        .WriteTo.Console();
+                        .MinimumLevel.Information()
+                        .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+                        .MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
+                        .WriteTo.Console()
+                        .WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day);
                 });
 
                 builder.Services.AddSingleton(syncOptions ?? new KepSyncOptions());

@@ -27,27 +27,26 @@ namespace Kepware.Api.Serializer
             return typeof(BaseEntity).IsAssignableFrom(type);
         }
 
-        object? IYamlTypeConverter.ReadYaml(IParser parser, Type type, ObjectDeserializer deserializer)
+
+        object? IYamlTypeConverter.ReadYaml(IParser parser, Type type, ObjectDeserializer rootDeserializer)
         {
-#pragma warning disable IL2067 // Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The parameter of method does not have matching annotations.
             return ReadYamlWithAttributes(
                    parser,
                    type,
-                   deserializer);
-#pragma warning restore IL2067 // Target parameter argument does not satisfy 'DynamicallyAccessedMembersAttribute' in call to target method. The parameter of method does not have matching annotations.
+                   rootDeserializer);
         }
 
-        public object? ReadYamlWithAttributes(IParser parser, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] Type type, ObjectDeserializer nestedObjectDeserializer)
+        public object? ReadYamlWithAttributes(IParser parser, Type type, ObjectDeserializer nestedObjectDeserializer)
         {
             if (!typeof(BaseEntity).IsAssignableFrom(type))
             {
                 throw new InvalidOperationException($"Cannot deserialize type {type}");
             }
 
-            var entity = (BaseEntity)Activator.CreateInstance(type)!;
+            var entity = EntityFactory.CreateInstance(type);
 
             // Erwartet den Start eines Mappings
-            if (!(parser.Current is MappingStart))
+            if (parser.Current is not MappingStart)
             {
                 throw new YamlException("Expected MappingStart");
             }
@@ -64,7 +63,7 @@ namespace Kepware.Api.Serializer
                     continue;
                 }
 
-                if (!(parser.Current is Scalar keyScalar))
+                if (parser.Current is not Scalar keyScalar)
                 {
                     throw new YamlException("Expected Scalar for key");
                 }
@@ -101,7 +100,7 @@ namespace Kepware.Api.Serializer
                 case Scalar scalar:
                     string? scalarValue = scalar.Value;
 
-                    if(scalar.Style == ScalarStyle.DoubleQuoted || scalar.Style == ScalarStyle.SingleQuoted)
+                    if (scalar.Style == ScalarStyle.DoubleQuoted || scalar.Style == ScalarStyle.SingleQuoted)
                         return scalarValue;
                     if (int.TryParse(scalarValue, out var intValue))
                         return intValue;
