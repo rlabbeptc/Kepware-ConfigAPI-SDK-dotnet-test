@@ -29,7 +29,7 @@ namespace Kepware.Api
         private readonly ILogger<KepwareApiClient> m_logger;
         private readonly HttpClient m_httpClient;
 
-        private List<Docs.Driver>? m_cachedSupportedDrivers = null;
+        private ReadOnlyDictionary<string, Docs.Driver>? m_cachedSupportedDrivers = null;
         private readonly ConcurrentDictionary<string, Docs.Channel> m_cachedSupportedChannels = [];
         private readonly ConcurrentDictionary<string, Docs.Device> m_cachedSupportedDevices = [];
 
@@ -205,6 +205,12 @@ namespace Kepware.Api
 
                     foreach (var tagGroup in tagGroupCompare.UnchangedItems.Concat(tagGroupCompare.ChangedItems))
                     {
+                        var tagGroupTagCompare = await CompareAndApply<DeviceTagGroupTagCollection, Tag>(tagGroup.Left!.Tags, tagGroup.Right!.Tags, tagGroup.Right, cancellationToken).ConfigureAwait(false);
+
+                        updates += tagGroupTagCompare.ChangedItems.Count;
+                        inserts += tagGroupTagCompare.ItemsOnlyInLeft.Count;
+                        deletes += tagGroupTagCompare.ItemsOnlyInRight.Count;
+
                         if (tagGroup.Left?.TagGroups != null)
                         {
                             var result = await RecusivlyCompareTagGroup(tagGroup.Left!.TagGroups, tagGroup.Right!.TagGroups, tagGroup.Right, cancellationToken).ConfigureAwait(false);
@@ -369,6 +375,28 @@ namespace Kepware.Api
             try
             {
                 var endpoint = ResolveEndpoint<T>(owner);
+
+                if (typeof(K) == typeof(Channel) || typeof(K) == typeof(Device))
+                {
+                    //check for usage of non supported drivers
+                    var drivers = await SupportedDriversAsync(cancellationToken);
+
+                    var groupedItems = items
+                      .GroupBy(i =>
+                      {
+                          var driver = i.GetDynamicProperty<string>(Properties.DeviceDriver);
+                          return !string.IsNullOrEmpty(driver) && drivers.ContainsKey(driver);
+                      });
+
+                    var unsupportedItems = groupedItems.FirstOrDefault(g => !g.Key)?.ToList() ?? [];
+                    if (unsupportedItems.Count > 0)
+                    {
+                        items = groupedItems.FirstOrDefault(g => g.Key)?.ToList() ?? [];
+                        m_logger.LogWarning("The following {NumItems} {TypeName} have unsupported drivers ({ListOfUsedUnsupportedDrivers}) and will not be inserted: {ItemsNames}",
+                            unsupportedItems.Count, typeof(K).Name, unsupportedItems.Select(i => i.GetDynamicProperty<string>(Properties.DeviceDriver)).Distinct(), unsupportedItems.Select(i => i.Name));
+                    }
+                }
+
                 var totalPageCount = (int)Math.Ceiling((double)items.Count / pageSize);
                 for (int i = 0; i < totalPageCount; i++)
                 {
@@ -658,11 +686,13 @@ namespace Kepware.Api
         #endregion
 
         #region docs
-        public async Task<List<Docs.Driver>> SupportedDriversAsync(CancellationToken cancellationToken = default)
+        public async Task<ReadOnlyDictionary<string, Docs.Driver>> SupportedDriversAsync(CancellationToken cancellationToken = default)
         {
             if (m_cachedSupportedDrivers == null)
             {
-                m_cachedSupportedDrivers = await LoadSupportedDriversAsync(cancellationToken).ConfigureAwait(false);
+                var drivers = await LoadSupportedDriversAsync(cancellationToken).ConfigureAwait(false);
+
+                m_cachedSupportedDrivers = drivers.Where(d => !string.IsNullOrEmpty(d.DisplayName)).ToDictionary(d => d.DisplayName!).AsReadOnly();
             }
             return m_cachedSupportedDrivers;
         }

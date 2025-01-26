@@ -7,7 +7,7 @@ on:
       - "v*.*.*" # Trigger für Tags wie v1.0.0
   pull_request:
     branches: [ "master" ]
-    
+
 jobs:
   build:
     strategy:
@@ -15,58 +15,55 @@ jobs:
         platform: [windows, ubuntu]
     runs-on: ${{ matrix.platform }}-latest
     permissions:
-      # write permission is required to create a github release
       contents: write
       pull-requests: write
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0 # avoid shallow clone so nbgv can do its work.
-    - uses: dotnet/nbgv@master
-      id: nbgv
-      with:
-        setAllVars: true
-    - name: Use Release Drafter
-      id: drafter
-      uses: release-drafter/release-drafter@v6
-      with:
-        version: ${{ steps.nbgv.outputs.SemVer2 }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 9.0.x
-    - name: Restore dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore --configuration release
-    # - name: Test
-    #   run: dotnet test --no-build --verbosity normal
-    - name: dotnet publish
-    
-      run: dotnet publish KepwareSync.Service/Kepware.SyncService.csproj --configuration release -o publish /p:UseAppHost=true
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # avoid shallow clone so nbgv can do its work.
+      - uses: dotnet/nbgv@master
+        id: nbgv
+        with:
+          setAllVars: true
+      - name: Use Release Drafter
+        id: drafter
+        uses: release-drafter/release-drafter@v6
+        with:
+          version: ${{ steps.nbgv.outputs.SemVer2 }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore --configuration release
+      # - name: Test
+      #   run: dotnet test --no-build --verbosity normal
+      - name: dotnet publish
+        run: dotnet publish KepwareSync.Service/Kepware.SyncService.csproj --configuration release -o publish /p:UseAppHost=true
 
-    - name: Upload Windows artifacts to release
-      if: ${{ matrix.platform == 'windows' }}
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.drafter.outputs.upload_url }}
-        asset_path: publish/Kepware.SyncService.exe
-        asset_name: windows/Kepware.SyncService..exe
-        asset_content_type: application/octet-stream
+      # Upload artifacts only for non-pull_request events
+      - name: Upload Windows artifacts to release
+        if: ${{ github.event_name != 'pull_request' && matrix.platform == 'windows' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.drafter.outputs.upload_url }}
+          asset_path: publish/Kepware.SyncService.exe
+          asset_name: windows/Kepware.SyncService.exe
+          asset_content_type: application/octet-stream
 
-    - name: Upload Ubuntu artifacts to release
-      if: ${{ matrix.platform == 'ubuntu' }}
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.drafter.outputs.upload_url }}
-        asset_path: publish/Kepware.SyncService
-        asset_name: linux/Kepware.SyncService
-        asset_content_type: application/octet-stream
-    
-  
+      - name: Upload Ubuntu artifacts to release
+        if: ${{ github.event_name != 'pull_request' && matrix.platform == 'ubuntu' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.drafter.outputs.upload_url }}
+          asset_path: publish/Kepware.SyncService
+          asset_name: linux/Kepware.SyncService
+          asset_content_type: application/octet-stream
