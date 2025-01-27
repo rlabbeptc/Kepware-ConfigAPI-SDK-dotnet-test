@@ -7,6 +7,7 @@ on:
     paths:
       - 'Kepware.Api/**'
       - 'KepwareSync.Service/**'
+      - '.github/workflows/docker-build-and-push.yml' 
       - '!*.md' # Exclude markdown files
 
 jobs:
@@ -43,8 +44,8 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./Kepware.SyncService/Dockerfile
+          file: ./KepwareSync.Service/Dockerfile
           push: true
-          tags: ghcr.io/${{ env.REPO_OWNER_LOWER }}/Kepware-SyncService:latest
+          tags: ghcr.io/${{ env.REPO_OWNER_LOWER }}/kepware-sync-service:latest
           labels: |
             org.opencontainers.image.source=${{ github.repository }}

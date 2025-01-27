@@ -380,11 +380,30 @@ namespace Kepware.Api
         #endregion
 
         #region Insert
+        /// <summary>
+        /// Inserts an item in the Kepware server.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="K"></typeparam>
+        /// <param name="item"></param>
+        /// <param name="owner"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<bool> InsertItemAsync<T, K>(K item, NamedEntity? owner = null, CancellationToken cancellationToken = default)
           where T : EntityCollection<K>
           where K : NamedEntity, new()
             => (await InsertItemsAsync<T, K>([item], owner: owner, cancellationToken: cancellationToken)).FirstOrDefault();
 
+        /// <summary>
+        /// Inserts a list of items in the Kepware server.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="K"></typeparam>
+        /// <param name="items"></param>
+        /// <param name="pageSize"></param>
+        /// <param name="owner"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<bool[]> InsertItemsAsync<T, K>(List<K> items, int pageSize = 10, NamedEntity? owner = null, CancellationToken cancellationToken = default)
          where T : EntityCollection<K>
          where K : NamedEntity, new()
@@ -470,6 +489,13 @@ namespace Kepware.Api
         #endregion
 
         #region Delete
+        /// <summary>
+        /// Deletes an item from the Kepware server.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="item"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<bool> DeleteItemAsync<T>(T item, CancellationToken cancellationToken = default)
           where T : NamedEntity, new()
         {
@@ -495,11 +521,29 @@ namespace Kepware.Api
             }
             return false;
         }
-
+        /// <summary>
+        /// Deletes an item from the Kepware server.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="K"></typeparam>
+        /// <param name="item"></param>
+        /// <param name="owner"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public Task DeleteItemAsync<T, K>(K item, NamedEntity? owner = null, CancellationToken cancellationToken = default)
             where T : EntityCollection<K>
             where K : NamedEntity, new()
             => DeleteItemsAsync<T, K>([item], owner, cancellationToken);
+
+        /// <summary>
+        /// Deletes a list of items from the Kepware server.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="K"></typeparam>
+        /// <param name="items"></param>
+        /// <param name="owner"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
 
         public async Task DeleteItemsAsync<T, K>(List<K> items, NamedEntity? owner = null, CancellationToken cancellationToken = default)
             where T : EntityCollection<K>

@@ -1,14 +1,14 @@
 name: .NET
 
 on:
+  
   push:
     branches: [ "master" ]
-    tags:
-      - "v*.*.*" # Trigger for tags like v1.0.0
     paths:
       - 'Kepware.Api/**'
       - 'Kepware.Api.Sample/**'
       - 'KepwareSync.Service/**'
+      - '.github/workflows/dotnet.yml' 
       - '!*.md' # Exclude markdown files
   pull_request:
     branches: [ "master" ]
@@ -16,6 +16,7 @@ on:
       - 'Kepware.Api/**'
       - 'Kepware.Api.Sample/**'
       - 'KepwareSync.Service/**'
+      - '.github/workflows/dotnet.yml'  
       - '!*.md' # Exclude markdown files
 
 jobs:
