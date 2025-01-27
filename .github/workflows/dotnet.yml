@@ -38,7 +38,7 @@ jobs:
         with:
           setAllVars: true
       - name: Use Release Drafter
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name != 'pull_request' && matrix.platform == 'ubuntu' }}
         id: drafter
         uses: release-drafter/release-drafter@v6
         with:
@@ -58,20 +58,32 @@ jobs:
         run: |
           dotnet nuget push ./Kepware.Api/bin/Release/*.nupkg \
             --api-key ${{ secrets.GITHUB_TOKEN }} \
+            --skip-duplicate \
             --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
       # - name: Test
       #   run: dotnet test --no-build --verbosity normal
       - name: dotnet publish
         run: dotnet publish KepwareSync.Service/Kepware.SyncService.csproj --configuration release -o publish /p:UseAppHost=true
         
-      - name: Upload artifacts to release
-        if: ${{ github.event_name != 'pull_request' }}
-        uses: svenstaro/upload-release-action@v2
-        with:
-            repo_token: ${{ secrets.GITHUB_TOKEN }}
-            file_glob: true
-            file: publish/*
-            asset_name: Kepware.SyncService.linux-x64
-            tag: ${{ github.ref }}
-            overwrite: true
-            release_name:  ${{ steps.nbgv.outputs.SemVer2 }}
+      - name: Create and Upload Release Asset (Linux)
+        if: runner.os == 'Linux'
+        run: |
+            # Create the ZIP file with only the required files
+            zip -j Kepware.SyncService-linux-x64.zip \
+                $(find . -path '**/publish/Kepware.SyncService') \
+                $(find . -path '**/publish/Kepware.SyncService.dbg') \
+                $(find . -path '**/publish/appsettings.json')
+            # Upload the ZIP file
+            gh release upload v${{ steps.nbgv.outputs.SemVer2 }} Kepware.SyncService-linux-x64.zip --clobber
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and Upload Release Asset (Windows)
+        if: runner.os == 'Windows'
+        run: |
+            # Create the ZIP file with only the required files
+            Compress-Archive -Path @(".\publish\Kepware.SyncService.exe",".\publish\Kepware.SyncService.pdb", ".\publish\appsettings.json") -DestinationPath Kepware.SyncService-win-x64.zip
+            # Upload the ZIP file
+            gh release upload v${{ steps.nbgv.outputs.SemVer2 }} Kepware.SyncService-win-x64.zip --clobber
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
