@@ -63,36 +63,14 @@ jobs:
       #   run: dotnet test --no-build --verbosity normal
       - name: dotnet publish
         run: dotnet publish KepwareSync.Service/Kepware.SyncService.csproj --configuration release -o publish /p:UseAppHost=true
-
-      # Upload artifacts only for non-pull_request events
-      - name: Upload Windows artifacts to release
-        if: ${{ github.event_name != 'pull_request' && matrix.platform == 'windows' }}
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+      - name: Upload artifacts to release
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: svenstaro/upload-release-action@v2
         with:
-          upload_url: ${{ steps.drafter.outputs.upload_url }}
-          asset_path: publish/Kepware.SyncService.exe
-          asset_name: Kepware.SyncService.win-x64.exe
-          asset_content_type: application/octet-stream
-      - name: Upload appsettings artifacts to release
-        if: ${{ github.event_name != 'pull_request' && matrix.platform == 'windows' }}
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.drafter.outputs.upload_url }}
-          asset_path: publish/appsettings.json
-          asset_name: appsettings.json
-          asset_content_type: application/octet-stream
-
-      - name: Upload Ubuntu artifacts to release
-        if: ${{ github.event_name != 'pull_request' && matrix.platform == 'ubuntu' }}
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.drafter.outputs.upload_url }}
-          asset_path: publish/Kepware.SyncService
-          asset_name: Kepware.SyncService.linux-x64
-          asset_content_type: application/octet-stream
+            repo_token: ${{ secrets.GITHUB_TOKEN }}
+            file_glob: publish/*
+            asset_name: Kepware.SyncService.linux-x64
+            tag: ${{ github.ref }}
+            overwrite: true
+            release_name:  ${{ steps.nbgv.outputs.SemVer2 }}
