@@ -28,7 +28,6 @@ namespace Kepware.Api.Model
         public string Name { get; }
     }
 
-
     [DebuggerDisplay("{TypeName} - {Description}")]
     public abstract class BaseEntity : IEquatable<BaseEntity>
     {

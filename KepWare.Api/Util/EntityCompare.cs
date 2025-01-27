@@ -231,8 +231,7 @@ namespace Kepware.Api.Util
             }
         }
 
-        public class CollectionResultBucket<T, K>
-            where T : EntityCollection<K>
+        public class CollectionResultBucket<K>
             where K : BaseEntity
         {
             /// <summary>

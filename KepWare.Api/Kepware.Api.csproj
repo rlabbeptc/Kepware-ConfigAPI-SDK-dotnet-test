@@ -3,12 +3,22 @@
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <OutputType>Library</OutputType>
     <Nullable>enable</Nullable>
     <PublishAot>true</PublishAot>
     <IsAotCompatible>true</IsAotCompatible>
     <InvariantGlobalization>true</InvariantGlobalization>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <PackageId>Kepware.Api</PackageId>
+    <Authors>Ray Labbe, Bo Biene</Authors>
+    <Company>PTC Inc.</Company>
+    <Description>A .NET library for interacting with the Kepware Configuration API.</Description>
+    <RepositoryUrl>https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/Kepware.Api</PackageProjectUrl>
   </PropertyGroup>
 
 

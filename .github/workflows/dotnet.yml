@@ -55,7 +55,7 @@ jobs:
         with:
           upload_url: ${{ steps.drafter.outputs.upload_url }}
           asset_path: publish/Kepware.SyncService.exe
-          asset_name: windows/Kepware.SyncService.exe
+          asset_name: Kepware.SyncService.win-x64.exe
           asset_content_type: application/octet-stream
 
       - name: Upload Ubuntu artifacts to release
@@ -66,5 +66,5 @@ jobs:
         with:
           upload_url: ${{ steps.drafter.outputs.upload_url }}
           asset_path: publish/Kepware.SyncService
-          asset_name: linux/Kepware.SyncService
+          asset_name: Kepware.SyncService.linux-x64
           asset_content_type: application/octet-stream
