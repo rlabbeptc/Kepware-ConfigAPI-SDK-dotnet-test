@@ -19,16 +19,18 @@ RUN apt-get update \
     clang zlib1g-dev
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["KepwareSync.csproj", "."]
-RUN dotnet restore "./KepwareSync.csproj"
+COPY ["Directory.Build.props", "."]
+COPY ["KepwareSync.Service/Kepware.SyncService.csproj", "KepwareSync.Service/"]
+COPY ["Kepware.Api/Kepware.Api.csproj", "Kepware.Api/"]
+RUN dotnet restore "./KepwareSync.Service/Kepware.SyncService.csproj"
 COPY . .
-WORKDIR "/src/."
-RUN dotnet build "./KepwareSync.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/KepwareSync.Service"
+RUN dotnet build "./Kepware.SyncService.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # Diese Stufe wird verwendet, um das Dienstprojekt zu veröffentlichen, das in die letzte Phase kopiert werden soll.
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./KepwareSync.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=true
+RUN dotnet publish "./Kepware.SyncService.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=true
 
 # Diese Stufe wird als Basis für die letzte Stufe verwendet, wenn sie von VS gestartet wird, um das Debuggen im regulären Modus zu unterstützen (Standardwert, wenn die Debugkonfiguration nicht verwendet wird).
 FROM base AS aotdebug
@@ -43,4 +45,4 @@ USER app
 FROM ${FINAL_BASE_IMAGE:-mcr.microsoft.com/dotnet/runtime-deps:9.0} AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["./KepwareSync"]
+ENTRYPOINT ["./Kepware.SyncService"]

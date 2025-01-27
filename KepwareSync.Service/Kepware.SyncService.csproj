@@ -10,7 +10,6 @@
     <IsAotCompatible>true</IsAotCompatible>
     <InvariantGlobalization>true</InvariantGlobalization>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-    <DockerfileContext>.</DockerfileContext>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
