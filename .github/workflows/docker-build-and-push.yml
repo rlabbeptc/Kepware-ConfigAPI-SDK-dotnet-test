@@ -3,15 +3,17 @@ name: Build and Push Docker Image
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    permissions:
+        packages: write
+        contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
             fetch-depth: 0 # avoid shallow clone so nbgv can do its work.
 
@@ -39,6 +41,6 @@ jobs:
           context: .
           file: ./Kepware.SyncService/Dockerfile
           push: true
-          tags: ghcr.io/${{ env.REPO_OWNER_LOWER }}/Kepware.SyncService:latest
+          tags: ghcr.io/${{ env.REPO_OWNER_LOWER }}/Kepware-SyncService:latest
           labels: |
             org.opencontainers.image.source=${{ github.repository }}

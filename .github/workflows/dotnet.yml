@@ -17,6 +17,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      packages: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,7 +45,7 @@ jobs:
       - name: Push to GitHub Packages
         if: ${{ github.event_name != 'pull_request' && matrix.platform == 'ubuntu' }}
         run: |
-          dotnet nuget push ./nupkg/*.nupkg \
+          dotnet nuget push ./Kepware.Api/bin/Release/*.nupkg \
             --api-key ${{ secrets.GITHUB_TOKEN }} \
             --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
       # - name: Test
