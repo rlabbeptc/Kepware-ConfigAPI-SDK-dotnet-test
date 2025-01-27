@@ -11,12 +11,19 @@ using Kepware.Api.Util;
 
 namespace Kepware.Api.Serializer
 {
+    /// <summary>
+    /// Provides methods for serializing and deserializing YAML data.
+    /// </summary>
     public class YamlSerializer
     {
         private readonly ISerializer _serializer;
         private readonly IDeserializer _deserializer;
         private readonly ILogger<YamlSerializer> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="YamlSerializer"/> class.
+        /// </summary>
+        /// <param name="logger">The logger to use for logging information.</param>
         public YamlSerializer(ILogger<YamlSerializer> logger)
         {
             _logger = logger;
@@ -24,7 +31,6 @@ namespace Kepware.Api.Serializer
             var context = new KepYamlContext();
 
             var converter = new BaseEntityYamlTypeConverter(Properties.NonSerialized.AsHashSet);
-
 
             _serializer = new StaticSerializerBuilder(context)
                 .WithTypeConverter(converter)
@@ -37,6 +43,13 @@ namespace Kepware.Api.Serializer
                 .Build();
         }
 
+        /// <summary>
+        /// Loads an entity from a YAML file.
+        /// </summary>
+        /// <typeparam name="T">The type of the entity to load.</typeparam>
+        /// <param name="filePath">The path to the YAML file.</param>
+        /// <param name="cancellationToken">A cancellation token to observe while waiting for the task to complete.</param>
+        /// <returns>The loaded entity.</returns>
         public async Task<T> LoadFromYaml<T>(string filePath, CancellationToken cancellationToken = default)
             where T : BaseEntity, new()
         {
@@ -61,6 +74,12 @@ namespace Kepware.Api.Serializer
             return entity;
         }
 
+        /// <summary>
+        /// Saves an entity as a YAML file.
+        /// </summary>
+        /// <param name="filePath">The path to the YAML file.</param>
+        /// <param name="entity">The entity to save.</param>
+        /// <param name="cancellationToken">A cancellation token to observe while waiting for the task to complete.</param>
         public async Task SaveAsYaml(string filePath, object entity, CancellationToken cancellationToken = default)
         {
             var yaml = _serializer.Serialize(entity);
@@ -72,7 +91,7 @@ namespace Kepware.Api.Serializer
                 if (File.Exists(filePath))
                 {
                     File.Delete(filePath);
-                    _logger.LogInformation("File {filePath} was empty and has been deleted", filePath);
+                    _logger.LogInformation("File {FilePath} was empty and has been deleted", filePath);
                 }
             }
             else

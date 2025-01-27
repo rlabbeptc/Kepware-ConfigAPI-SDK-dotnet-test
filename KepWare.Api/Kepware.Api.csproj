@@ -19,6 +19,7 @@
     <RepositoryUrl>https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/Kepware.Api</PackageProjectUrl>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
 

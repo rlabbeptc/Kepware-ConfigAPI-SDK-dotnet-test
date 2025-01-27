@@ -1,5 +1,9 @@
 # Kepware.Api
 
+[![Build Status](https://github.com/BoBiene/Kepware-ConfigAPI-SDK-dotnet/actions/workflows/dotnet.yml/badge.svg)](https://github.com/BoBiene/Kepware-ConfigAPI-SDK-dotnet/actions)
+[![NuGet](https://img.shields.io/badge/nuget-v1.0.0-blue.svg)](https://github.com/BoBiene/Kepware-ConfigAPI-SDK-dotnet/packages/)
+
+
 ## Overview
 The `Kepware.Api` library provides a robust client implementation to interact with the Kepware Configuration API. It supports managing channels, devices, tags, and other configurations programmatically while ensuring secure and efficient communication.
 
@@ -11,6 +15,27 @@ The `Kepware.Api` library provides a robust client implementation to interact wi
 - Built-in support for Dependency Injection to simplify integration.
 
 ## Installation
+
+To install the package via the GitHub NuGet feed, you need to configure your project to use the GitHub Packages repository.
+
+### Add the GitHub NuGet source
+
+Add the following configuration to your `NuGet.config` file in the root of your project or in the global configuration directory:
+
+```xml
+<configuration>
+  <packageSources>
+    <add key="GitHub" value="https://nuget.pkg.github.com/YourUsername/index.json" />
+  </packageSources>
+  <packageSourceCredentials>
+    <GitHub>
+      <add key="Username" value="YourUsername" />
+      <add key="ClearTextPassword" value="YOUR_PERSONAL_ACCESS_TOKEN" />
+    </GitHub>
+  </packageSourceCredentials>
+</configuration>
+```
+
 1. Add the `Kepware.Api` library to your project as a reference.
    ```bash
    dotnet add package Kepware.Api

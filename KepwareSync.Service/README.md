@@ -1,4 +1,5 @@
 # KepwareSync.Service
+[![Build Status](https://github.com/BoBiene/Kepware-ConfigAPI-SDK-dotnet/actions/workflows/dotnet.yml/badge.svg)](https://github.com/BoBiene/Kepware-ConfigAPI-SDK-dotnet/actions)
 
 ## Overview
 The `KepwareSync.Service` is a CLI and service tool designed for synchronizing configuration data between Kepware servers and a local filesystem. It supports both one-way and two-way synchronization, making it ideal for real-time configuration management.

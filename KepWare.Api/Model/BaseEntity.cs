@@ -5,62 +5,94 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
-using System.Xml.Serialization;
 using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NodeTypeResolvers;
 
 namespace Kepware.Api.Model
 {
+    /// <summary>
+    /// Interface for entities that have an owner.
+    /// </summary>
     public interface IHaveOwner
     {
+        /// <summary>
+        /// The owner of the entity.
+        /// </summary>
         [JsonIgnore]
         [YamlIgnore]
         public NamedEntity? Owner { get; internal set; }
     }
 
+    /// <summary>
+    /// Interface for entities that have a name.
+    /// </summary>
     public interface IHaveName
     {
+        /// <summary>
+        /// The name of the entity.
+        /// </summary>
         public string Name { get; }
     }
 
+    /// <summary>
+    /// Abstract base class for all entities in the Kepware API.
+    /// </summary>
     [DebuggerDisplay("{TypeName} - {Description}")]
     public abstract class BaseEntity : IEquatable<BaseEntity>
     {
-        protected ulong? _hash;
+        private ulong? _hash;
 
+        /// <summary>
+        /// Unique hash representing the current state of the entity.
+        /// </summary>
         [JsonIgnore]
         [YamlIgnore]
         public ulong Hash => _hash ??= CalculateHash();
 
+        /// <summary>
+        /// The project ID the entity belongs to.
+        /// </summary>
         [JsonPropertyName(Properties.ProjectId)]
         [YamlIgnore]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public long? ProjectId { get; set; } = null;
 
+        /// <summary>
+        /// The description of the entity.
+        /// </summary>
         [JsonPropertyName(Properties.Description)]
         [YamlMember(Alias = Properties.Description)]
         public string? Description { get; set; } = string.Empty;
 
+        /// <summary>
+        /// The type name of the entity.
+        /// </summary>
         [JsonIgnore]
         [YamlIgnore]
         public string TypeName => GetType().Name;
 
+        /// <summary>
+        /// Dynamic properties associated with the entity.
+        /// </summary>
         [JsonExtensionData]
-        // Add the known scalar types to for the Serializer as Attribte like , boolean int to support AOT
+        public Dictionary<string, JsonElement> DynamicProperties { get; set; } = new();
 
-        //Yaml-Properties
-        public Dictionary<string, JsonElement> DynamicProperties { get; set; } = [];
+        /// <summary>
+        /// Compares the current entity with another for equality.
+        /// </summary>
+        /// <param name="other">The other entity to compare with.</param>
+        /// <returns>True if the entities are equal, false otherwise.</returns>
+        public virtual bool Equals(BaseEntity? other) => other?.Hash == Hash;
 
-        public virtual bool Equals(BaseEntity? other)
-        {
-            return other?.Hash == Hash;
-        }
-
+        /// <summary>
+        /// Retrieves a dynamic property by key.
+        /// </summary>
+        /// <typeparam name="T">The type of the property.</typeparam>
+        /// <param name="key">The key of the property.</param>
+        /// <returns>The value of the property, or default if not found.</returns>
         public T? GetDynamicProperty<T>(string key)
         {
             if (DynamicProperties.TryGetValue(key, out var value))
@@ -94,32 +126,35 @@ namespace Kepware.Api.Model
 
                     throw new NotSupportedException($"Type '{typeof(T)}' is not supported.");
                 }
-
-                // Directly attempt to cast the value if it's not a JsonElement
                 if (value is T castValue)
                 {
                     return castValue;
                 }
             }
-
             return default;
         }
 
+        /// <summary>
+        /// Sets a dynamic property for the entity.
+        /// </summary>
+        /// <typeparam name="T">The type of the property.</typeparam>
+        /// <param name="key">The key of the property.</param>
+        /// <param name="value">The value of the property.</param>
+        /// <returns>The current instance for chaining.</returns>
         public BaseEntity SetDynamicProperty<T>(string key, T value)
         {
-            if (value is JsonElement jsonElement)
-            {
-                DynamicProperties[key] = jsonElement;
-            }
-            else
-            {
-                DynamicProperties[key] = KepJsonContext.WrapInJsonElement(value);
-            }
+            DynamicProperties[key] = value is JsonElement jsonElement ? jsonElement : KepJsonContext.WrapInJsonElement(value);
             _hash = null;
-
             return this;
         }
 
+        /// <summary>
+        /// Attempts to retrieve a dynamic property by key.
+        /// </summary>
+        /// <typeparam name="T">The type of the property.</typeparam>
+        /// <param name="key">The key of the property.</param>
+        /// <param name="value">The retrieved value, or null if not found.</param>
+        /// <returns>True if the property exists, false otherwise.</returns>
         public bool TryGetGetDynamicProperty<T>(string key, [NotNullWhen(true)] out T? value)
         {
             if (DynamicProperties.TryGetValue(key, out var jsonElement) &&
@@ -132,6 +167,10 @@ namespace Kepware.Api.Model
             return false;
         }
 
+        /// <summary>
+        /// Calculates the hash for the entity.
+        /// </summary>
+        /// <returns>The calculated hash.</returns>
         protected internal virtual ulong CalculateHash()
         {
             return CustomHashGenerator.ComputeHash(
@@ -144,16 +183,31 @@ namespace Kepware.Api.Model
                 );
         }
 
+        /// <summary>
+        /// Appends additional hash sources for derived classes.
+        /// </summary>
+        /// <param name="builder">The hash source builder.</param>
+        /// <returns>The updated hash source builder.</returns>
+
         protected virtual CustomHashGenerator.HashSourceBuilder AppendHashSources(CustomHashGenerator.HashSourceBuilder builder)
         {
             return builder;
         }
 
+        /// <summary>
+        /// Retrieves the conditional non-serialized properties for the entity.
+        /// </summary>
         protected virtual ISet<string>? ConditionalNonSerialized()
         {
             return null;
         }
 
+        /// <summary>
+        /// Cleans up the entity by removing unnecessary properties and standardizing its state.
+        /// </summary>
+        /// <param name="defaultValueProvider">Provider for default values.</param>
+        /// <param name="blnRemoveProjectId">Whether to remove the project ID.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
         public virtual async Task Cleanup(IKepwareDefaultValueProvider defaultValueProvider, bool blnRemoveProjectId = false, CancellationToken cancellationToken = default)
         {
             DynamicProperties = DynamicProperties.Except(Properties.NonSerialized.AsHashSet, ConditionalNonSerialized()).ToDictionary(x => x.Key, x => x.Value);
@@ -166,7 +220,6 @@ namespace Kepware.Api.Model
             if (TryGetGetDynamicProperty<string>(Properties.DeviceDriver, out var driver))
             {
                 var defaultValues = await defaultValueProvider.GetDefaultValuesAsync(driver, TypeName, cancellationToken);
-
                 foreach (var prop in DynamicProperties.ToList())
                 {
                     if (defaultValues.TryGetValue(prop.Key, out var defaultValue) &&
@@ -184,25 +237,44 @@ namespace Kepware.Api.Model
         }
     }
 
-
+    /// <summary>
+    /// A default entity with an optional owner.
+    /// </summary>
     public class DefaultEntity : BaseEntity, IHaveOwner
     {
+        /// <summary>
+        /// The owner of the entity.
+        /// </summary>
         [YamlIgnore]
         [JsonIgnore]
         public NamedEntity? Owner { get; set; }
     }
 
+    /// <summary>
+    /// A named entity with a unique name and description.
+    /// </summary>
     [DebuggerDisplay("{TypeName} - {Name} - {Description}")]
     public class NamedEntity : DefaultEntity, IHaveName
     {
+        /// <summary>
+        /// The name of the entity.
+        /// </summary>
         [JsonPropertyName(Properties.Name)]
         [YamlIgnore]
-        //Yaml File-Name
         public string Name { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Appends additional hash sources for named entities.
+        /// </summary>
         protected override CustomHashGenerator.HashSourceBuilder AppendHashSources(CustomHashGenerator.HashSourceBuilder builder)
-         => base.AppendHashSources(builder).Append(nameof(Name), Name);
+            => base.AppendHashSources(builder).Append(nameof(Name), Name);
 
+        /// <summary>
+        /// Retrieves the differences between this entity and another.
+        /// </summary>
+        /// <param name="other">The other entity to compare with.</param>
+        /// <param name="blnAddProjectId">Whether to include the project ID in the differences.</param>
+        /// <returns>A dictionary of differences.</returns>
         public virtual Dictionary<string, JsonElement> GetUpdateDiff(NamedEntity other, bool blnAddProjectId = true)
         {
             var diff = new Dictionary<string, JsonElement>();
@@ -229,22 +301,30 @@ namespace Kepware.Api.Model
                     diff[kvp.Key] = kvp.Value;
                 }
             }
-
             return diff;
         }
     }
 
+    /// <summary>
+    /// A named entity with a unique identifier.
+    /// </summary>
     public abstract class NamedUidEntity : NamedEntity
     {
+        /// <summary>
+        /// The unique ID of the entity.
+        /// </summary>
         [JsonIgnore]
         [YamlIgnore]
         public long UniqueId => GetDynamicProperty<long>(UniqueIdKey);
 
+        /// <summary>
+        /// The key used to retrieve the unique ID.
+        /// </summary>
         protected abstract string UniqueIdKey { get; }
 
-        public void RemoveUniqueId()
-        {
-            DynamicProperties.Remove(UniqueIdKey);
-        }
+        /// <summary>
+        /// Removes the unique ID from the entity.
+        /// </summary>
+        public void RemoveUniqueId() => DynamicProperties.Remove(UniqueIdKey);
     }
 }

@@ -20,6 +20,9 @@ namespace Kepware.Api
     /// </summary>
     public partial class KepwareApiClient : IKepwareDefaultValueProvider
     {
+        /// <summary>
+        /// The value for an unknown client or host name.
+        /// </summary>
         public const string UNKNOWN = "Unknown";
         private const string ENDPOINT_STATUS = "/config/v1/status";
         private const string ENDPOINT_ABOUT = "/config/v1/about";
@@ -35,7 +38,14 @@ namespace Kepware.Api
 
         private bool? m_blnIsConnected = null;
 
-        public string ClientName { get; } // Name des Clients
+        /// <summary>
+        /// Gets the name of the client.
+        /// </summary>
+        public string ClientName { get; }
+
+        /// <summary>
+        /// Gets the host name of the client.
+        /// </summary>
         public string ClientHostName => m_httpClient.BaseAddress?.Host ?? UNKNOWN;
 
         #region Constructors
@@ -238,22 +248,22 @@ namespace Kepware.Api
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>A task that represents the asynchronous operation. The task result contains the comparison result.</returns>
 
-        public async Task<EntityCompare.CollectionResultBucket<T, K>> CompareAndApply<T, K>(T? sourceCollection, T? apiCollection, NamedEntity? owner = null, CancellationToken cancellationToken = default)
+        public async Task<EntityCompare.CollectionResultBucket<K>> CompareAndApply<T, K>(T? sourceCollection, T? apiCollection, NamedEntity? owner = null, CancellationToken cancellationToken = default)
           where T : EntityCollection<K>
           where K : NamedEntity, new()
         {
             var compareResult = EntityCompare.Compare<T, K>(sourceCollection, apiCollection);
 
-            /// This are the items that are in the API but not in the source
-            /// --> we need to delete them
+            // This are the items that are in the API but not in the source
+            // --> we need to delete them
             await DeleteItemsAsync<T, K>(compareResult.ItemsOnlyInRight.Select(i => i.Right!).ToList(), owner, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            /// This are the items both in the API and the source
-            /// --> we need to update them
+            // This are the items both in the API and the source
+            // --> we need to update them
             await UpdateItemsAsync<T, K>(compareResult.ChangedItems.Select(i => (i.Left!, i.Right)).ToList(), owner, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            /// This are the items that are in the source but not in the API
-            /// --> we need to insert them
+            // This are the items that are in the source but not in the API
+            // --> we need to insert them
             await InsertItemsAsync<T, K>(compareResult.ItemsOnlyInLeft.Select(i => i.Left!).ToList(), owner: owner, cancellationToken: cancellationToken).ConfigureAwait(false);
 
             return compareResult;
@@ -316,6 +326,15 @@ namespace Kepware.Api
             where K : NamedEntity, new()
             => UpdateItemsAsync<T, K>([(item, oldItem)], owner, cancellationToken);
 
+        /// <summary>
+        /// Updates a list of items in the Kepware server.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="K"></typeparam>
+        /// <param name="items"></param>
+        /// <param name="owner"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task UpdateItemsAsync<T, K>(List<(K item, K? oldItem)> items, NamedEntity? owner = null, CancellationToken cancellationToken = default)
           where T : EntityCollection<K>
           where K : NamedEntity, new()
