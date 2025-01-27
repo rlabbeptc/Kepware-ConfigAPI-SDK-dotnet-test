@@ -2,112 +2,80 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Text;
-using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Kepware.Api.Model
 {
-    public class ApiResult
-    {
-
-        [JsonPropertyName("code")]
-        public int Code { get; set; }
-
-        [JsonPropertyName("message")]
-        public string Message { get; set; } = string.Empty;
-
-        [JsonIgnore]
-        public HttpStatusCode HttpStatusCode => (HttpStatusCode)Code;
-
-
-        /// <summary>
-        /// true if System.Net.Http.HttpResponseMessage.StatusCode was in the range 200-299
-        /// </summary>
-        [JsonIgnore]
-        public bool IsSuccessStatusCode => Code >= 200 && Code < 300;
-    }
-
-    public class ApiStatus
-    {
-        public string Name { get; set; } = string.Empty;
-        public bool Healthy { get; set; } = false;
-    }
-
-    public enum ProductType
-    {
-        Unknown = 0,
-        ThingWorxKepwareEdge = 13,
-        KEPServerEX = 12
-    }
-
-    public class ProductInfo
-    {
-        [JsonPropertyName("product_id")]
-        public string ProductId { get; set; } = string.Empty;
-
-        [JsonPropertyName("product_name")]
-        public string ProductName { get; set; } = string.Empty;
-
-        [JsonPropertyName("product_version")]
-        public string ProductVersion { get; set; } = string.Empty;
-
-        [JsonPropertyName("product_version_major")]
-        public int ProductVersionMajor { get; set; }
-
-        [JsonPropertyName("product_version_minor")]
-        public int ProductVersionMinor { get; set; }
-
-        [JsonPropertyName("product_version_build")]
-        public int ProductVersionBuild { get; set; }
-
-        [JsonPropertyName("product_version_patch")]
-        public int ProductVersionPatch { get; set; }
-
-        public ProductType ProductType =>
-            int.TryParse(ProductId, out var id) ? (ProductType)id : Enum.TryParse<ProductType>(ProductName, out var prodType) ? prodType : ProductType.Unknown;
-
-        /// <summary>
-        ///  Added to Kepware Server v6.17 / Kepware Edge v1.10 and later builds
-        /// </summary>
-        [JsonIgnore]
-        public bool SupportsJsonProjectLoadService =>
-            (ProductType == ProductType.KEPServerEX && (ProductVersionMajor > 6 || (ProductVersionMajor == 6 && ProductVersionMinor >= 17))) ||
-            (ProductType == ProductType.ThingWorxKepwareEdge && (ProductVersionMajor > 1 || (ProductVersionMajor == 1 && ProductVersionMinor >= 10)));
-    }
-
+    /// <summary>
+    /// Contains classes and definitions for API documentation.
+    /// </summary>
     public static class Docs
     {
+        /// <summary>
+        /// Represents a driver in the API documentation.
+        /// </summary>
         [Endpoint("/config/v1/doc/drivers/")]
         public class Driver
         {
+            /// <summary>
+            /// Gets or sets the namespace of the driver.
+            /// </summary>
             [JsonPropertyName("namespace")]
             public string? Namespace { get; set; }
 
+            /// <summary>
+            /// Gets or sets the display name of the driver.
+            /// </summary>
             [JsonPropertyName("display_name")]
             public string? DisplayName { get; set; }
 
+            /// <summary>
+            /// Gets or sets the documentation channels of the driver.
+            /// </summary>
             [JsonPropertyName("doc_channels")]
             public string? DocChannels { get; set; }
 
+            /// <summary>
+            /// Gets or sets the documentation devices of the driver.
+            /// </summary>
             [JsonPropertyName("doc_devices")]
             public string? DocDevices { get; set; }
 
+            /// <summary>
+            /// Gets or sets the documentation meter groups of the driver.
+            /// </summary>
             [JsonPropertyName("doc_meter_groups")]
             public string? DocMeterGroups { get; set; }
 
+            /// <summary>
+            /// Gets or sets the documentation meters of the driver.
+            /// </summary>
             [JsonPropertyName("doc_meters")]
             public string? DocMeters { get; set; }
         }
 
+        /// <summary>
+        /// Represents a collection definition in the API documentation.
+        /// </summary>
         public abstract class CollectionDefinition
         {
+            /// <summary>
+            /// An empty collection definition.
+            /// </summary>
             public static readonly CollectionDefinition Empty = new EmptyCollectionDefinition();
 
+            /// <summary>
+            /// Gets or sets the type definition of the collection.
+            /// </summary>
             [JsonPropertyName("type_definition")]
             public TypeDefinition? TypeDefinition { get; set; }
+
+            /// <summary>
+            /// Gets or sets the property definitions of the collection.
+            /// </summary>
             [JsonPropertyName("property_definitions")]
             public List<PropertyDefinition>? PropertyDefinitions { get; set; }
 
@@ -133,83 +101,165 @@ namespace Kepware.Api.Model
             }
         }
 
+        /// <summary>
+        /// Represents a channel in the API documentation.
+        /// </summary>
         [Endpoint("/config/v1/doc/drivers/{driverName}/channels/")]
         public class Channel : CollectionDefinition { }
 
+        /// <summary>
+        /// Represents a device in the API documentation.
+        /// </summary>
         [Endpoint("/config/v1/doc/drivers/{driverName}/devices/")]
         public class Device : CollectionDefinition { }
+
+        /// <summary>
+        /// Represents a type definition in the API documentation.
+        /// </summary>
         public class TypeDefinition
         {
+            /// <summary>
+            /// Gets or sets the name of the type.
+            /// </summary>
             [JsonPropertyName("name")]
             public string? Name { get; set; }
 
+            /// <summary>
+            /// Gets or sets the collection of the type.
+            /// </summary>
             [JsonPropertyName("collection")]
             public string? Collection { get; set; }
 
+            /// <summary>
+            /// Gets or sets the namespace of the type.
+            /// </summary>
             [JsonPropertyName("namespace")]
             public string? Namespace { get; set; }
 
+            /// <summary>
+            /// Gets or sets a value indicating whether the type can be created.
+            /// </summary>
             [JsonPropertyName("can_create")]
             public bool CanCreate { get; set; }
 
+            /// <summary>
+            /// Gets or sets a value indicating whether the type can be deleted.
+            /// </summary>
             [JsonPropertyName("can_delete")]
             public bool CanDelete { get; set; }
 
+            /// <summary>
+            /// Gets or sets a value indicating whether the type can be modified.
+            /// </summary>
             [JsonPropertyName("can_modify")]
             public bool CanModify { get; set; }
 
+            /// <summary>
+            /// Gets or sets a value indicating whether the type is auto-generated.
+            /// </summary>
             [JsonPropertyName("auto_generated")]
             public bool AutoGenerated { get; set; }
 
+            /// <summary>
+            /// Gets or sets a value indicating whether the type requires a driver.
+            /// </summary>
             [JsonPropertyName("requires_driver")]
             public bool RequiresDriver { get; set; }
 
+            /// <summary>
+            /// Gets or sets a value indicating whether the type is access controlled.
+            /// </summary>
             [JsonPropertyName("access_controlled")]
             public bool AccessControlled { get; set; }
 
+            /// <summary>
+            /// Gets or sets the child collections of the type.
+            /// </summary>
             [JsonPropertyName("child_collections")]
             public List<string>? ChildCollections { get; set; }
         }
 
+        /// <summary>
+        /// Represents a property definition in the API documentation.
+        /// </summary>
         public class PropertyDefinition
         {
+            /// <summary>
+            /// Gets or sets the symbolic name of the property.
+            /// </summary>
             [JsonPropertyName("symbolic_name")]
             public string? SymbolicName { get; set; }
 
+            /// <summary>
+            /// Gets or sets the display name of the property.
+            /// </summary>
             [JsonPropertyName("display_name")]
             public string? DisplayName { get; set; }
 
+            /// <summary>
+            /// Gets or sets the display description of the property.
+            /// </summary>
             [JsonPropertyName("display_description")]
             public string? DisplayDescription { get; set; }
 
+            /// <summary>
+            /// Gets or sets the group name of the property.
+            /// </summary>
             [JsonPropertyName("group_name")]
             public string? GroupName { get; set; }
 
+            /// <summary>
+            /// Gets or sets the section name of the property.
+            /// </summary>
             [JsonPropertyName("section_name")]
             public string? SectionName { get; set; }
 
+            /// <summary>
+            /// Gets or sets a value indicating whether the property is read-only.
+            /// </summary>
             [JsonPropertyName("read_only")]
             public bool ReadOnly { get; set; }
 
+            /// <summary>
+            /// Gets or sets the type of the property.
+            /// </summary>
             [JsonPropertyName("type")]
             public string? Type { get; set; }
 
+            /// <summary>
+            /// Gets or sets the default value of the property.
+            /// </summary>
             [JsonPropertyName("default_value")]
             public object? DefaultValue { get; set; }
 
+            /// <summary>
+            /// Gets or sets a value indicating whether the property is required.
+            /// </summary>
             [JsonPropertyName("required")]
             public bool Required { get; set; }
 
+            /// <summary>
+            /// Gets or sets a value indicating whether the property is server-only.
+            /// </summary>
             [JsonPropertyName("server_only")]
             public bool ServerOnly { get; set; }
 
+            /// <summary>
+            /// Gets or sets the minimum length of the property.
+            /// </summary>
             [JsonPropertyName("minimum_length")]
             public int MinimumLength { get; set; }
 
+            /// <summary>
+            /// Gets or sets the maximum length of the property.
+            /// </summary>
             [JsonPropertyName("maximum_length")]
             public int MaximumLength { get; set; }
 
-
+            /// <summary>
+            /// Gets the default value as a JsonElement.
+            /// </summary>
+            /// <returns>The default value as a JsonElement.</returns>
             public JsonElement GetDefaultValue()
             {
                 if (Type == null)
@@ -329,9 +379,7 @@ namespace Kepware.Api.Model
     [JsonSerializable(typeof(List<Docs.Channel>))]
     [JsonSerializable(typeof(List<Docs.Device>))]
     [JsonSourceGenerationOptions(WriteIndented = true)]
-    public partial class KepDocsJsonContext : JsonSerializerContext
-
+    internal partial class KepDocsJsonContext : JsonSerializerContext
     {
-
     }
 }

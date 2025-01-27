@@ -30,7 +30,7 @@ namespace Kepware.Api.Serializer
     [JsonSerializable(typeof(bool))]
     [JsonSerializable(typeof(Dictionary<string, object?>))]
     [JsonSourceGenerationOptions(WriteIndented = true)]
-    public partial class KepJsonContext : JsonSerializerContext
+    internal partial class KepJsonContext : JsonSerializerContext
     {
         public static JsonTypeInfo<T> GetJsonTypeInfo<T>()
           where T : BaseEntity

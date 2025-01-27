@@ -15,6 +15,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Kepware.Api.Serializer
 {
+    /// <summary>
+    /// Serializes and deserializes tags to and from CSV files
+    /// </summary>
     public class CsvTagSerializer
     {
         private static class CsvHeaders
@@ -93,15 +96,34 @@ namespace Kepware.Api.Serializer
 
         private readonly ILogger<CsvTagSerializer> _logger;
 
+        /// <summary>
+        /// Creates a new instance of <see cref="CsvTagSerializer"/>
+        /// </summary>
+        /// <param name="logger"></param>
         public CsvTagSerializer(ILogger<CsvTagSerializer> logger)
         {
             _logger = logger;
         }
 
+        /// <summary>
+        /// Exports tags to a CSV file
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="tags"></param>
+        /// <param name="dataTypeEnumConverter"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public Task ExportTagsAsync(string filePath, List<Tag>? tags, IDataTypeEnumConverter dataTypeEnumConverter, CancellationToken cancellationToken = default)
             => ExportTagsAsync(filePath, tags?
                 .Select(tag => CreateTagDictionary(tag, dataTypeEnumConverter)), cancellationToken);
 
+        /// <summary>
+        /// Exports tags to a CSV file
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="tags"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task ExportTagsAsync(string filePath, IEnumerable<Dictionary<string, object?>>? tags, CancellationToken cancellationToken = default)
         {
             if (tags?.Any() == true)
@@ -140,6 +162,13 @@ namespace Kepware.Api.Serializer
             }
         }
 
+        /// <summary>
+        /// Imports tags from a CSV file
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="dataTypeEnumConverter"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public Task<List<Tag>> ImportTagsAsync(string filePath, IDataTypeEnumConverter dataTypeEnumConverter, CancellationToken cancellationToken = default)
         {
             var tags = new List<Tag>();

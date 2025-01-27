@@ -14,7 +14,7 @@ using YamlDotNet.Serialization.NodeTypeResolvers;
 
 namespace Kepware.Api.Serializer
 {
-    public class BaseEntityYamlTypeConverter : IYamlTypeConverter
+    internal class BaseEntityYamlTypeConverter : IYamlTypeConverter
     {
         private readonly IReadOnlySet<string> m_nonpersistetDynamicProps;
         public BaseEntityYamlTypeConverter(IReadOnlySet<string>? nonpersistetDynamicProps = null)
@@ -26,7 +26,6 @@ namespace Kepware.Api.Serializer
         {
             return typeof(BaseEntity).IsAssignableFrom(type);
         }
-
 
         object? IYamlTypeConverter.ReadYaml(IParser parser, Type type, ObjectDeserializer rootDeserializer)
         {

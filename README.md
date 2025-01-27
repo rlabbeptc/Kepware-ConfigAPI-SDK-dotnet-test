@@ -1,131 +1,84 @@
-# KepwareSync
+# Kepware Configuration API SDK for .NET
+
+[![Build Status](https://github.com/BoBiene/Kepware-ConfigAPI-SDK-dotnet/actions/workflows/dotnet.yml/badge.svg)](https://github.com/BoBiene/Kepware-ConfigAPI-SDK-dotnet/actions)
+[![Build Status](https://github.com/BoBiene/Kepware-ConfigAPI-SDK-dotnet/actions/workflows/docker-build-and-push.yml/badge.svg)](https://github.com/BoBiene/Kepware-ConfigAPI-SDK-dotnet/actions)
 
 ## Overview
-KepwareSync is a powerful tool designed to manage and synchronize the configuration of Kepware servers via the Kepware REST API. This tool offers both command-line and service/agent functionality to enable flexible and efficient synchronization processes between Kepware servers and local filesystems.
+The Kepware Configuration API SDK for .NET provides tools and libraries to interact with the Kepware REST API, enabling configuration management for Kepware servers. This repository includes examples and utilities to streamline development, including a service for continuous synchronization and an API client library.
 
-### Key Features
-- **Command-line "One-shot" Synchronization**:
-  - Synchronize Kepware server configuration to the local filesystem.
-  - Apply changes from the local filesystem to the Kepware server.
-
-- **Service/Agent Mode**:
+## Features
+- **API Client Library**: Simplify interaction with the Kepware Configuration API.
+- **Service for Synchronization**:
   - Bi-directional synchronization between Kepware servers and local filesystems.
-  - Continuous monitoring of both the Kepware server and local filesystem for changes.
-  - Automatic detection and synchronization of changes.
+  - Support for one-way and two-way synchronization modes.
+- **Sample Application**: Demonstrates API usage with real-world examples.
+- **HTTPS Support**: Certificate validation and secure connections.
 
-### Local Filesystem Structure
-The Kepware configuration is exported and managed in a hierarchical directory structure:
-```
-<Channels>/<Device>/<TagGroup>/<SubTagGroup>/...
-```
-Example:
-```
-ExportedYaml/
-  project.yaml
-  Kanal1/
-    Ger�t1/
-      device.yaml
-      tags.csv
-    Ger�t2/
-      device.yaml
-      tags.csv
-```
+## Projects
+This repository contains the following projects:
 
-## Usage
-### Command-Line Interface
-#### General
-```bash
-Kepware.SyncService [command] [options]
-```
-#### Available Commands
-- `SyncToDisk` - Synchronize data from Kepware to the local filesystem.
-- `SyncFromDisk` - Synchronize data from the local filesystem to Kepware.
+### 1. `KepwareSync.Service`
+A service application for synchronizing configurations between Kepware servers and the local filesystem. It supports monitoring and synchronization in real time.
 
-#### Options
-- `--kep-api-username <username>`: Kepware REST API username.
-- `--kep-api-password <password>`: Kepware REST API password.
-- `--kep-api-host <host>`: Kepware REST API host URL.
-- `--directory <path>`: Path to the local storage directory.
-- `--persist-default-value`: Persist default values during synchronization.
-- `--kep-sync-direction <direction>`: Primary synchronization direction (DiskToKepware or KepwareToDisk).
-- `--kep-sync-mode <mode>`: Synchronization mode (OneWay or TwoWay).
-- `--kep-sync-throtteling <ms>`: Throttling time in milliseconds before starting synchronization after detecting a change.
+[Readme for KepwareSync.Service](./KepwareSync.Service/README.md)
 
-#### Examples
-1. Synchronize Kepware server configuration to the local filesystem:
+### 2. `Kepware.Api`
+A .NET library providing an easy-to-use client for interacting with the Kepware Configuration API. Includes functionality for managing channels, devices, tags, and more.
+
+[Readme for Kepware.Api](./Kepware.Api/README.md)
+
+### 3. `Kepware.Api.Sample`
+A sample console application demonstrating how to use `Kepware.Api` to interact with the Kepware Configuration API. Includes examples for creating channels, devices, and tags.
+
+[Readme for Kepware.Api.Sample](./Kepware.Api.Sample/README.md)
+
+## Installation
+To install the SDK:
+
+1. Clone this repository:
    ```bash
-   Kepware.SyncService SyncToDisk --kep-api-username admin --kep-api-password password --kep-api-host http://localhost:57412 --directory ./ExportedYaml
+   git clone https://github.com/your-org/Kepware-ConfigAPI-SDK-dotnet.git
    ```
-2. Synchronize local filesystem configuration to the Kepware server:
+2. Build the solution using Visual Studio or the .NET CLI:
    ```bash
-   Kepware.SyncService SyncFromDisk --kep-api-username admin --kep-api-password password --kep-api-host http://localhost:57412 --directory ./ExportedYaml
+   dotnet build
    ```
+3. Add the `Kepware.Api` project or its compiled DLL as a reference in your .NET project.
 
-### Service/Agent Mode
-To enable continuous bi-directional synchronization, start KepwareSync as a service/agent:
-```bash
-Kepware.SyncService --kep-api-username admin --kep-api-password password --kep-api-host http://localhost:57412 --directory ./ExportedYaml --kep-sync-mode TwoWay
-```
-In service mode, changes in both the Kepware server and local filesystem are monitored and synchronized automatically.
-
-## Configuration
-The `appsettings.json` file allows you to configure logging and Kepware REST API credentials:
-```json
-{
-  "Serilog": {
-    "MinimumLevel": {
-      "Default": "Information",
-      "Override": {
-        "Microsoft": "Warning",
-        "System": "Warning"
-      }
-    }
-  },
-  "KepApi": {
-    "Username": "",
-    "Password": "",
-    "Host": ""
-  }
-}
-```
-
-## Important Notes
-### Disclaimer
-**Backup Before Syncing**: Always create a backup of your Kepware server configuration before using KepwareSync. Depending on the synchronization direction specified during initialization, existing configurations may be overwritten.
-
-- **Default Behavior**: If not specified, the default synchronization direction in service mode is `Kepware -> Disk`. This means local changes will be overwritten during the initial full sync.
-
-### Recommendations
-- Ensure the local directory structure matches the expected hierarchy for proper synchronization.
-- Use `--persist-default-value` to retain default values if required.
-
-## Licensing
-This tool is provided "as is". Use at your own risk. The authors are not liable for any data loss resulting from improper usage.
-
-## Support
-For issues or feature requests, please contact the developer or refer to the documentation.
+## Documentation
+Detailed documentation is available for each project:
+- **API Library**: Usage examples and method details can be found in the [Kepware.Api Readme](./Kepware.Api/README.md).
+- **Synchronization Service**: Configuration and usage instructions are outlined in the [KepwareSync.Service Readme](./KepwareSync.Service/README.md).
+- **Sample Application**: Example code is provided in the [Kepware.Api.Sample Readme](./Kepware.Api.Sample/README.md).
 
 ## Contribution Guidelines
+We welcome contributions to this repository. Please follow these guidelines:
 
 ### Commit Message Convention
-We follow the [Conventional Commits](https://www.conventionalcommits.org/) standard to ensure clear and consistent commit messages.
+We adhere to the [Conventional Commits](https://www.conventionalcommits.org/) specification:
 
-**Format:** ``<type>(<scope>): <short summary>``
+**Format:** `<type>(<scope>): <short summary>`
 
 **Examples:**
-- `feat(sync): add bi-directional synchronization for Kepware servers`
-- `fix(api): resolve authentication issue with Kepware REST API`
-- `docs(filesystem): update documentation for local directory structure`
-- `refactor(service): optimize change detection logic`
-- `test(cli): add tests for command-line synchronization`
+- `feat(api): add support for new configuration objects`
+- `fix(sync): resolve issue with file monitoring`
+- `docs(service): update usage instructions`
 
 **Types:**
-- `feat`: Introduces a new feature (e.g., new sync modes or API support)
-- `fix`: Fixes a bug (e.g., REST API issues, file parsing errors)
-- `docs`: Documentation changes (e.g., README or usage guides)
-- `style`: Code style/formatting changes (no logic, e.g., renaming variables)
-- `refactor`: Code restructuring (no functional changes, e.g., optimizing sync logic)
-- `test`: Adds or modifies tests (e.g., CLI or service behavior)
-- `chore`: Maintenance tasks (e.g., dependency updates or CI improvements)
+- `feat`: New features.
+- `fix`: Bug fixes.
+- `docs`: Documentation updates.
+- `style`: Code style changes.
+- `refactor`: Code restructuring without functional changes.
+- `test`: Adding or updating tests.
+- `chore`: Maintenance tasks, e.g., dependency updates.
 
-For more details, see the [Conventional Commits Specification](https://www.conventionalcommits.org/).
+## Licensing
+This SDK is provided "as is" under the MIT License. See the [LICENSE](./LICENSE.txt) file for details.
+
+## Support
+For issues or feature requests, please open a ticket in the GitHub repository.
+
+---
+Ready to dive in? Check out the project-specific Readmes for detailed information on how to get started!
+

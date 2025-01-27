@@ -20,6 +20,9 @@ namespace Kepware.Api
     /// </summary>
     public partial class KepwareApiClient : IKepwareDefaultValueProvider
     {
+        /// <summary>
+        /// The value for an unknown client or host name.
+        /// </summary>
         public const string UNKNOWN = "Unknown";
         private const string ENDPOINT_STATUS = "/config/v1/status";
         private const string ENDPOINT_ABOUT = "/config/v1/about";
@@ -35,7 +38,14 @@ namespace Kepware.Api
 
         private bool? m_blnIsConnected = null;
 
-        public string ClientName { get; } // Name des Clients
+        /// <summary>
+        /// Gets the name of the client.
+        /// </summary>
+        public string ClientName { get; }
+
+        /// <summary>
+        /// Gets the host name of the client.
+        /// </summary>
         public string ClientHostName => m_httpClient.BaseAddress?.Host ?? UNKNOWN;
 
         #region Constructors
@@ -238,22 +248,22 @@ namespace Kepware.Api
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>A task that represents the asynchronous operation. The task result contains the comparison result.</returns>
 
-        public async Task<EntityCompare.CollectionResultBucket<T, K>> CompareAndApply<T, K>(T? sourceCollection, T? apiCollection, NamedEntity? owner = null, CancellationToken cancellationToken = default)
+        public async Task<EntityCompare.CollectionResultBucket<K>> CompareAndApply<T, K>(T? sourceCollection, T? apiCollection, NamedEntity? owner = null, CancellationToken cancellationToken = default)
           where T : EntityCollection<K>
           where K : NamedEntity, new()
         {
             var compareResult = EntityCompare.Compare<T, K>(sourceCollection, apiCollection);
 
-            /// This are the items that are in the API but not in the source
-            /// --> we need to delete them
+            // This are the items that are in the API but not in the source
+            // --> we need to delete them
             await DeleteItemsAsync<T, K>(compareResult.ItemsOnlyInRight.Select(i => i.Right!).ToList(), owner, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            /// This are the items both in the API and the source
-            /// --> we need to update them
+            // This are the items both in the API and the source
+            // --> we need to update them
             await UpdateItemsAsync<T, K>(compareResult.ChangedItems.Select(i => (i.Left!, i.Right)).ToList(), owner, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            /// This are the items that are in the source but not in the API
-            /// --> we need to insert them
+            // This are the items that are in the source but not in the API
+            // --> we need to insert them
             await InsertItemsAsync<T, K>(compareResult.ItemsOnlyInLeft.Select(i => i.Left!).ToList(), owner: owner, cancellationToken: cancellationToken).ConfigureAwait(false);
 
             return compareResult;
@@ -278,7 +288,7 @@ namespace Kepware.Api
 
                 m_logger.LogInformation("Updating {TypeName} on {Endpoint}...", typeof(T).Name, endpoint);
 
-                var currentEntity = await LoadEntityAsync<T>(oldItem ?? item, cancellationToken: cancellationToken).ConfigureAwait(false);
+                var currentEntity = await LoadEntityAsync<T>((oldItem ?? item).Flatten().Select(i => i.Name).Reverse(), cancellationToken: cancellationToken).ConfigureAwait(false);
                 item.ProjectId = currentEntity?.ProjectId;
 
                 HttpContent httpContent = new StringContent(JsonSerializer.Serialize(item, KepJsonContext.GetJsonTypeInfo<T>()), Encoding.UTF8, "application/json");
@@ -316,6 +326,15 @@ namespace Kepware.Api
             where K : NamedEntity, new()
             => UpdateItemsAsync<T, K>([(item, oldItem)], owner, cancellationToken);
 
+        /// <summary>
+        /// Updates a list of items in the Kepware server.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="K"></typeparam>
+        /// <param name="items"></param>
+        /// <param name="owner"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task UpdateItemsAsync<T, K>(List<(K item, K? oldItem)> items, NamedEntity? owner = null, CancellationToken cancellationToken = default)
           where T : EntityCollection<K>
           where K : NamedEntity, new()
@@ -329,13 +348,14 @@ namespace Kepware.Api
                 foreach (var pair in items)
                 {
                     var endpoint = $"{collectionEndpoint}/{Uri.EscapeDataString(pair.oldItem!.Name)}";
-                    var currentEntity = await LoadEntityAsync<K>(endpoint, owner, cancellationToken).ConfigureAwait(false);
+                    var currentEntity = await LoadEntityByEndpointAsync<K>(endpoint, cancellationToken).ConfigureAwait(false);
                     if (currentEntity == null)
                     {
                         m_logger.LogError("Failed to load {TypeName} from {Endpoint}", typeof(K).Name, endpoint);
                     }
                     else
                     {
+                        currentEntity.Owner = owner;
                         pair.item.ProjectId = currentEntity.ProjectId;
                         var diff = pair.item.GetUpdateDiff(currentEntity);
 
@@ -360,21 +380,24 @@ namespace Kepware.Api
         #endregion
 
         #region Insert
-        public Task InsertItemAsync<T, K>(K item, NamedEntity? owner = null)
+        public async Task<bool> InsertItemAsync<T, K>(K item, NamedEntity? owner = null, CancellationToken cancellationToken = default)
           where T : EntityCollection<K>
           where K : NamedEntity, new()
-            => InsertItemsAsync<T, K>([item], owner: owner);
+            => (await InsertItemsAsync<T, K>([item], owner: owner, cancellationToken: cancellationToken)).FirstOrDefault();
 
-        public async Task InsertItemsAsync<T, K>(List<K> items, int pageSize = 10, NamedEntity? owner = null, CancellationToken cancellationToken = default)
+        public async Task<bool[]> InsertItemsAsync<T, K>(List<K> items, int pageSize = 10, NamedEntity? owner = null, CancellationToken cancellationToken = default)
          where T : EntityCollection<K>
          where K : NamedEntity, new()
         {
             if (items.Count == 0)
-                return;
+                return [];
+
+            List<bool> result = new List<bool>();
 
             try
             {
                 var endpoint = ResolveEndpoint<T>(owner);
+
 
                 if (typeof(K) == typeof(Channel) || typeof(K) == typeof(Device))
                 {
@@ -410,6 +433,7 @@ namespace Kepware.Api
                     {
                         var message = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                         m_logger.LogError("Failed to insert {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                        result.AddRange(Enumerable.Repeat(false, pageItems.Count));
                     }
                     else if (response.StatusCode == System.Net.HttpStatusCode.MultiStatus)
                     {
@@ -420,11 +444,15 @@ namespace Kepware.Api
                             await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false),
                             KepJsonContext.Default.ListApiResult, cancellationToken).ConfigureAwait(false) ?? [];
 
-                        //List<(K item, ApiResult result)> mappedResults = [.. pageItems.Zip(results, (item, result) => (item, result))];
+                        result.AddRange(results.Select(r => r.IsSuccessStatusCode));
 
                         var failedEntries = results?.Where(r => !r.IsSuccessStatusCode)?.ToList() ?? [];
                         m_logger.LogError("{NumSuccessFull} were successfull, failed to insert {NumFailed} {TypeName} from {Endpoint}: {ReasonPhrase}\nFailed:\n{Message}",
                             (results?.Count ?? 0) - failedEntries.Count, failedEntries.Count, typeof(T).Name, endpoint, response.ReasonPhrase, JsonSerializer.Serialize(failedEntries, KepJsonContext.Default.ListApiResult));
+                    }
+                    else
+                    {
+                        result.AddRange(Enumerable.Repeat(true, pageItems.Count));
                     }
                 }
             }
@@ -432,11 +460,41 @@ namespace Kepware.Api
             {
                 m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
                 m_blnIsConnected = null;
+
+                if (items.Count > result.Count)
+                    result.AddRange(Enumerable.Repeat(false, items.Count - result.Count));
             }
+
+            return [.. result];
         }
         #endregion
 
         #region Delete
+        public async Task<bool> DeleteItemAsync<T>(T item, CancellationToken cancellationToken = default)
+          where T : NamedEntity, new()
+        {
+            var endpoint = ResolveEndpoint<T>(item).TrimEnd('/');
+            m_logger.LogInformation("Deleting {TypeName} on {Endpoint}...", item.Name, endpoint);
+            try
+            {
+                var response = await m_httpClient.DeleteAsync(endpoint, cancellationToken).ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var message = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    m_logger.LogError("Failed to delete {TypeName} from {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                }
+                else
+                {
+                    return true;
+                }
+            }
+            catch (HttpRequestException httpEx)
+            {
+                m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
+                m_blnIsConnected = null;
+            }
+            return false;
+        }
 
         public Task DeleteItemAsync<T, K>(K item, NamedEntity? owner = null, CancellationToken cancellationToken = default)
             where T : EntityCollection<K>
@@ -590,19 +648,44 @@ namespace Kepware.Api
         #endregion
 
         #region LoadEntity
-        public Task<T?> LoadEntityAsync<T>(NamedEntity? owner = null, IEnumerable<KeyValuePair<string, string>>? queryParams = null, CancellationToken cancellationToken = default)
-          where T : BaseEntity, new()
+
+        public Task<T?> LoadEntityAsync<T>(string? name = default, CancellationToken cancellationToken = default)
+        where T : BaseEntity, new()
+        {
+            var endpoint = ResolveEndpoint<T>(string.IsNullOrEmpty(name) ? [] : [name]);
+            return LoadEntityByEndpointAsync<T>(endpoint, cancellationToken);
+        }
+
+        public Task<T?> LoadEntityAsync<T>(IEnumerable<string> owner, CancellationToken cancellationToken = default)
+         where T : BaseEntity, new()
         {
             var endpoint = ResolveEndpoint<T>(owner);
+            return LoadEntityByEndpointAsync<T>(endpoint, cancellationToken);
+        }
+
+        public Task<T?> LoadEntityAsync<T>(string name, NamedEntity owner, CancellationToken cancellationToken = default)
+         where T : BaseEntity, new()
+         => LoadEntityAsync<T>(name, owner, queryParams: null, cancellationToken: cancellationToken);
+
+        private async Task<T?> LoadEntityAsync<T>(string name, NamedEntity owner, IEnumerable<KeyValuePair<string, string>>? queryParams = null, CancellationToken cancellationToken = default)
+          where T : BaseEntity, new()
+        {
+            var endpoint = ResolveEndpoint<T>([.. owner.Flatten().Select(n => n.Name).Reverse(), name]);
             if (queryParams != null)
             {
                 var queryString = string.Join("&", queryParams.Select(kvp => $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(kvp.Value)}"));
                 endpoint += "?" + queryString;
             }
-            return LoadEntityAsync<T>(endpoint, owner, cancellationToken);
+            var entity = await LoadEntityByEndpointAsync<T>(endpoint, cancellationToken);
+
+            if (entity is IHaveOwner ownable)
+            {
+                ownable.Owner = owner;
+            }
+            return entity;
         }
 
-        private async Task<T?> LoadEntityAsync<T>(string endpoint, NamedEntity? owner = null, CancellationToken cancellationToken = default)
+        private async Task<T?> LoadEntityByEndpointAsync<T>(string endpoint, CancellationToken cancellationToken = default)
           where T : BaseEntity, new()
         {
             try
@@ -617,10 +700,6 @@ namespace Kepware.Api
                 }
 
                 var entity = await DeserializeJsonAsync<T>(response, cancellationToken).ConfigureAwait(false);
-                if (entity is IHaveOwner ownable)
-                {
-                    ownable.Owner = owner;
-                }
 
                 return entity;
             }
@@ -808,7 +887,7 @@ namespace Kepware.Api
                 return ResolveRecursiveEndpoint(recursiveEndpointAttribute, owner) + endpointTemplateAttribute.Suffix;
             }
 
-            return ReplacePlaceholders(endpointTemplateAttribute.EndpointTemplate, owner?.Flatten().Select(n => n.Name) ?? []) + endpointTemplateAttribute.Suffix;
+            return ReplacePlaceholders(endpointTemplateAttribute.EndpointTemplate, owner?.Flatten().Select(n => n.Name).Reverse() ?? []) + endpointTemplateAttribute.Suffix;
         }
 
         /// <summary>
@@ -834,7 +913,7 @@ namespace Kepware.Api
 
         private static string ReplacePlaceholders(string template, IEnumerable<string> placeholderValues)
         {
-            var placeholders = s_pathplaceHolderRegex.Matches(template).Reverse().ToArray();
+            var placeholders = s_pathplaceHolderRegex.Matches(template).ToArray();
             var values = placeholderValues.ToArray();
             if (placeholders.Length != values.Length)
             {
@@ -864,7 +943,7 @@ namespace Kepware.Api
             }
 
             // Combine with the base endpoint template 
-            var baseEndpoint = ReplacePlaceholders(attribute.EndpointTemplate, owner?.Flatten().Select(n => n.Name) ?? []);
+            var baseEndpoint = ReplacePlaceholders(attribute.EndpointTemplate, owner?.Flatten().Select(n => n.Name).Reverse() ?? []);
 
             return baseEndpoint + string.Concat(recursivePath);
         }
@@ -956,7 +1035,7 @@ namespace Kepware.Api
             return ret;
         }
 
-        private async Task LoadTagGroupsRecursiveAsync(IEnumerable<DeviceTagGroup> tagGroups, CancellationToken cancellationToken = default)
+        internal async Task LoadTagGroupsRecursiveAsync(IEnumerable<DeviceTagGroup> tagGroups, CancellationToken cancellationToken = default)
         {
             foreach (var tagGroup in tagGroups)
             {

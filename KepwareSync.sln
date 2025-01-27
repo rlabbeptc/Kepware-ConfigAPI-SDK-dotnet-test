@@ -13,7 +13,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionFiles", "SolutionFi
 		version.json = version.json
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kepware.Api", "KepWare.Api\Kepware.Api.csproj", "{ABB368B9-7D95-4946-9579-F7AA7A5750F7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kepware.Api", "Kepware.Api\Kepware.Api.csproj", "{ABB368B9-7D95-4946-9579-F7AA7A5750F7}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{A904D930-41F6-4016-A8BE-AED91D9E5B26}"
 	ProjectSection(SolutionItems) = preProject
@@ -22,8 +22,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{A904
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{F0A34611-31AD-4698-A368-4D65F9A0F9D9}"
 	ProjectSection(SolutionItems) = preProject
+		docker-build-and-push.yml = docker-build-and-push.yml
 		.github\workflows\dotnet.yml = .github\workflows\dotnet.yml
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kepware.Api.Sample", "Kepware.Api.Sample\Kepware.Api.Sample.csproj", "{C7A179F8-E6D4-4163-9780-23B866636A3F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +42,10 @@ Global
 		{ABB368B9-7D95-4946-9579-F7AA7A5750F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ABB368B9-7D95-4946-9579-F7AA7A5750F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ABB368B9-7D95-4946-9579-F7AA7A5750F7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C7A179F8-E6D4-4163-9780-23B866636A3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C7A179F8-E6D4-4163-9780-23B866636A3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C7A179F8-E6D4-4163-9780-23B866636A3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C7A179F8-E6D4-4163-9780-23B866636A3F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

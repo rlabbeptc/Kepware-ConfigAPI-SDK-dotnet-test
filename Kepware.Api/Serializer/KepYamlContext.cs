@@ -15,6 +15,6 @@ namespace Kepware.Api.Serializer
     [YamlSerializable(typeof(DefaultEntity))]
     public partial class KepYamlContext : StaticContext
     {
-       
+
     }
 }
