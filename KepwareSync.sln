@@ -13,7 +13,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionFiles", "SolutionFi
 		version.json = version.json
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kepware.Api", "KepWare.Api\Kepware.Api.csproj", "{ABB368B9-7D95-4946-9579-F7AA7A5750F7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kepware.Api", "Kepware.Api\Kepware.Api.csproj", "{ABB368B9-7D95-4946-9579-F7AA7A5750F7}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{A904D930-41F6-4016-A8BE-AED91D9E5B26}"
 	ProjectSection(SolutionItems) = preProject

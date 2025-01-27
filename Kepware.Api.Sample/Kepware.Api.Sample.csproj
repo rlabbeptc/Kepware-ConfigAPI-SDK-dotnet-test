@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\KepWare.Api\Kepware.Api.csproj" />
+    <ProjectReference Include="..\Kepware.Api\Kepware.Api.csproj" />
   </ItemGroup>
 
 </Project>
