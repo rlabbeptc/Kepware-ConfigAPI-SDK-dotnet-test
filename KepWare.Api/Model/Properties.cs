@@ -2,6 +2,7 @@
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -61,7 +62,7 @@ namespace Kepware.Api.Model
 
         public static class NonSerialized
         {
-
+            public const string ChannelAssignment = "servermain.DEVICE_CHANNEL_ASSIGNMENT";
             public const string TagGrpTotalTagCount = "servermain.TAGGROUP_TOTAL_TAG_COUNT";
             public const string TagGrpTagCount = "servermain.TAGGROUP_LOCAL_TAG_COUNT";
             public const string ChannelTagCount = "servermain.CHANNEL_STATIC_TAG_COUNT";
@@ -71,6 +72,7 @@ namespace Kepware.Api.Model
 
             public static readonly FrozenSet<string> AsHashSet = new HashSet<string>()
                 {
+                    ChannelAssignment,
                     TagGrpTotalTagCount,
                     TagGrpTagCount,
                     ChannelTagCount,

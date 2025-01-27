@@ -26,8 +26,8 @@ namespace Kepware.SyncService.ProjectStorage
 
     public interface IProjectStorage
     {
-        public Task<Project> LoadProject(bool blnLoadFullProject = true);
-        public Task ExportProjecAsync(Project project);
+        public Task<Project> LoadProject(bool blnLoadFullProject = true, CancellationToken cancellationToken = default);
+        public Task ExportProjecAsync(Project project, CancellationToken cancellationToken = default);
 
         public IObservable<StorageChangeEvent> ObserveChanges();
     }

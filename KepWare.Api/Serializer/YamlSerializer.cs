@@ -37,7 +37,7 @@ namespace Kepware.Api.Serializer
                 .Build();
         }
 
-        public async Task<T> LoadFromYaml<T>(string filePath)
+        public async Task<T> LoadFromYaml<T>(string filePath, CancellationToken cancellationToken = default)
             where T : BaseEntity, new()
         {
             FileInfo file = new FileInfo(filePath);
@@ -49,7 +49,7 @@ namespace Kepware.Api.Serializer
             }
             else
             {
-                var yaml = await System.IO.File.ReadAllTextAsync(filePath);
+                var yaml = await System.IO.File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
                 entity = _deserializer.Deserialize<T>(yaml);
             }
 
@@ -61,7 +61,7 @@ namespace Kepware.Api.Serializer
             return entity;
         }
 
-        public async Task SaveAsYaml(string filePath, object entity)
+        public async Task SaveAsYaml(string filePath, object entity, CancellationToken cancellationToken = default)
         {
             var yaml = _serializer.Serialize(entity);
             Directory.CreateDirectory(Path.GetDirectoryName(filePath)!); // Erstelle Verzeichnis, falls es nicht existiert
@@ -77,9 +77,9 @@ namespace Kepware.Api.Serializer
             }
             else
             {
-                if (!File.Exists(filePath) || await File.ReadAllTextAsync(filePath) != yaml)
+                if (!File.Exists(filePath) || await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false) != yaml)
                 {
-                    await File.WriteAllTextAsync(filePath, yaml);
+                    await File.WriteAllTextAsync(filePath, yaml, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {

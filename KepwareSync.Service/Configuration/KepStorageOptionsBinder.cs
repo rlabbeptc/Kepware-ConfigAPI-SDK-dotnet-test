@@ -14,10 +14,24 @@ namespace Kepware.SyncService.Configuration
         private readonly Option<string> _directoryOption;
         private readonly Option<bool> _persistDefaultValueOption;
 
-        public KepStorageOptionsBinder()
+        public KepStorageOptionsBinder(IConfiguration configuration)
         {
             _directoryOption = new Option<string>("--directory", "Storage Directory");
             _persistDefaultValueOption = new Option<bool>("--persist-default-value", "Persist Default Values");
+
+            var settingValue = configuration.GetSection("Storage").Get<KepStorageOptions>();
+
+            if (settingValue != null)
+            {
+                _directoryOption.SetDefaultValue(settingValue.Directory);
+                _persistDefaultValueOption.SetDefaultValue(settingValue.PersistDefaultValue);
+                _directoryOption.IsRequired = string.IsNullOrEmpty(settingValue.Directory);
+            }
+            else
+            {
+                _directoryOption.IsRequired = true;
+            }
+
         }
 
         public void BindTo(Command command)

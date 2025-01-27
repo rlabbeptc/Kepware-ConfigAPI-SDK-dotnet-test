@@ -38,73 +38,73 @@ namespace Kepware.SyncService.ProjectStorage
                 m_baseDirectory.Create();
         }
 
-        public async Task<Project> LoadProject(bool blnLoadFullProject = true)
+        public async Task<Project> LoadProject(bool blnLoadFullProject = true, CancellationToken cancellationToken = default)
         {
             var projectFile = Path.Combine(m_baseDirectory.FullName, "project.yaml");
 
-            var project = await m_yamlSerializer.LoadFromYaml<Project>(projectFile);
+            var project = await m_yamlSerializer.LoadFromYaml<Project>(projectFile, cancellationToken);
             if (project == null) return new Project();
 
             if (blnLoadFullProject)
             {
-                project.Channels = await LoadChannels(blnLoadFullProject);
+                project.Channels = await LoadChannels(blnLoadFullProject, cancellationToken);
             }
 
             return project;
         }
 
-        public async Task<ChannelCollection> LoadChannels(bool blnLoadDeep = true)
+        public async Task<ChannelCollection> LoadChannels(bool blnLoadDeep = true, CancellationToken cancellationToken = default)
         {
             var channelDirs = m_baseDirectory.GetDirectories();
             var channels = new ChannelCollection();
             foreach (var channelDir in channelDirs)
             {
-                channels.Add(await LoadChannel(channelDir.Name, blnLoadDeep));
+                channels.Add(await LoadChannel(channelDir.Name, blnLoadDeep, cancellationToken));
             }
             return channels;
         }
 
-        public Task<Channel> LoadChannel(string channelName, bool blnLoadDeep = true)
-            => LoadChannel(new DirectoryInfo(Path.Combine(m_baseDirectory.FullName, channelName)), blnLoadDeep);
+        public Task<Channel> LoadChannel(string channelName, bool blnLoadDeep = true, CancellationToken cancellationToken = default)
+            => LoadChannel(new DirectoryInfo(Path.Combine(m_baseDirectory.FullName, channelName)), blnLoadDeep, cancellationToken);
 
-        public async Task<Channel> LoadChannel(DirectoryInfo channelDir, bool blnLoadDeep = true)
+        public async Task<Channel> LoadChannel(DirectoryInfo channelDir, bool blnLoadDeep = true, CancellationToken cancellationToken = default)
         {
             var channelFile = Path.Combine(channelDir.FullName, "channel.yaml");
 
-            var channel = await m_yamlSerializer.LoadFromYaml<Channel>(channelFile);
+            var channel = await m_yamlSerializer.LoadFromYaml<Channel>(channelFile, cancellationToken);
             if (channel == null) return new Channel();
             if (blnLoadDeep)
             {
-                channel.Devices = await LoadDevices(channelDir, blnLoadDeep);
+                channel.Devices = await LoadDevices(channelDir, blnLoadDeep, cancellationToken);
             }
             return channel;
         }
 
-        private async Task<DeviceCollection> LoadDevices(DirectoryInfo channelDir, bool blnLoadDeep = true)
+        private async Task<DeviceCollection> LoadDevices(DirectoryInfo channelDir, bool blnLoadDeep = true, CancellationToken cancellationToken = default)
         {
             var devices = new DeviceCollection();
             var deviceDirs = channelDir.GetDirectories();
             foreach (var deviceDir in deviceDirs)
             {
-                devices.Add(await LoadDevice(deviceDir, blnLoadDeep));
+                devices.Add(await LoadDevice(deviceDir, blnLoadDeep, cancellationToken));
             }
             return devices;
         }
 
-        private async Task<Device> LoadDevice(DirectoryInfo deviceDir, bool blnLoadDeep = true)
+        private async Task<Device> LoadDevice(DirectoryInfo deviceDir, bool blnLoadDeep = true, CancellationToken cancellationToken = default)
         {
             var deviceFile = Path.Combine(deviceDir.FullName, "device.yaml");
-            var device = await m_yamlSerializer.LoadFromYaml<Device>(deviceFile);
+            var device = await m_yamlSerializer.LoadFromYaml<Device>(deviceFile, cancellationToken);
             if (device == null) return new Device();
             if (blnLoadDeep)
             {
-                device.Tags = [.. await LoadTags(device, deviceDir)];
-                device.TagGroups = await LoadTagGroups(device, deviceDir);
+                device.Tags = [.. await LoadTags(device, deviceDir, cancellationToken)];
+                device.TagGroups = await LoadTagGroups(device, deviceDir, cancellationToken);
             }
             return device;
         }
 
-        private async Task<DeviceTagGroupCollection?> LoadTagGroups(Device device, DirectoryInfo deviceDir)
+        private async Task<DeviceTagGroupCollection?> LoadTagGroups(Device device, DirectoryInfo deviceDir, CancellationToken cancellationToken = default)
         {
             var tagGroups = new DeviceTagGroupCollection();
             var tagGroupDirs = deviceDir.GetDirectories();
@@ -112,9 +112,9 @@ namespace Kepware.SyncService.ProjectStorage
             foreach (var grpDir in tagGroupDirs)
             {
                 var tagGroupFile = Path.Combine(grpDir.FullName, "tagGroup.yaml");
-                var tagGroup = await m_yamlSerializer.LoadFromYaml<DeviceTagGroup>(tagGroupFile);
-                tagGroup.Tags = [.. await LoadTags(device, grpDir)];
-                tagGroup.TagGroups = await LoadTagGroups(device, grpDir);
+                var tagGroup = await m_yamlSerializer.LoadFromYaml<DeviceTagGroup>(tagGroupFile, cancellationToken);
+                tagGroup.Tags = [.. await LoadTags(device, grpDir, cancellationToken)];
+                tagGroup.TagGroups = await LoadTagGroups(device, grpDir, cancellationToken);
 
                 tagGroups.Add(tagGroup);
             }
@@ -122,29 +122,24 @@ namespace Kepware.SyncService.ProjectStorage
             return tagGroups;
         }
 
-        private Task<List<Tag>> LoadTags(Device device, DirectoryInfo tagDirectory)
+        private Task<List<Tag>> LoadTags(Device device, DirectoryInfo tagDirectory, CancellationToken cancellationToken = default)
         {
             var tagFile = Path.Combine(tagDirectory.FullName, "tags.csv");
             if (!File.Exists(tagFile))
                 return Task.FromResult(new List<Tag>());
 
             var dataTypeConverter = m_dataTypeEnumConverterProvider.GetDataTypeEnumConverter(device.GetDynamicProperty<string>(Properties.DeviceDriver));
-            return m_csvTagSerializer.ImportTagsAsync(tagFile, dataTypeConverter);
+            return m_csvTagSerializer.ImportTagsAsync(tagFile, dataTypeConverter, cancellationToken);
         }
 
-        public async Task ExportProjecAsync(Project project)
+        public async Task ExportProjecAsync(Project project, CancellationToken cancellationToken = default)
         {
             try
             {
                 SuppressEvents();
                 var projectFile = Path.Combine(m_baseDirectory.FullName, "project.yaml");
-                await m_yamlSerializer.SaveAsYaml(projectFile, project);
-                await ExportChannelsAsync(project.Channels);
-
-#if DEBUG
-                project.Cleanup(true);
-                await File.WriteAllTextAsync(Path.Combine(m_baseDirectory.FullName, "project.json"), JsonSerializer.Serialize(new JsonProjectRoot { Project = project }, KepJsonContext.Default.JsonProjectRoot));
-#endif
+                await m_yamlSerializer.SaveAsYaml(projectFile, project, cancellationToken);
+                await ExportChannelsAsync(project.Channels, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -155,7 +150,7 @@ namespace Kepware.SyncService.ProjectStorage
                 ResumeEvents();
             }
         }
-        protected async Task ExportChannelsAsync(ChannelCollection? channels)
+        protected async Task ExportChannelsAsync(ChannelCollection? channels, CancellationToken cancellationToken = default)
         {
             if (channels == null) return;
 
@@ -179,7 +174,7 @@ namespace Kepware.SyncService.ProjectStorage
                     {
                         // Export Channel
                         var channelFile = Path.Combine(channelFolder.FullName, "channel.yaml");
-                        await m_yamlSerializer.SaveAsYaml(channelFile, channel);
+                        await m_yamlSerializer.SaveAsYaml(channelFile, channel, cancellationToken).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -192,7 +187,7 @@ namespace Kepware.SyncService.ProjectStorage
                         var deviceDirsToDelete = new DirectoryInfo(channelFolder.FullName).GetDirectories().Select(dir => dir.Name)
                             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-                        var count = await ExportDevices(channel, channelFolder.FullName, deviceDirsToDelete);
+                        var count = await ExportDevices(channel, channelFolder.FullName, deviceDirsToDelete, cancellationToken);
 
                         exportedDevices += count.exportedDevices;
                         exportedTags += count.exportedTags;
@@ -244,17 +239,17 @@ namespace Kepware.SyncService.ProjectStorage
             }
         }
 
-        protected async Task ExportDevices(Channel channel, DeviceCollection? devices)
+        protected async Task ExportDevices(Channel channel, DeviceCollection? devices, CancellationToken cancellationToken = default)
         {
             string channelFolder = Path.Combine(m_baseDirectory.FullName, channel.Name.EscapeDiskEntry());
 
             var deviceDirsToDelete = new DirectoryInfo(channelFolder).GetDirectories().Select(dir => dir.Name)
                             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            await ExportDevices(channel, channelFolder, deviceDirsToDelete);
+            await ExportDevices(channel, channelFolder, deviceDirsToDelete, cancellationToken).ConfigureAwait(false);
             DeleteDirectories(channelFolder, deviceDirsToDelete);
         }
 
-        private async Task<(int exportedDevices, int exportedTags)> ExportDevices(Channel channel, string channelFolder, HashSet<string> deviceDirsToDelete)
+        private async Task<(int exportedDevices, int exportedTags)> ExportDevices(Channel channel, string channelFolder, HashSet<string> deviceDirsToDelete, CancellationToken cancellationToken = default)
         {
             if (channel?.Devices == null)
                 return (0, 0);
@@ -278,11 +273,11 @@ namespace Kepware.SyncService.ProjectStorage
                 {
                     // Export Device
                     var deviceFile = Path.Combine(deviceFolder, "device.yaml");
-                    await m_yamlSerializer.SaveAsYaml(deviceFile, device);
+                    await m_yamlSerializer.SaveAsYaml(deviceFile, device, cancellationToken).ConfigureAwait(false);
 
-                    await m_csvTagSerializer.ExportTagsAsync(Path.Combine(deviceFolder, "tags.csv"), device.Tags, dataTypeConverter);
+                    await m_csvTagSerializer.ExportTagsAsync(Path.Combine(deviceFolder, "tags.csv"), device.Tags, dataTypeConverter, cancellationToken);
                     exportedTags += device.Tags?.Count ?? 0;
-                    exportedTags += await ExportTagGroups(deviceFolder, device.TagGroups, dataTypeConverter);
+                    exportedTags += await ExportTagGroups(deviceFolder, device.TagGroups, dataTypeConverter, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -292,7 +287,7 @@ namespace Kepware.SyncService.ProjectStorage
             return (exportedDevices, exportedTags);
         }
 
-        private async Task<int> ExportTagGroups(string parentFolder, IEnumerable<DeviceTagGroup>? tagGroups, IDataTypeEnumConverter dataTypeConverter)
+        private async Task<int> ExportTagGroups(string parentFolder, IEnumerable<DeviceTagGroup>? tagGroups, IDataTypeEnumConverter dataTypeConverter, CancellationToken cancellationToken = default)
         {
             var tagGrpDirsToDelete = new DirectoryInfo(parentFolder).GetDirectories().Select(dir => dir.Name)
                             .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -307,12 +302,12 @@ namespace Kepware.SyncService.ProjectStorage
 
                     // Export TagGroup
                     var tagGroupFile = Path.Combine(tagGroupFolder, "tagGroup.yaml");
-                    await m_yamlSerializer.SaveAsYaml(tagGroupFile, tagGroup);
+                    await m_yamlSerializer.SaveAsYaml(tagGroupFile, tagGroup, cancellationToken).ConfigureAwait(false);
 
-                    await m_csvTagSerializer.ExportTagsAsync(Path.Combine(tagGroupFolder, "tags.csv"), tagGroup.Tags, dataTypeConverter);
+                    await m_csvTagSerializer.ExportTagsAsync(Path.Combine(tagGroupFolder, "tags.csv"), tagGroup.Tags, dataTypeConverter, cancellationToken).ConfigureAwait(false);
                     exportedTags += tagGroup.Tags?.Count ?? 0;
 
-                    exportedTags += await ExportTagGroups(tagGroupFolder, tagGroup.TagGroups, dataTypeConverter);
+                    exportedTags += await ExportTagGroups(tagGroupFolder, tagGroup.TagGroups, dataTypeConverter, cancellationToken).ConfigureAwait(false);
                 }
             DeleteDirectories(parentFolder, tagGrpDirsToDelete);
             return exportedTags;
@@ -377,7 +372,7 @@ namespace Kepware.SyncService.ProjectStorage
                     watcher.Created += onCreated;
                     watcher.Deleted += onDeleted;
                     watcher.Renamed += onRenamed;
-                  
+
                     // Cleanup
                     return () =>
                     {

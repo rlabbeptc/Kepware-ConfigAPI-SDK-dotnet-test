@@ -1,10 +1,12 @@
-﻿using System;
+﻿using Kepware.Api.Model;
+using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace Kepware.Api.Util
 {
@@ -13,6 +15,26 @@ namespace Kepware.Api.Util
 
         private static readonly FrozenSet<char> InvalidChars = new HashSet<char> { '\\', '/', ':', '*', '?', '\\', '<', '>', '|', EscapeChar }.ToFrozenSet();
         private const char EscapeChar = '%'; // Escape character for encoding
+
+        public static IEnumerable<NamedEntity> Flatten(this NamedEntity? node)
+        {
+            NamedEntity? current = node;
+            while (current != null)
+            {
+                yield return current;
+                current = current.Owner;
+            }
+        }
+
+        public static IEnumerable<NamedEntity> Flatten(this NamedEntity? node, Type matchingType)
+        {
+            NamedEntity? current = node;
+            while (current != null)
+            {
+                yield return current;
+                current = current.Owner;
+            }
+        }
 
         public static string EscapeDiskEntry(this string path)
         {

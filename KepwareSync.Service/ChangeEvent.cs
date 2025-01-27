@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Kepware.SyncService
 {
-    public enum ChangeSource { KepServer, LocalFile }
+    public enum ChangeSource { PrimaryKepServer, SecondaryKepServer, LocalFile }
 
     public record ChangeEvent
     {

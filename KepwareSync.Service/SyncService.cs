@@ -11,6 +11,7 @@ using System.Reactive.Subjects;
 using System.Text;
 using System.Threading.Tasks;
 using Kepware.Api;
+using System.Runtime.CompilerServices;
 
 namespace Kepware.SyncService
 {
@@ -18,7 +19,8 @@ namespace Kepware.SyncService
     {
         private readonly ILogger<SyncService> m_logger;
         private readonly IProjectStorage m_projectStorage;
-        private readonly KepServerClient m_kepServerClient;
+        private readonly KepwareApiClient m_kepServerClient;
+        private readonly Dictionary<KepwareApiClient, long?> m_secondaryClients;
         private readonly KepSyncOptions m_syncOptions;
 
         private readonly ConcurrentQueue<ChangeEvent> m_changeQueue = new ConcurrentQueue<ChangeEvent>();
@@ -27,11 +29,12 @@ namespace Kepware.SyncService
         private bool m_bIsDisposed = false;
         private long? m_lastProjectId = null;
 
-        public SyncService(KepServerClient kepServerClient, IProjectStorage projectStorage, KepSyncOptions syncOptions, ILogger<SyncService> logger)
+        public SyncService(KepwareApiClient primaryClient, List<KepwareApiClient> secondaryClients, IProjectStorage projectStorage, KepSyncOptions syncOptions, ILogger<SyncService> logger)
         {
             m_logger = logger;
             m_syncOptions = syncOptions;
-            m_kepServerClient = kepServerClient;
+            m_kepServerClient = primaryClient;
+            m_secondaryClients = secondaryClients.ToDictionary(client => client, client => null as long?);
             m_projectStorage = projectStorage;
         }
 
@@ -56,14 +59,14 @@ namespace Kepware.SyncService
             }
             else
             {
-                NotifyChange(new ChangeEvent { Source = ChangeSource.KepServer, Reason = "Initial sync from KepServer" });
+                NotifyChange(new ChangeEvent { Source = ChangeSource.PrimaryKepServer, Reason = "Initial sync from Kepware" });
             }
             bool blnFirstDisconnect = true;
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
-                    if (await m_kepServerClient.TestConnectionAsync())
+                    if (await m_kepServerClient.TestConnectionAsync(stoppingToken))
                     {
                         if (m_syncOptions.SyncMode == SyncMode.TwoWay ||
                             m_syncOptions.SyncDirection == SyncDirection.KepwareToDisk)
@@ -74,14 +77,14 @@ namespace Kepware.SyncService
                                 {
                                     m_changeQueue.TryDequeue(out changeEvent);
                                 }
-                                await ProcessChangeAsync(changeEvent!);
+                                await ProcessChangeAsync(changeEvent!, stoppingToken);
                             }
                             else
                             {
-                                var currentProjectId = await FetchCurrentProjectIdAsync();
+                                var currentProjectId = await FetchCurrentProjectIdAsync(m_kepServerClient, stoppingToken);
                                 if (m_lastProjectId != currentProjectId)
                                 {
-                                    await ProcessChangeAsync(new ChangeEvent { Source = ChangeSource.KepServer, Reason = "Project changed" });
+                                    await ProcessChangeAsync(new ChangeEvent { Source = ChangeSource.PrimaryKepServer, Reason = "Project changed" }, stoppingToken);
                                 }
                             }
                         }
@@ -91,9 +94,9 @@ namespace Kepware.SyncService
                     else
                     {
                         // no connection to kepserver - wait and try again
-                        if(blnFirstDisconnect)
+                        if (blnFirstDisconnect)
                         {
-                            m_logger.LogWarning("No connection to KepServer. Waiting for connection...");
+                            m_logger.LogWarning("No connection to {ClientName}-client. Waiting for connection...", m_kepServerClient.ClientName);
                             blnFirstDisconnect = false;
                         }
                         await Task.Delay(5000, stoppingToken);
@@ -107,37 +110,41 @@ namespace Kepware.SyncService
             }
         }
 
-        private async Task<long> FetchCurrentProjectIdAsync()
+        private static async Task<long> FetchCurrentProjectIdAsync(KepwareApiClient client, CancellationToken cancellationToken)
         {
-            var project = await m_kepServerClient.LoadProject(false);
+            var project = await client.LoadProject(false, cancellationToken).ConfigureAwait(false);
 
             return project?.ProjectId ?? -1;
         }
 
         public void NotifyChange(ChangeEvent changeEvent)
         {
-            var target = changeEvent.Source == ChangeSource.KepServer ? ChangeSource.LocalFile : ChangeSource.KepServer;
+            var target = changeEvent.Source == ChangeSource.PrimaryKepServer ? ChangeSource.LocalFile : ChangeSource.PrimaryKepServer;
             m_logger.LogInformation("Enqueued sync request: {ChangeSource} -> {Target} ({Change})", changeEvent.Source, target, changeEvent.Reason);
             m_changeQueue.Enqueue(changeEvent);
         }
 
-        private async Task ProcessChangeAsync(ChangeEvent changeEvent)
+        private async Task ProcessChangeAsync(ChangeEvent changeEvent, CancellationToken cancellationToken)
         {
             m_logger.LogInformation("Processing Sync (most resent event: {ChangeSource} - {Change})", changeEvent.Source, changeEvent.Reason);
             try
             {
                 switch (changeEvent.Source)
                 {
-                    case ChangeSource.KepServer:
-                        await SyncFromKepServerAsync();
+                    case ChangeSource.PrimaryKepServer:
+                        await SyncFromPrimaryKepServerAsync(cancellationToken).ConfigureAwait(false);
                         break;
 
                     case ChangeSource.LocalFile:
-                        await SyncFromLocalFileAsync();
+                        await SyncFromLocalFileAsync(cancellationToken).ConfigureAwait(false);
+                        break;
+
+                    case ChangeSource.SecondaryKepServer:
+                        await SyncFromSecondaryKepServerAsync(cancellationToken).ConfigureAwait(false);
                         break;
                 }
 
-                m_lastProjectId = await FetchCurrentProjectIdAsync();
+                m_lastProjectId = await FetchCurrentProjectIdAsync(m_kepServerClient, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -145,111 +152,113 @@ namespace Kepware.SyncService
             }
         }
 
-        internal async Task SyncFromKepServerAsync()
+
+        internal async Task SyncFromPrimaryKepServerAsync(CancellationToken cancellationToken = default)
         {
-            m_logger.LogInformation("Synchronizing full project from KepServer to local file...");
+            m_logger.LogInformation("Synchronizing full project from primary Kepware...");
             var project = await m_kepServerClient.LoadProject(true);
+            await project.Cleanup(m_kepServerClient, true, cancellationToken);
             await m_projectStorage.ExportProjecAsync(project);
+
             m_lastProjectId = project.ProjectId;
-        }
 
-        internal async Task SyncFromLocalFileAsync()
-        {
-            try
+
+            int i = 0;
+            foreach (var secondaryClient in m_secondaryClients.Keys)
             {
-                m_logger.LogInformation("Synchronizing full project from local file to KepServer...");
-                var projectFromDisk = await m_projectStorage.LoadProject(true);
-                var projectFromApi = await m_kepServerClient.LoadProject(true);
-
-                if (projectFromDisk.Hash != projectFromApi.Hash)
+                try
                 {
-                    //TODO update project
-                    m_logger.LogInformation("[not implemented] Project has changed. Updating project...");
-                }
-                int inserts = 0, updates = 0, deletes = 0;
-
-                var channelCompare = await m_kepServerClient.CompareAndApply<ChannelCollection, Channel>(projectFromDisk.Channels, projectFromApi.Channels);
-
-                updates += channelCompare.ChangedItems.Count;
-                inserts += channelCompare.ItemsOnlyInLeft.Count;
-                deletes += channelCompare.ItemsOnlyInRight.Count;
-
-                foreach (var channel in channelCompare.UnchangedItems.Concat(channelCompare.ChangedItems))
-                {
-                    var deviceCompare = await m_kepServerClient.CompareAndApply<DeviceCollection, Device>(channel.Left!.Devices, channel.Right!.Devices, channel.Right);
-
-                    updates += deviceCompare.ChangedItems.Count;
-                    inserts += deviceCompare.ItemsOnlyInLeft.Count;
-                    deletes += deviceCompare.ItemsOnlyInRight.Count;
-
-                    foreach (var device in deviceCompare.UnchangedItems.Concat(deviceCompare.ChangedItems))
+                    if (await secondaryClient.TestConnectionAsync(cancellationToken).ConfigureAwait(false))
                     {
-                        var tagCompare = await m_kepServerClient.CompareAndApply<DeviceTagCollection, Tag>(device.Left!.Tags, device.Right!.Tags, device.Right);
+                        await SyncProjectToKepServerAsync("primary", project, secondaryClient, $"Secondary-{++i:00}", cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                        updates += tagCompare.ChangedItems.Count;
-                        inserts += tagCompare.ItemsOnlyInLeft.Count;
-                        deletes += tagCompare.ItemsOnlyInRight.Count;
-
-                        var tagGroupCompare = await m_kepServerClient.CompareAndApply<DeviceTagGroupCollection, DeviceTagGroup>(device.Left!.TagGroups, device.Right!.TagGroups, device.Right);
-
-                        updates += tagGroupCompare.ChangedItems.Count;
-                        inserts += tagGroupCompare.ItemsOnlyInLeft.Count;
-                        deletes += tagGroupCompare.ItemsOnlyInRight.Count;
-
-
-                        foreach (var tagGroup in tagGroupCompare.UnchangedItems.Concat(tagGroupCompare.ChangedItems))
-                        {
-                            if (tagGroup.Left?.TagGroups != null)
-                            {
-                                var result = await RecusivlyCompareTagGroup(m_kepServerClient, tagGroup.Left!.TagGroups, tagGroup.Right!.TagGroups, tagGroup.Right);
-                                updates += result.updates;
-                                inserts += result.inserts;
-                                deletes += result.deletes;
-                            }
-                        }
+                        var currentProjectId = await FetchCurrentProjectIdAsync(secondaryClient, cancellationToken).ConfigureAwait(false);
+                        m_secondaryClients[secondaryClient] = currentProjectId;
+                    }
+                    else
+                    {
+                        m_secondaryClients[secondaryClient] = null;
                     }
                 }
-
-                if (updates > 0 || deletes > 0 || inserts > 0)
+                catch (Exception ex)
                 {
-                    m_logger.LogInformation("Completed synchronisation from disk to kepserver: {NumUpdates} updates, {NumInserts} inserts, {NumDeletes} deletes", updates, inserts, deletes);
-                    NotifyChange(new ChangeEvent { Source = ChangeSource.KepServer, Reason = "Sync from kepserver after filesync" });
+                    m_logger.LogError(ex, "Error while syncing project to secondary client {ClientName}", secondaryClient.ClientHostName);
+                }
+            }
+        }
+
+        private async Task SyncFromSecondaryKepServerAsync(CancellationToken cancellationToken)
+        {
+            m_logger.LogInformation("Synchronizing full project from secondary Kepware...");
+
+            //find the clients that have changed
+            List<KepwareApiClient> changedClients = new List<KepwareApiClient>();
+            foreach (var kvp in m_secondaryClients)
+            {
+                if (kvp.Value != null && await FetchCurrentProjectIdAsync(kvp.Key, cancellationToken) != kvp.Value)
+                {
+                    changedClients.Add(kvp.Key);
+                }
+            }
+
+            if (changedClients.Count >= 1)
+            {
+                var clientToSyncFrom = changedClients[0];
+                if (changedClients.Count > 1)
+                {
+                    m_logger.LogWarning("Multiple secondary clients have changed. Syncing from the first one ({ClientHostName}).",
+                       clientToSyncFrom.ClientHostName);
                 }
                 else
                 {
-                    m_logger.LogInformation("Completed synchronisation from disk to kepserver: no changes made");
+                    m_logger.LogInformation("Syncing from secondary client {ClientHostName}...", clientToSyncFrom.ClientHostName);
                 }
+
+                var projectFromSecondary = await clientToSyncFrom.LoadProject(true, cancellationToken).ConfigureAwait(false);
+                await SyncProjectToKepServerAsync("secondary", projectFromSecondary, m_kepServerClient, "Primary",
+                    onSyncedWithChanges: () => NotifyChange(new ChangeEvent { Source = ChangeSource.PrimaryKepServer, Reason = "Sync from secondary kepserver" }),
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
+
+
             }
-            catch (Exception ex)
+            else
             {
-                m_logger.LogError(ex, "Error while syncing local project file to KepServer");
+                m_logger.LogInformation("No changes in secondary clients");
             }
         }
 
-        private static async Task<(int inserts, int updates, int deletes)> RecusivlyCompareTagGroup(KepServerClient kepServerClient, DeviceTagGroupCollection left, DeviceTagGroupCollection? right, NamedEntity owner)
+
+        internal async Task SyncFromLocalFileAsync(CancellationToken cancellationToken = default)
         {
-            (int inserts, int updates, int deletes) ret = (0, 0, 0);
-
-            var tagGroupCompare = await kepServerClient.CompareAndApply<DeviceTagGroupCollection, DeviceTagGroup>(left, right, owner);
-
-            ret.inserts = tagGroupCompare.ItemsOnlyInLeft.Count;
-            ret.updates = tagGroupCompare.ChangedItems.Count;
-            ret.deletes = tagGroupCompare.ItemsOnlyInRight.Count;
-
-            foreach (var tagGroup in tagGroupCompare.UnchangedItems.Concat(tagGroupCompare.ChangedItems))
+            try
             {
-                var tagGroupTagCompare = await kepServerClient.CompareAndApply<DeviceTagGroupTagCollection, Tag>(tagGroup.Left!.Tags, tagGroup.Right!.Tags, tagGroup.Right);
-
-                if (tagGroup.Left!.TagGroups != null)
-                {
-                    var result = await RecusivlyCompareTagGroup(kepServerClient, tagGroup.Left!.TagGroups, tagGroup.Right!.TagGroups, tagGroup.Right);
-                    ret.updates += result.updates;
-                    ret.deletes += result.deletes;
-                    ret.inserts += result.inserts;
-                }
+                m_logger.LogInformation("Synchronizing full project from local file...");
+                var projectFromDisk = await m_projectStorage.LoadProject(true, cancellationToken).ConfigureAwait(false);
+                await SyncProjectToKepServerAsync("disk", projectFromDisk, m_kepServerClient, "Primary",
+                    onSyncedWithChanges: () => NotifyChange(new ChangeEvent { Source = ChangeSource.PrimaryKepServer, Reason = "Sync from kepserver after filesync" }),
+                    cancellationToken: cancellationToken).ConfigureAwait(false);
             }
+            catch (Exception ex)
+            {
+                m_logger.LogError(ex, "Error while syncing local project file to Kepware");
+            }
+        }
 
-            return ret;
+        private async Task SyncProjectToKepServerAsync(string projectSource, Project project, KepwareApiClient kepServerClient, string clientName, Action? onSyncedWithChanges = default, CancellationToken cancellationToken = default)
+        {
+            var (inserts, updates, deletes) = await kepServerClient.CompareAndApply(project, cancellationToken).ConfigureAwait(false);
+
+            if (updates > 0 || deletes > 0 || inserts > 0)
+            {
+                m_logger.LogInformation("Completed synchronisation from {ProjectSource} to {ClientName}-kepserver ({ClientHostName}): {NumUpdates} updates, {NumInserts} inserts, {NumDeletes} deletes",
+                 projectSource, clientName, kepServerClient.ClientHostName, updates, inserts, deletes);
+                onSyncedWithChanges?.Invoke();
+            }
+            else
+            {
+                m_logger.LogInformation("Completed synchronisation from {ProjectSource} to {ClientName}-kepserver ({ClientHostName}):: no changes made",
+                    projectSource, clientName, kepServerClient.ClientHostName);
+            }
         }
 
         protected virtual void Dispose(bool disposing)
@@ -277,3 +286,4 @@ namespace Kepware.SyncService
         }
     }
 }
+
