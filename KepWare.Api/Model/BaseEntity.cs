@@ -106,7 +106,7 @@ namespace Kepware.Api.Model
             return default;
         }
 
-        public void SetDynamicProperty<T>(string key, T value)
+        public BaseEntity SetDynamicProperty<T>(string key, T value)
         {
             if (value is JsonElement jsonElement)
             {
@@ -117,6 +117,8 @@ namespace Kepware.Api.Model
                 DynamicProperties[key] = KepJsonContext.WrapInJsonElement(value);
             }
             _hash = null;
+
+            return this;
         }
 
         public bool TryGetGetDynamicProperty<T>(string key, [NotNullWhen(true)] out T? value)
@@ -202,7 +204,7 @@ namespace Kepware.Api.Model
         protected override CustomHashGenerator.HashSourceBuilder AppendHashSources(CustomHashGenerator.HashSourceBuilder builder)
          => base.AppendHashSources(builder).Append(nameof(Name), Name);
 
-        public virtual Dictionary<string, JsonElement> GetUpdateDiff(NamedEntity other)
+        public virtual Dictionary<string, JsonElement> GetUpdateDiff(NamedEntity other, bool blnAddProjectId = true)
         {
             var diff = new Dictionary<string, JsonElement>();
             if (Name != other.Name)
@@ -215,7 +217,7 @@ namespace Kepware.Api.Model
                 diff[Properties.Description] = KepJsonContext.WrapInJsonElement(Description);
             }
 
-            if (ProjectId != 0)
+            if (blnAddProjectId && ProjectId != 0)
             {
                 diff[Properties.ProjectId] = KepJsonContext.WrapInJsonElement(ProjectId);
             }

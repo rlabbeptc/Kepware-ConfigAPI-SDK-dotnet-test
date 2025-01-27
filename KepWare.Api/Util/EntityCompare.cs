@@ -38,7 +38,7 @@ namespace Kepware.Api.Util
 
         public static CollectionResultBucket<T, K> Compare<T, K>(T? left, T? right, Func<K, string> keySelector)
            where T : EntityCollection<K>
-           where K : BaseEntity
+           where K : NamedEntity
         {
             var results = new List<ResultBucket<K>>();
             if (left == null && right == null)
@@ -190,7 +190,7 @@ namespace Kepware.Api.Util
             return retValue;
         }
 
-        private static ResultBucket<K> GetResult<K>(K leftItem, K rightItem) where K : BaseEntity
+        private static ResultBucket<K> GetResult<K>(K leftItem, K rightItem) where K : NamedEntity
         {
             return Compare(leftItem, rightItem) switch
             {
@@ -202,7 +202,7 @@ namespace Kepware.Api.Util
         }
 
         public static CompareResult Compare<T>(T? left, T? right)
-            where T : BaseEntity
+            where T : NamedEntity
         {
             if (left == null && right == null)
             {
@@ -218,6 +218,11 @@ namespace Kepware.Api.Util
             }
             else if (left.Equals(right))
             {
+                return CompareResult.None;
+            }
+            else if (left.GetUpdateDiff(right, false).Count <= 0)
+            {
+                //Nothing to update
                 return CompareResult.None;
             }
             else
