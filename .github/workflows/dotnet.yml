@@ -4,9 +4,19 @@ on:
   push:
     branches: [ "master" ]
     tags:
-      - "v*.*.*" # Trigger für Tags wie v1.0.0
+      - "v*.*.*" # Trigger for tags like v1.0.0
+    paths:
+      - 'Kepware.Api/**'
+      - 'Kepware.Api.Sample/**'
+      - 'KepwareSync.Service/**'
+      - '!*.md' # Exclude markdown files
   pull_request:
     branches: [ "master" ]
+    paths:
+      - 'Kepware.Api/**'
+      - 'Kepware.Api.Sample/**'
+      - 'KepwareSync.Service/**'
+      - '!*.md' # Exclude markdown files
 
 jobs:
   build:
