@@ -69,7 +69,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
             repo_token: ${{ secrets.GITHUB_TOKEN }}
-            file_glob: publish/*
+            file_glob: true
+            file: publish/*
             asset_name: Kepware.SyncService.linux-x64
             tag: ${{ github.ref }}
             overwrite: true
