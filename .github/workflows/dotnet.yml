@@ -41,6 +41,14 @@ jobs:
         run: dotnet restore
       - name: Build
         run: dotnet build --no-restore --configuration release
+      - name: Pack NuGet
+        run: dotnet pack Kepware.Api/Kepware.Api.csproj --no-build --configuration release --output ./nupkg
+      - name: Push to GitHub Packages
+        if: ${{ github.event_name != 'pull_request' && matrix.platform == 'ubuntu' }}
+        run: |
+          dotnet nuget push ./nupkg/*.nupkg \
+            --api-key ${{ secrets.GITHUB_TOKEN }} \
+            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
       # - name: Test
       #   run: dotnet test --no-build --verbosity normal
       - name: dotnet publish
@@ -56,6 +64,16 @@ jobs:
           upload_url: ${{ steps.drafter.outputs.upload_url }}
           asset_path: publish/Kepware.SyncService.exe
           asset_name: Kepware.SyncService.win-x64.exe
+          asset_content_type: application/octet-stream
+      - name: Upload appsettings artifacts to release
+        if: ${{ github.event_name != 'pull_request' && matrix.platform == 'windows' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.drafter.outputs.upload_url }}
+          asset_path: publish/appsettings.json
+          asset_name: appsettings.json
           asset_content_type: application/octet-stream
 
       - name: Upload Ubuntu artifacts to release

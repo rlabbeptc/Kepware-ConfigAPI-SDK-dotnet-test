@@ -1,8 +1,6 @@
 # Kepware.Api
 
 [![Build Status](https://github.com/BoBiene/Kepware-ConfigAPI-SDK-dotnet/actions/workflows/dotnet.yml/badge.svg)](https://github.com/BoBiene/Kepware-ConfigAPI-SDK-dotnet/actions)
-[![NuGet](https://img.shields.io/badge/nuget-v1.0.0-blue.svg)](https://github.com/BoBiene/Kepware-ConfigAPI-SDK-dotnet/packages/)
-
 
 ## Overview
 The `Kepware.Api` library provides a robust client implementation to interact with the Kepware Configuration API. It supports managing channels, devices, tags, and other configurations programmatically while ensuring secure and efficient communication.
