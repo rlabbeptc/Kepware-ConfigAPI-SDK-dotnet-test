@@ -69,6 +69,7 @@ namespace Kepware.SyncService.Configuration
             command.AddOption(_primaryHostOption);
             command.AddOption(_httpTimeoutOption);
             command.AddOption(_secondaryHostsOption);
+            command.AddOption(_httpDisableCertCheck);
         }
 
 
