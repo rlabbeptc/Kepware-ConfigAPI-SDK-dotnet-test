@@ -32,24 +32,6 @@ A sample console application demonstrating how to use `Kepware.Api` to interact 
 
 [Readme for Kepware.Api.Sample](./Kepware.Api.Sample/README.md)
 
-## Installation
-To install the SDK:
-
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/your-org/Kepware-ConfigAPI-SDK-dotnet.git
-   ```
-2. Build the solution using Visual Studio or the .NET CLI:
-   ```bash
-   dotnet build
-   ```
-3. Add the `Kepware.Api` project or its compiled DLL as a reference in your .NET project.
-
-## Documentation
-Detailed documentation is available for each project:
-- **API Library**: Usage examples and method details can be found in the [Kepware.Api Readme](./Kepware.Api/README.md).
-- **Synchronization Service**: Configuration and usage instructions are outlined in the [KepwareSync.Service Readme](./KepwareSync.Service/README.md).
-- **Sample Application**: Example code is provided in the [Kepware.Api.Sample Readme](./Kepware.Api.Sample/README.md).
 
 ## Contribution Guidelines
 We welcome contributions to this repository. Please follow these guidelines:
