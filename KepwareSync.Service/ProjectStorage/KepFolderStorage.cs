@@ -13,29 +13,33 @@ using Kepware.SyncService.Configuration;
 using System.Text.Json;
 using System.Reactive.Linq;
 using Kepware.Api.Util;
+using System.Collections.ObjectModel;
 
 namespace Kepware.SyncService.ProjectStorage
 {
     internal class KepFolderStorage : IProjectStorage
     {
+
+        private readonly DirectoryInfo[] m_ignoredFolder;
         private readonly YamlSerializer m_yamlSerializer;
         private readonly CsvTagSerializer m_csvTagSerializer;
         private readonly DataTypeEnumConverterProvider m_dataTypeEnumConverterProvider;
         private readonly ILogger<KepFolderStorage> m_logger;
-        private readonly KepStorageOptions m_kepStorageOptions;
         private readonly DirectoryInfo m_baseDirectory;
         private bool m_suppressEvents = false;
 
         public KepFolderStorage(ILogger<KepFolderStorage> logger, KepStorageOptions kepStorageOptions, YamlSerializer yamlSerializer, CsvTagSerializer csvTagSerializer)
         {
             m_logger = logger;
-            m_kepStorageOptions = kepStorageOptions;
             m_yamlSerializer = yamlSerializer;
             m_csvTagSerializer = csvTagSerializer;
             m_dataTypeEnumConverterProvider = new DataTypeEnumConverterProvider();
-            m_baseDirectory = new DirectoryInfo(m_kepStorageOptions.Directory ?? "ExportedYaml");
+            m_baseDirectory = new DirectoryInfo(kepStorageOptions.Directory ?? "ExportedYaml");
             if (!m_baseDirectory.Exists)
                 m_baseDirectory.Create();
+            m_ignoredFolder = [
+                new DirectoryInfo(Path.Combine(m_baseDirectory.FullName, ".git")),
+                ];
         }
 
         public async Task<Project> LoadProject(bool blnLoadFullProject = true, CancellationToken cancellationToken = default)
@@ -55,7 +59,7 @@ namespace Kepware.SyncService.ProjectStorage
 
         public async Task<ChannelCollection> LoadChannels(bool blnLoadDeep = true, CancellationToken cancellationToken = default)
         {
-            var channelDirs = m_baseDirectory.GetDirectories();
+            var channelDirs = m_baseDirectory.GetDirectories().Except(m_ignoredFolder);
             var channels = new ChannelCollection();
             foreach (var channelDir in channelDirs)
             {
@@ -322,6 +326,17 @@ namespace Kepware.SyncService.ProjectStorage
         {
             m_suppressEvents = false;
         }
+        private bool SupressEvent(FileSystemEventArgs e)
+        {
+            if (m_suppressEvents)
+            {
+                return true;
+            }
+            else
+            {
+                return m_ignoredFolder.Any(dir => e.FullPath.StartsWith(dir.FullName));
+            }
+        }
 
         public IObservable<StorageChangeEvent> ObserveChanges()
         {
@@ -331,13 +346,13 @@ namespace Kepware.SyncService.ProjectStorage
                     {
                         NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
                         IncludeSubdirectories = true,
-                        EnableRaisingEvents = true
+                        EnableRaisingEvents = true,
                     };
 
                     // Event handlers
                     FileSystemEventHandler onChanged = (s, e) =>
                     {
-                        if (!m_suppressEvents)
+                        if (!SupressEvent(e))
                         {
                             observer.OnNext(new StorageChangeEvent(StorageChangeEvent.ChangeType.changed));
                         }
@@ -345,7 +360,7 @@ namespace Kepware.SyncService.ProjectStorage
 
                     FileSystemEventHandler onCreated = (s, e) =>
                     {
-                        if (!m_suppressEvents)
+                        if (!SupressEvent(e))
                         {
                             observer.OnNext(new StorageChangeEvent(StorageChangeEvent.ChangeType.added));
                         }
@@ -353,7 +368,7 @@ namespace Kepware.SyncService.ProjectStorage
 
                     FileSystemEventHandler onDeleted = (s, e) =>
                     {
-                        if (!m_suppressEvents)
+                        if (!SupressEvent(e))
                         {
                             observer.OnNext(new StorageChangeEvent(StorageChangeEvent.ChangeType.removed));
                         }
@@ -361,7 +376,7 @@ namespace Kepware.SyncService.ProjectStorage
 
                     RenamedEventHandler onRenamed = (s, e) =>
                     {
-                        if (!m_suppressEvents)
+                        if (!SupressEvent(e))
                         {
                             observer.OnNext(new StorageChangeEvent(StorageChangeEvent.ChangeType.changed));
                         }

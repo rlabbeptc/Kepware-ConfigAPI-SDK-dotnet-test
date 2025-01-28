@@ -18,8 +18,8 @@ namespace Kepware.SyncService.Configuration
 
         private readonly Option<string[]> _secondaryHostsOption;
 
-        private int m_nDefaultTimeout;
-        private bool m_bDefaultDisableCertCheck;
+        private readonly int m_nDefaultTimeout;
+        private readonly bool m_bDefaultDisableCertCheck;
 
         public KepApiOptionsBinder(IConfiguration configuration)
         {
