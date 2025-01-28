@@ -20,7 +20,7 @@ namespace Kepware.SyncService.ProjectStorage
     internal class KepFolderStorage : IProjectStorage
     {
 
-        private readonly DirectoryInfo[] m_ignoredFolder;
+        private readonly HashSet<string> m_ignoredFolder;
         private readonly YamlSerializer m_yamlSerializer;
         private readonly CsvTagSerializer m_csvTagSerializer;
         private readonly DataTypeEnumConverterProvider m_dataTypeEnumConverterProvider;
@@ -37,9 +37,9 @@ namespace Kepware.SyncService.ProjectStorage
             m_baseDirectory = new DirectoryInfo(kepStorageOptions.Directory ?? "ExportedYaml");
             if (!m_baseDirectory.Exists)
                 m_baseDirectory.Create();
-            m_ignoredFolder = [
-                new DirectoryInfo(Path.Combine(m_baseDirectory.FullName, ".git")),
-                ];
+            m_ignoredFolder = new HashSet<string>([
+                Path.Combine(m_baseDirectory.FullName, ".git"),
+                ], StringComparer.InvariantCultureIgnoreCase);
         }
 
         public async Task<Project> LoadProject(bool blnLoadFullProject = true, CancellationToken cancellationToken = default)
@@ -59,7 +59,7 @@ namespace Kepware.SyncService.ProjectStorage
 
         public async Task<ChannelCollection> LoadChannels(bool blnLoadDeep = true, CancellationToken cancellationToken = default)
         {
-            var channelDirs = m_baseDirectory.GetDirectories().Except(m_ignoredFolder);
+            var channelDirs = m_baseDirectory.GetDirectories().Where(dir => !m_ignoredFolder.Contains(dir.FullName));
             var channels = new ChannelCollection();
             foreach (var channelDir in channelDirs)
             {
@@ -151,6 +151,7 @@ namespace Kepware.SyncService.ProjectStorage
             }
             finally
             {
+                await Task.Delay(TimeSpan.FromSeconds(1)); // Wait for file system to catch up
                 ResumeEvents();
             }
         }
@@ -160,7 +161,9 @@ namespace Kepware.SyncService.ProjectStorage
 
             try
             {
-                var channelDirsToDelete = m_baseDirectory.GetDirectories().Select(dir => dir.Name)
+                var channelDirsToDelete = m_baseDirectory.GetDirectories()
+                    .Where(dir => !m_ignoredFolder.Contains(dir.FullName))
+                    .Select(dir => dir.Name)
                   .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
                 List<(string baseDir, IEnumerable<string> folderNames)> foldersToDelete = new();
@@ -334,7 +337,7 @@ namespace Kepware.SyncService.ProjectStorage
             }
             else
             {
-                return m_ignoredFolder.Any(dir => e.FullPath.StartsWith(dir.FullName));
+                return m_ignoredFolder.Any(dir => e.FullPath.StartsWith(dir, StringComparison.InvariantCultureIgnoreCase));
             }
         }
 
