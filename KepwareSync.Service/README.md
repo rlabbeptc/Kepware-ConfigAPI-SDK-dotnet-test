@@ -22,6 +22,7 @@ Kepware.SyncService [command] [options]
 ```
 
 #### Commands
+- **empty** (default): Run as an agent in the background, monitoring for changes and starting synchronization when detected
 - **SyncToDisk**: Synchronize configuration data from Kepware servers to the local filesystem.
 - **SyncFromDisk**: Apply configuration data from the local filesystem to Kepware servers.
 
@@ -41,8 +42,16 @@ Kepware.SyncService [command] [options]
 | `--version`                       | Show version information.                                                                    |                        |
 | `-?, -h, --help`                  | Show help and usage information.                                                             |                        |
 
-#### Examples
-1. **Synchronize Kepware to Disk:**
+#### CLI examples
+1. **Monitor and Synchronize bidrectional Kepware to Disk**
+   ```bash
+   Kepware.SyncService --primary-kep-api-username Administrator \
+      --primary-kep-api-password InrayTkeDocker2024! \
+      --primary-kep-api-host https://localhost:57512 \
+      --directory ./ExportedYaml
+   ```
+
+2. **Synchronize Kepware to Disk:**
    ```bash
    Kepware.SyncService SyncToDisk --primary-kep-api-username Administrator \
       --primary-kep-api-password InrayTkeDocker2024! \
@@ -50,7 +59,7 @@ Kepware.SyncService [command] [options]
       --directory ./ExportedYaml
    ```
 
-2. **Synchronize Disk to Kepware:**
+3. **Synchronize Disk to Kepware:**
    ```bash
    Kepware.SyncService SyncFromDisk --primary-kep-api-username Administrator \
       --primary-kep-api-password InrayTkeDocker2024! \
