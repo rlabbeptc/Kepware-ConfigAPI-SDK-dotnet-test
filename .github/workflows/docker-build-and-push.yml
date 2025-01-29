@@ -8,7 +8,7 @@ on:
       - 'Kepware.Api/**'
       - 'KepwareSync.Service/**'
       - '.github/workflows/docker-build-and-push.yml' 
-      - '!*.md' # Exclude markdown files
+      - '!**/*.md' # Exclude markdown files
 
 jobs:
   build:
