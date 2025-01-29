@@ -9,7 +9,7 @@ on:
       - 'Kepware.Api.Sample/**'
       - 'KepwareSync.Service/**'
       - '.github/workflows/dotnet.yml' 
-      - '!*.md' # Exclude markdown files
+      - '!**/*.md' # Exclude markdown files
   pull_request:
     branches: [ "master" ]
     paths:
