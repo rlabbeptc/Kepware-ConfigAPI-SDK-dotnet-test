@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Kepware.Api.Serializer;
+using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using YamlDotNet.Core.Tokens;
 using YamlDotNet.Serialization;
@@ -40,6 +42,16 @@ namespace Kepware.Api.Model
                     await channel.Cleanup(defaultValueProvider, blnRemoveProjectId, cancellationToken).ConfigureAwait(false);
                 }
             }
+        }
+
+        public async Task<Project> CloneAsync(CancellationToken cancellationToken = default)
+        {
+            using var stream = new MemoryStream();
+            await JsonSerializer.SerializeAsync(stream, this, KepJsonContext.Default.Project, cancellationToken).ConfigureAwait(false);
+            stream.Position = 0;
+
+            return await JsonSerializer.DeserializeAsync(stream, KepJsonContext.Default.Project, cancellationToken).ConfigureAwait(false) ??
+                throw new InvalidOperationException("CloneAsync failed");
         }
     }
 

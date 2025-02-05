@@ -128,7 +128,8 @@ namespace Kepware.SyncService
                         Password = apiOptions.Primary.Password,
                         Timeout = TimeSpan.FromSeconds(apiOptions.TimeoutInSeconds),
                         DisableCertifcateValidation = apiOptions.DisableCertificateValidation,
-                        ConfigureClientBuilder = ConfigureRetryPolicy
+                        ConfigureClientBuilder = ConfigureRetryPolicy,
+                        Tag = apiOptions.Primary
                     });
 
                 Dictionary<string, KepwareApiClientOptions> secondaryClients = [];
@@ -147,7 +148,8 @@ namespace Kepware.SyncService
                             Password = secondaryClient.Password,
                             Timeout = TimeSpan.FromSeconds(apiOptions.TimeoutInSeconds),
                             DisableCertifcateValidation = apiOptions.DisableCertificateValidation,
-                            ConfigureClientBuilder = ConfigureRetryPolicy
+                            ConfigureClientBuilder = ConfigureRetryPolicy,
+                            Tag = secondaryClient
                         });
                 }
 

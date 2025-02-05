@@ -40,7 +40,7 @@ jobs:
         with:
           setAllVars: true
       - name: Use Release Drafter
-        if: ${{ matrix.platform == 'ubuntu' }}
+        if: ${{ github.event_name != 'pull_request' && matrix.platform == 'ubuntu' }}
         id: drafter
         uses: release-drafter/release-drafter@v6
         with:

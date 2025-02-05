@@ -8,18 +8,21 @@ namespace Kepware.SyncService.Configuration
 {
     public class KepApiOptions
     {
-        public KepApiHost Primary { get; set; } = KepApiHost.Empty;
-        public List<KepApiHost> Secondary { get; set; } = [];
+        public KepwareSyncTarget Primary { get; set; } = KepwareSyncTarget.Empty;
+        public List<KepwareSyncTarget> Secondary { get; set; } = [];
         public int TimeoutInSeconds { get; set; } = 60;
         public bool DisableCertificateValidation { get; set; } = false;
     }
 
-    public class KepApiHost
+    public class KepwareSyncTarget
     {
-        public static readonly KepApiHost Empty = new();
+        public static readonly KepwareSyncTarget Empty = new();
 
         public string? UserName { get; set; }
         public string? Password { get; set; }
         public string? Host { get; set; }
+
+        public string? PasswordFile { get; set; }
+        public string? OverwriteConfigFile { get; set; }
     }
 }

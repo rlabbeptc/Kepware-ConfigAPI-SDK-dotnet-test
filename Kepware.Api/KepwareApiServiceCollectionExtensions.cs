@@ -13,32 +13,6 @@ namespace Kepware.Api
 {
     public static class KepwareApiServiceCollectionExtensions
     {
-        public static IServiceCollection AddKepwareApiClient(this IServiceCollection services, string name, Action<HttpClient>? configureClient = null, Action<IHttpClientBuilder>? configureHttpClientBuilder = null)
-        {
-            if (services == null) throw new ArgumentNullException(nameof(services));
-            if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Name cannot be null or empty.", nameof(name));
-
-            if (services.Any(service => service.ImplementationType == typeof(KepwareApiClient) && service.ServiceType.Name == name))
-            {
-                throw new InvalidOperationException($"KepwareApiClient with name '{name}' is already registered.");
-            }
-
-
-            var builder = services.AddHttpClient(name + "-httpClient", client => configureClient?.Invoke(client));
-            configureHttpClientBuilder?.Invoke(builder);
-
-            services.AddSingleton(serviceProvider =>
-            {
-                var logger = serviceProvider.GetRequiredService<ILogger<KepwareApiClient>>();
-                var factory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-                var httpClient = factory.CreateClient(name + "-httpClient");
-
-                return new KepwareApiClient(name, logger, httpClient);
-            });
-
-            return services;
-        }
-
         public static IServiceCollection AddKepwareApiClients(this IServiceCollection services, IEnumerable<KeyValuePair<string, KepwareApiClientOptions>> options)
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
@@ -57,7 +31,6 @@ namespace Kepware.Api
                 ConfigureHttpClientBuilder(option)(builder);
             }
 
-
             services.AddSingleton(serviceProvider =>
             {
                 return options.Select(kvp =>
@@ -66,8 +39,38 @@ namespace Kepware.Api
                     var factory = serviceProvider.GetRequiredService<IHttpClientFactory>();
                     var httpClient = factory.CreateClient(kvp.Key + "-httpClient");
 
-                    return new KepwareApiClient(kvp.Key, logger, httpClient);
+                    return new KepwareApiClient(kvp.Key, kvp.Value, logger, httpClient);
                 }).ToList();
+            });
+
+            return services;
+        }
+        public static IServiceCollection AddKepwareApiClient(this IServiceCollection services, string name, KepwareApiClientOptions options)
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+            if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Name cannot be null or empty.", nameof(name));
+
+            if (services.Any(service => service.ImplementationType == typeof(KepwareApiClient) && service.ServiceType.Name == name))
+            {
+                throw new InvalidOperationException($"KepwareApiClient with name '{name}' is already registered.");
+            }
+
+            if (options == null)
+                throw new ArgumentNullException(nameof(options));
+            if (!options.HostUri.IsAbsoluteUri)
+                throw new InvalidOperationException(name + " host is not configured as absolute uri.");
+
+
+            var builder = services.AddHttpClient(name + "-httpClient", client => ConfigureHttpClient(options).Invoke(client));
+            ConfigureHttpClientBuilder(options).Invoke(builder);
+
+            services.AddSingleton(serviceProvider =>
+            {
+                var logger = serviceProvider.GetRequiredService<ILogger<KepwareApiClient>>();
+                var factory = serviceProvider.GetRequiredService<IHttpClientFactory>();
+                var httpClient = factory.CreateClient(name + "-httpClient");
+
+                return new KepwareApiClient(name, options, logger, httpClient);
             });
 
             return services;
@@ -90,19 +93,7 @@ namespace Kepware.Api
                     ConfigureClientBuilder = configureHttpClientBuilder
                 });
         }
-        public static IServiceCollection AddKepwareApiClient(this IServiceCollection services, string name, KepwareApiClientOptions options)
-        {
-            if (options == null)
-                throw new ArgumentNullException(nameof(options));
-            if (!options.HostUri.IsAbsoluteUri)
-                throw new InvalidOperationException(name + " host is not configured as absolute uri.");
 
-            services.AddKepwareApiClient(name,
-                configureClient: ConfigureHttpClient(options),
-                configureHttpClientBuilder: ConfigureHttpClientBuilder(options));
-
-            return services;
-        }
 
         private static Action<IHttpClientBuilder> ConfigureHttpClientBuilder(KepwareApiClientOptions options)
             => clientBuilder =>

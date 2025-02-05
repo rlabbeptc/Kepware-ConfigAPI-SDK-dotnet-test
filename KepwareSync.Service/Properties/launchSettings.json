@@ -3,7 +3,8 @@
     "KepwareSync (monitor)": {
       "commandName": "Project",
       "environmentVariables": {
-        "DOTNET_ENVIRONMENT": "Development"
+        "DOTNET_ENVIRONMENT": "Development",
+        "MODBUS_HOST": "HostByEnv"
       },
       "dotnetRunMessages": true
     },

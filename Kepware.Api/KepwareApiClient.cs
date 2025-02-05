@@ -49,22 +49,26 @@ namespace Kepware.Api
         /// </summary>
         public string ClientHostName => m_httpClient.BaseAddress?.Host ?? UNKNOWN;
 
+        public KepwareApiClientOptions ClientOptions { get; init; }
+
         #region Constructors
         /// <summary>
         /// Initializes a new instance of the <see cref="KepwareApiClient"/> class.
         /// </summary>
+        /// <param name="options">The client options.</param>
         /// <param name="logger">The logger instance.</param>
         /// <param name="httpClient">The HTTP client instance.</param>
-        public KepwareApiClient(ILogger<KepwareApiClient> logger, HttpClient httpClient)
-            : this(UNKNOWN, logger, httpClient)
+        public KepwareApiClient(KepwareApiClientOptions options, ILogger<KepwareApiClient> logger, HttpClient httpClient)
+            : this(UNKNOWN, options, logger, httpClient)
         {
         }
 
-        internal KepwareApiClient(string name, ILogger<KepwareApiClient> logger, HttpClient httpClient)
+        internal KepwareApiClient(string name, KepwareApiClientOptions options, ILogger<KepwareApiClient> logger, HttpClient httpClient)
         {
             m_logger = logger ?? throw new ArgumentNullException(nameof(logger));
             m_httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             ClientName = name;
+            ClientOptions = options;
         }
         #endregion
 

@@ -99,6 +99,8 @@ namespace Kepware.Api.Serializer
             return dic.Select(kvp => new KeyValuePair<string, object?>(kvp.Key, Unwrap(kvp.Value)));
         }
 
+        
+
         public static object? Unwrap(JsonElement element)
         {
             switch (element.ValueKind)

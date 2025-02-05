@@ -12,6 +12,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Kepware.Api;
 using System.Runtime.CompilerServices;
+using Kepware.SyncService.Configuration.RuntimeOverwrite;
 
 namespace Kepware.SyncService
 {
@@ -158,7 +159,22 @@ namespace Kepware.SyncService
             m_logger.LogInformation("Synchronizing full project from primary Kepware...");
             var project = await m_kepServerClient.LoadProject(true);
             await project.Cleanup(m_kepServerClient, true, cancellationToken);
-            await m_projectStorage.ExportProjecAsync(project);
+
+            if (m_kepServerClient.ClientOptions.Tag is KepwareSyncTarget targetOptions &&
+               !string.IsNullOrEmpty(targetOptions.OverwriteConfigFile) &&
+               File.Exists(targetOptions.OverwriteConfigFile))
+            {
+                var overwriteConfig = await RuntimeOverwriteConfig.LoadFromYamlFileAsync(targetOptions.OverwriteConfigFile, cancellationToken);
+
+                if (overwriteConfig.Apply(project))
+                {
+                    m_logger.LogInformation("Applied overwrite config from {OverwriteFile} to project before synchronisation from primary kepserver", targetOptions.OverwriteConfigFile);
+                    await SyncProjectToKepServerAsync("primary-overwrite-file", project, m_kepServerClient, m_kepServerClient.ClientName, cancellationToken: cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+
+            await m_projectStorage.ExportProjecAsync(project, cancellationToken).ConfigureAwait(false);
 
             m_lastProjectId = project.ProjectId;
 
@@ -246,6 +262,18 @@ namespace Kepware.SyncService
 
         private async Task SyncProjectToKepServerAsync(string projectSource, Project project, KepwareApiClient kepServerClient, string clientName, Action? onSyncedWithChanges = default, CancellationToken cancellationToken = default)
         {
+            if (kepServerClient.ClientOptions.Tag is KepwareSyncTarget targetOptions &&
+                !string.IsNullOrEmpty(targetOptions.OverwriteConfigFile) &&
+                File.Exists(targetOptions.OverwriteConfigFile))
+            {
+                m_logger.LogInformation("Applying overwrite config from {OverwriteFile} to project before synchronisation from {ProjectSource} to {ClientName}-kepserver ({ClientHostName})",
+                    targetOptions.OverwriteConfigFile, projectSource, clientName, kepServerClient.ClientHostName);
+
+                project = await project.CloneAsync(cancellationToken).ConfigureAwait(false);
+                var overwrite= await RuntimeOverwriteConfig.LoadFromYamlFileAsync(targetOptions.OverwriteConfigFile, cancellationToken).ConfigureAwait(false);
+                overwrite.Apply(project);
+            }
+
             var (inserts, updates, deletes) = await kepServerClient.CompareAndApply(project, cancellationToken).ConfigureAwait(false);
 
             if (updates > 0 || deletes > 0 || inserts > 0)

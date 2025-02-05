@@ -20,7 +20,7 @@ namespace Kepware.Api.Serializer
     /// </summary>
     public class CsvTagSerializer
     {
-        private static class CsvHeaders
+        public static class CsvHeaders
         {
             public const string TagName = "Tag Name";
             public const string Address = "Address";

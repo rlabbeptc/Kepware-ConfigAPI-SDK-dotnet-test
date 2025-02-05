@@ -24,7 +24,7 @@ namespace Kepware.Api.Test.ApiClient
             _httpClient.BaseAddress = new Uri(TEST_ENDPOINT);
 
             _loggerMock = new Mock<ILogger<KepwareApiClient>>();
-            _kepwareApiClient = new KepwareApiClient(_loggerMock.Object, _httpClient);
+            _kepwareApiClient = new KepwareApiClient(new KepwareApiClientOptions { HostUri = _httpClient.BaseAddress }, _loggerMock.Object, _httpClient);
         }
 
         #region ConfigureConnectedClient
