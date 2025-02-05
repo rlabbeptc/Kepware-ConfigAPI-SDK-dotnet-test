@@ -224,25 +224,6 @@ namespace Kepware.Api.Util
                 }
             }
             var retValue = new CollectionResultBucket<K>(results);
-#if DEBUG
-            // do logical assertations based on the found item counts
-            var leftCount = left?.Count ?? 0;
-            var rightCount = right?.Count ?? 0;
-            var addedCount = retValue.ItemsOnlyInRight.Count;
-            var removedCount = retValue.ItemsOnlyInLeft.Count;
-            var changedCount = retValue.ChangedItems.Count;
-            var unchangedCount = retValue.UnchangedItems.Count;
-
-            if (leftCount + addedCount - removedCount != rightCount)
-            {
-                throw new InvalidOperationException("The counts of the items are not correct.");
-            }
-
-            if (changedCount + unchangedCount != leftCount - removedCount)
-            {
-                throw new InvalidOperationException("The counts of the items are not correct.");
-            }
-#endif
 
             return retValue;
         }

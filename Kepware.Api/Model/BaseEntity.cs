@@ -263,6 +263,16 @@ namespace Kepware.Api.Model
         [YamlIgnore]
         public string Name { get; set; } = string.Empty;
 
+        public NamedEntity()
+        {
+
+        }
+
+        public NamedEntity(string name)
+        {
+            Name = name;
+        }
+
         /// <summary>
         /// Appends additional hash sources for named entities.
         /// </summary>
@@ -326,5 +336,16 @@ namespace Kepware.Api.Model
         /// Removes the unique ID from the entity.
         /// </summary>
         public void RemoveUniqueId() => DynamicProperties.Remove(UniqueIdKey);
+
+        protected NamedUidEntity()
+        {
+
+        }
+
+        protected NamedUidEntity(string name)
+            : base(name)
+        {
+
+        }
     }
 }

@@ -49,6 +49,14 @@ namespace Kepware.Api.Model
     [Endpoint("/config/v1/project/channels/{name}")]
     public class Channel : NamedUidEntity
     {
+        public Channel()
+        {
+
+        }
+        public Channel(string name)
+        {
+            Name = name;
+        }
         /// <summary>
         /// Gets or sets the devices in the channel
         /// </summary>
@@ -90,6 +98,22 @@ namespace Kepware.Api.Model
     [Endpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}")]
     public class Device : NamedUidEntity
     {
+        public Device()
+        {
+
+        }
+
+        public Device(string name, Channel channel)
+        {
+            Name = name;
+            Owner = channel;
+        }
+
+        public Device(string name, string channelName)
+            : this(name, new Channel(channelName))
+        {
+        }
+
         /// <summary>
         /// Gets or sets the tags in the device
         /// </summary>
@@ -149,6 +173,23 @@ namespace Kepware.Api.Model
     [RecursiveEndpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}", "/tag_groups/{groupName}", typeof(DeviceTagGroup))]
     public class DeviceTagGroup : NamedEntity
     {
+        public DeviceTagGroup()
+        {
+
+        }
+
+        public DeviceTagGroup(string name, Device owner)
+        {
+            Owner = owner;
+            Name = name;
+        }
+
+        public DeviceTagGroup(string name, DeviceTagGroup owner)
+        {
+            Owner = owner;
+            Name = name;
+        }
+
         /// <summary>
         /// Gets or sets the tags in the tag group
         /// </summary>
@@ -204,6 +245,7 @@ namespace Kepware.Api.Model
     /// <summary>
     /// Represents a tag in a device or tag group
     /// </summary>
+    [RecursiveEndpoint("/config/v1/project/channels/{channelName}/devices/{deviceName}", "/tag_groups/{groupName}", typeof(DeviceTagGroup), suffix: "/tags/{tagName}")]
     public class Tag : NamedEntity
     {
         /// <summary>
@@ -399,6 +441,7 @@ namespace Kepware.Api.Model
         {
 
         }
+
     }
 
     /// <summary>

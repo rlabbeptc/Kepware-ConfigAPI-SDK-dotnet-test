@@ -2,6 +2,7 @@
 using Kepware.Api.Serializer;
 using Kepware.Api.Util;
 using Microsoft.Extensions.Logging;
+using Microsoft.VisualBasic;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -12,6 +13,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace Kepware.Api
 {
@@ -27,7 +29,6 @@ namespace Kepware.Api
         private const string ENDPOINT_STATUS = "/config/v1/status";
         private const string ENDPOINT_ABOUT = "/config/v1/about";
         private const string ENDPONT_FULL_PROJECT = "/config/v1/project?content=serialize";
-        private static readonly Regex s_pathplaceHolderRegex = EndpointPlaceholderRegex();
 
         private readonly ILogger<KepwareApiClient> m_logger;
         private readonly HttpClient m_httpClient;
@@ -146,6 +147,10 @@ namespace Kepware.Api
             {
                 m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
                 m_blnIsConnected = null;
+            }
+            catch (JsonException jsonEx)
+            {
+                m_logger.LogWarning(jsonEx, "Failed to parse ProductInfo from {BaseAddress}", m_httpClient.BaseAddress);
             }
 
             return null;
@@ -284,7 +289,7 @@ namespace Kepware.Api
         {
             try
             {
-                var endpoint = ResolveEndpoint<T>(oldItem ?? item);
+                var endpoint = EndpointResolver.ResolveEndpoint<T>(oldItem ?? item);
 
                 m_logger.LogInformation("Updating {TypeName} on {Endpoint}...", typeof(T).Name, endpoint);
 
@@ -344,7 +349,7 @@ namespace Kepware.Api
 
             try
             {
-                var collectionEndpoint = ResolveEndpoint<T>(owner).TrimEnd('/');
+                var collectionEndpoint = EndpointResolver.ResolveEndpoint<T>(owner).TrimEnd('/');
                 foreach (var pair in items)
                 {
                     var endpoint = $"{collectionEndpoint}/{Uri.EscapeDataString(pair.oldItem!.Name)}";
@@ -415,7 +420,7 @@ namespace Kepware.Api
 
             try
             {
-                var endpoint = ResolveEndpoint<T>(owner);
+                var endpoint = EndpointResolver.ResolveEndpoint<T>(owner);
 
 
                 if (typeof(K) == typeof(Channel) || typeof(K) == typeof(Device))
@@ -499,7 +504,7 @@ namespace Kepware.Api
         public async Task<bool> DeleteItemAsync<T>(T item, CancellationToken cancellationToken = default)
           where T : NamedEntity, new()
         {
-            var endpoint = ResolveEndpoint<T>(item).TrimEnd('/');
+            var endpoint = EndpointResolver.ResolveEndpoint<T>(item).TrimEnd('/');
             m_logger.LogInformation("Deleting {TypeName} on {Endpoint}...", item.Name, endpoint);
             try
             {
@@ -553,7 +558,7 @@ namespace Kepware.Api
                 return;
             try
             {
-                var collectionEndpoint = ResolveEndpoint<T>(owner).TrimEnd('/');
+                var collectionEndpoint = EndpointResolver.ResolveEndpoint<T>(owner).TrimEnd('/');
                 foreach (var item in items)
                 {
                     var endpoint = $"{collectionEndpoint}/{Uri.EscapeDataString(item.Name)}";
@@ -696,14 +701,14 @@ namespace Kepware.Api
         public Task<T?> LoadEntityAsync<T>(string? name = default, CancellationToken cancellationToken = default)
         where T : BaseEntity, new()
         {
-            var endpoint = ResolveEndpoint<T>(string.IsNullOrEmpty(name) ? [] : [name]);
+            var endpoint = EndpointResolver.ResolveEndpoint<T>(string.IsNullOrEmpty(name) ? [] : [name]);
             return LoadEntityByEndpointAsync<T>(endpoint, cancellationToken);
         }
 
         public Task<T?> LoadEntityAsync<T>(IEnumerable<string> owner, CancellationToken cancellationToken = default)
          where T : BaseEntity, new()
         {
-            var endpoint = ResolveEndpoint<T>(owner);
+            var endpoint = EndpointResolver.ResolveEndpoint<T>(owner);
             return LoadEntityByEndpointAsync<T>(endpoint, cancellationToken);
         }
 
@@ -714,7 +719,7 @@ namespace Kepware.Api
         private async Task<T?> LoadEntityAsync<T>(string name, NamedEntity owner, IEnumerable<KeyValuePair<string, string>>? queryParams = null, CancellationToken cancellationToken = default)
           where T : BaseEntity, new()
         {
-            var endpoint = ResolveEndpoint<T>([.. owner.Flatten().Select(n => n.Name).Reverse(), name]);
+            var endpoint = EndpointResolver.ResolveEndpoint<T>(owner, name);
             if (queryParams != null)
             {
                 var queryString = string.Join("&", queryParams.Select(kvp => $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(kvp.Value)}"));
@@ -757,16 +762,41 @@ namespace Kepware.Api
         #endregion
 
         #region LoadCollection
-
-        public Task<T?> LoadCollectionAsync<T>(NamedEntity? owner = null, CancellationToken cancellationToken = default)
+        public Task<T?> LoadCollectionAsync<T>(string? owner = default, CancellationToken cancellationToken = default)
+             where T : EntityCollection<DefaultEntity>, new()
+         => LoadCollectionAsync<T, DefaultEntity>(owner, cancellationToken);
+        public Task<T?> LoadCollectionAsync<T>(NamedEntity owner, CancellationToken cancellationToken = default)
           where T : EntityCollection<DefaultEntity>, new()
          => LoadCollectionAsync<T, DefaultEntity>(owner, cancellationToken);
-
-        public async Task<T?> LoadCollectionAsync<T, K>(NamedEntity? owner = null, CancellationToken cancellationToken = default)
+        public Task<T?> LoadCollectionAsync<T, K>(string? owner = default, CancellationToken cancellationToken = default)
+            where T : EntityCollection<K>, new()
+            where K : BaseEntity, new()
+            => LoadCollectionAsync<T, K>(string.IsNullOrEmpty(owner) ? [] : [owner], cancellationToken);
+        public async Task<T?> LoadCollectionAsync<T, K>(NamedEntity owner, CancellationToken cancellationToken = default)
             where T : EntityCollection<K>, new()
             where K : BaseEntity, new()
         {
-            var endpoint = ResolveEndpoint<T>(owner);
+            var collection = await LoadCollectionByEndpointAsync<T, K>(EndpointResolver.ResolveEndpoint<T>(owner), cancellationToken);
+            if (collection != null)
+            {
+                collection.Owner = owner;
+                foreach (var item in collection.OfType<IHaveOwner>())
+                {
+                    item.Owner = owner;
+                }
+            }
+            return collection;
+        }
+
+        public Task<T?> LoadCollectionAsync<T, K>(IEnumerable<string> owner, CancellationToken cancellationToken = default)
+            where T : EntityCollection<K>, new()
+            where K : BaseEntity, new()
+            => LoadCollectionByEndpointAsync<T, K>(EndpointResolver.ResolveEndpoint<T>(owner), cancellationToken);
+
+        private async Task<T?> LoadCollectionByEndpointAsync<T, K>(string endpoint, CancellationToken cancellationToken = default)
+            where T : EntityCollection<K>, new()
+            where K : BaseEntity, new()
+        {
             try
             {
                 m_logger.LogDebug("Loading {TypeName} from {Endpoint}...", typeof(T).Name, endpoint);
@@ -780,18 +810,9 @@ namespace Kepware.Api
                 var collection = await DeserializeJsonArrayAsync<K>(response);
                 if (collection != null)
                 {
-                    // if generic type K implements IHaveOwner
-                    if (collection.OfType<IHaveOwner>().Any())
-                    {
-                        foreach (var item in collection.OfType<IHaveOwner>())
-                        {
-                            item.Owner = owner;
-                        }
-                    }
-
-                    var resultCollection = new T() { Owner = owner };
-                    resultCollection.AddRange(collection);
-                    return resultCollection;
+                    var result = new T();
+                    result.AddRange(collection);
+                    return result;
                 }
                 else
                 {
@@ -804,6 +825,11 @@ namespace Kepware.Api
                 m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
                 m_blnIsConnected = null;
                 return default;
+            }
+            catch (Exception ex)
+            {
+                m_logger.LogError(ex, "Failed to load {TypeName} from {Endpoint}", typeof(T).Name, endpoint);
+                throw new InvalidOperationException($"Failed to load {typeof(T).Name} from {endpoint}", ex);
             }
         }
         #endregion
@@ -863,7 +889,7 @@ namespace Kepware.Api
         }
         protected virtual async Task<List<Docs.Driver>> LoadSupportedDriversAsync(CancellationToken cancellationToken = default)
         {
-            var endpoint = ResolveEndpoint<Docs.Driver>();
+            var endpoint = EndpointResolver.ResolveEndpoint<Docs.Driver>();
 
             var response = await m_httpClient.GetAsync(endpoint, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
@@ -876,7 +902,7 @@ namespace Kepware.Api
 
         protected virtual async Task<Docs.Device> LoadDevicePropertiesAsync(string driverName, CancellationToken cancellationToken)
         {
-            var endpoint = ResolveEndpoint<Docs.Device>([driverName]);
+            var endpoint = EndpointResolver.ResolveEndpoint<Docs.Device>([driverName]);
 
             var response = await m_httpClient.GetAsync(endpoint, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
@@ -890,7 +916,7 @@ namespace Kepware.Api
 
         protected virtual async Task<Docs.Channel> LoadChannelPropertiesAsync(string driverName, CancellationToken cancellationToken)
         {
-            var endpoint = ResolveEndpoint<Docs.Channel>([driverName]);
+            var endpoint = EndpointResolver.ResolveEndpoint<Docs.Channel>([driverName]);
 
             var response = await m_httpClient.GetAsync(endpoint, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
@@ -905,96 +931,7 @@ namespace Kepware.Api
 
         #endregion
 
-        #region ResolveEndpoint
-        public static string ResolveEndpoint<T>()
-            => ResolveEndpoint<T>([]);
-        /// <summary>
-        /// Resolves the endpoint for the specified entity type.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="owner"></param>
-        /// <returns></returns>
-        /// <exception cref="InvalidOperationException"></exception>
-        public static string ResolveEndpoint<T>(NamedEntity? owner)
-        {
-            var endpointTemplateAttribute = typeof(T).GetCustomAttributes(typeof(EndpointAttribute), false)
-                .OfType<EndpointAttribute>()
-                .FirstOrDefault();
 
-            if (endpointTemplateAttribute == null)
-            {
-                throw new InvalidOperationException($"No endpoint defined for {typeof(T).Name}");
-            }
-
-            if (endpointTemplateAttribute is RecursiveEndpointAttribute recursiveEndpointAttribute && recursiveEndpointAttribute.RecursiveOwnerType == owner?.GetType())
-            {
-                return ResolveRecursiveEndpoint(recursiveEndpointAttribute, owner) + endpointTemplateAttribute.Suffix;
-            }
-
-            return ReplacePlaceholders(endpointTemplateAttribute.EndpointTemplate, owner?.Flatten().Select(n => n.Name).Reverse() ?? []) + endpointTemplateAttribute.Suffix;
-        }
-
-        /// <summary>
-        /// Resolves the endpoint for the specified entity type.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="placeholderValues"></param>
-        /// <returns></returns>
-        /// <exception cref="InvalidOperationException"></exception>
-        public static string ResolveEndpoint<T>(IEnumerable<string> placeholderValues)
-        {
-            var endpointTemplateAttribute = typeof(T).GetCustomAttributes(typeof(EndpointAttribute), false)
-                .OfType<EndpointAttribute>()
-                .FirstOrDefault();
-
-            if (endpointTemplateAttribute == null)
-            {
-                throw new InvalidOperationException($"No endpoint defined for {typeof(T).Name}");
-            }
-
-            return ReplacePlaceholders(endpointTemplateAttribute.EndpointTemplate, placeholderValues) + endpointTemplateAttribute.Suffix;
-        }
-
-        private static string ReplacePlaceholders(string template, IEnumerable<string> placeholderValues)
-        {
-            var placeholders = s_pathplaceHolderRegex.Matches(template).ToArray();
-            var values = placeholderValues.ToArray();
-            if (placeholders.Length != values.Length)
-            {
-                throw new InvalidOperationException($"The number of placeholders in the template '{template}' does not match the number of values ({string.Join(",", values)}).");
-            }
-
-            foreach (var match in placeholders.Zip(values, (placeholder, value) => (placeholder, value)))
-            {
-                template = template.Replace(match.placeholder.Value, Uri.EscapeDataString(match.value));
-            }
-
-            return template;
-        }
-
-        private static string ResolveRecursiveEndpoint(RecursiveEndpointAttribute attribute, NamedEntity? owner)
-        {
-            LinkedList<string> recursivePath = new LinkedList<string>();
-            while (owner != null && attribute.RecursiveOwnerType == owner?.GetType())
-            {
-                var currentEndpointPart = ReplacePlaceholders(attribute.RecursiveEnd, [owner.Name]);
-                recursivePath.AddFirst(currentEndpointPart);
-
-                if (owner is IHaveOwner ownable && ownable.Owner is NamedEntity nextOwner)
-                    owner = nextOwner;
-                else
-                    owner = null;
-            }
-
-            // Combine with the base endpoint template 
-            var baseEndpoint = ReplacePlaceholders(attribute.EndpointTemplate, owner?.Flatten().Select(n => n.Name).Reverse() ?? []);
-
-            return baseEndpoint + string.Concat(recursivePath);
-        }
-
-        [GeneratedRegex(@"\{(.+?)\}", RegexOptions.Compiled)]
-        private static partial Regex EndpointPlaceholderRegex();
-        #endregion
 
         #region private methods
 

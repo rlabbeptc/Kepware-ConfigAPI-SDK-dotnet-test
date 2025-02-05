@@ -29,6 +29,8 @@ jobs:
       contents: write
       pull-requests: write
       packages: write
+      actions: read
+      checks: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,7 +40,7 @@ jobs:
         with:
           setAllVars: true
       - name: Use Release Drafter
-        if: ${{ github.event_name != 'pull_request' && matrix.platform == 'ubuntu' }}
+        if: ${{ matrix.platform == 'ubuntu' }}
         id: drafter
         uses: release-drafter/release-drafter@v6
         with:
@@ -53,6 +55,18 @@ jobs:
         run: dotnet restore
       - name: Build
         run: dotnet build --no-restore --configuration release
+      - name: Test
+        run: dotnet test --no-build --verbosity normal --configuration release  --logger "trx;LogFileName=${{ matrix.platform }}-test-results.trx"
+      - name: Publish Test Report (${{ matrix.platform }})
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: dorny/test-reporter@v1
+        with:
+          name: .NET 9 Test Report (${{ matrix.platform }})
+          path: "**/TestResults/**/*.trx"
+          reporter: dotnet-trx
+      - name: dotnet publish
+        run: dotnet publish KepwareSync.Service/Kepware.SyncService.csproj --configuration release -o publish /p:UseAppHost=true
+
       - name: Push to GitHub Packages
         if: ${{ github.event_name != 'pull_request' && matrix.platform == 'ubuntu' }}
         run: |
@@ -60,13 +74,9 @@ jobs:
             --api-key ${{ secrets.GITHUB_TOKEN }} \
             --skip-duplicate \
             --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-      # - name: Test
-      #   run: dotnet test --no-build --verbosity normal
-      - name: dotnet publish
-        run: dotnet publish KepwareSync.Service/Kepware.SyncService.csproj --configuration release -o publish /p:UseAppHost=true
-        
+
       - name: Create and Upload Release Asset (Linux)
-        if: runner.os == 'Linux'
+        if: ${{ github.event_name != 'pull_request' && matrix.platform == 'ubuntu' }}
         run: |
             # Create the ZIP file with only the required files
             zip -j Kepware.SyncService-linux-x64.zip \
@@ -79,7 +89,7 @@ jobs:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create and Upload Release Asset (Windows)
-        if: runner.os == 'Windows'
+        if: ${{ github.event_name != 'pull_request' && matrix.platform == 'windows' }}
         run: |
             # Create the ZIP file with only the required files
             Compress-Archive -Path @(".\publish\Kepware.SyncService.exe",".\publish\Kepware.SyncService.pdb", ".\publish\appsettings.json") -DestinationPath Kepware.SyncService-win-x64.zip

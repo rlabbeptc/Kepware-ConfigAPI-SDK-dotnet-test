@@ -130,7 +130,13 @@ namespace Kepware.Api.Model
             get
             {
                 if (int.TryParse(ProductId, out var id))
-                    return (ProductType)id;
+                {
+                    var prodType = (ProductType)id;
+                    if (Enum.IsDefined(prodType))
+                        return prodType;
+                    else
+                        return ProductType.Unknown;
+                }
                 else if (Enum.TryParse<ProductType>(ProductName, out var prodType))
                     return prodType;
                 else
@@ -147,5 +153,5 @@ namespace Kepware.Api.Model
             (ProductType == ProductType.ThingWorxKepwareEdge && (ProductVersionMajor > 1 || (ProductVersionMajor == 1 && ProductVersionMinor >= 10)));
     }
 
-   
+
 }
