@@ -46,7 +46,6 @@ namespace Kepware.Api.Test.ApiClient
                                    .ReturnsResponse(JsonSerializer.Serialize(new Project { Description = projectData?.Project?.Description, DynamicProperties = projectData?.Project?.DynamicProperties ?? [] }), "application/json");
 
             // Serve channels without nested devices
-
             _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + "/config/v1/project/channels")
                                    .ReturnsResponse(JsonSerializer.Serialize(channels), "application/json");
 
@@ -72,7 +71,6 @@ namespace Kepware.Api.Test.ApiClient
                                               .ReturnsResponse(JsonSerializer.Serialize(device.Tags), "application/json");
 
                         ConfigureToServeEndpointsTagGroupsRecursive(deviceEndpoint, device.TagGroups ?? []);
-
                     }
                 }
             }
@@ -87,7 +85,6 @@ namespace Kepware.Api.Test.ApiClient
 
             foreach (var tagGroup in tagGroups)
             {
-
                 _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, string.Concat(tagGroupEndpoint, "/", tagGroup.Name, "/tags"))
                                              .ReturnsResponse(JsonSerializer.Serialize(tagGroup.Tags), "application/json");
 
@@ -181,7 +178,6 @@ namespace Kepware.Api.Test.ApiClient
                 }
 
                 CompareTagGroupsRecursive(ExpectedTagGroup.TagGroups, ActualTagGroup.TagGroups, thisName);
-
             }
         }
 

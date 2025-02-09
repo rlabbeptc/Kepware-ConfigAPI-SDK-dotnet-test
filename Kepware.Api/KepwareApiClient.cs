@@ -298,7 +298,12 @@ namespace Kepware.Api
                 m_logger.LogInformation("Updating {TypeName} on {Endpoint}...", typeof(T).Name, endpoint);
 
                 var currentEntity = await LoadEntityAsync<T>((oldItem ?? item).Flatten().Select(i => i.Name).Reverse(), cancellationToken: cancellationToken).ConfigureAwait(false);
-                item.ProjectId = currentEntity?.ProjectId;
+                if (currentEntity == null)
+                {
+                    return false; // Entity nicht gefunden, kein Update möglich
+                }
+
+                item.ProjectId = currentEntity.ProjectId;
 
                 HttpContent httpContent = new StringContent(JsonSerializer.Serialize(item, KepJsonContext.GetJsonTypeInfo<T>()), Encoding.UTF8, "application/json");
                 var response = await m_httpClient.PutAsync(endpoint, httpContent, cancellationToken).ConfigureAwait(false);
