@@ -4,14 +4,52 @@
 [![Build Status](https://github.com/BoBiene/Kepware-ConfigAPI-SDK-dotnet/actions/workflows/docker-build-and-push.yml/badge.svg)](https://github.com/BoBiene/Kepware-ConfigAPI-SDK-dotnet/actions)
 
 ## Overview
-The `KepwareSync.Service` is a CLI and service tool designed for synchronizing configuration data between Kepware servers and a local filesystem. It supports both one-way and two-way synchronization, making it ideal for real-time configuration management.
+`KepwareSync.Service` is a CLI and service tool designed to synchronize configuration data between Kepware servers and the local filesystem. It supports both one-way and two-way synchronization, making it ideal for real-time configuration management.
+
+## Use Cases
+
+### 1. Primary <-> Secondary Synchronization
+Automatically synchronize configurations between two Kepware instances. Changes are detected via the REST Config API and propagated to the other instance.
+
+```
++------------+       Sync        +------------+
+|  Primary   |  <------------>   | Secondary  |
+|  Kepware   |                   |  Kepware   |
++------------+                   +------------+
+```
+
+### 2. GIT Versioning of Configurations
+Synchronize configurations between a Kepware instance and the local filesystem bidirectionally. Changes in files are synced to Kepware and vice versa. Git operations like commits and pulls must be managed separately (e.g., using Git Sync Services or manual Git operations).
+
+```
++------------+       Sync        +--------------+       Git        +-------------+
+|  Kepware   |  <------------>  |  Local Files |  <------------>  |   GIT Repo  |
++------------+                   +--------------+                  +-------------+
+```
+
+### 3. Mass Deployment of Centralized Configurations
+Deploy a centralized GIT configuration across multiple Kepware instances. Configurations are provided locally via tools like Git or RSync and then synchronized to Kepware using the sync tool. Local specifics like device IP addresses or credentials can be customized using overwrite files.
+
+```
+           +--------------------+
+           |   Central GIT Repo |
+           +--------------------+
+                   |
+          (Git Sync / RSync)
+                   |
++--------------+   +--------------+   +--------------+
+| Kepware #1  |   | Kepware #2   |   | Kepware #n   |
+| [Overwrite] |   | [Overwrite]  |   | [Overwrite]  |
++--------------+   +--------------+   +--------------+
+```
 
 ## Features
 - **Command-Line Interface**: Execute synchronization tasks directly from the command line.
 - **Service Mode**: Continuous monitoring and synchronization between Kepware servers and the local filesystem.
 - **Support for Multiple Servers**: Synchronize with both primary and secondary Kepware servers.
-- **Flexible Configuration**: Easily configurable using appsettings.json, environment variables, or CLI parameters.
+- **Flexible Configuration**: Easily configurable using `appsettings.json`, environment variables, or CLI parameters.
 - **HTTPS Support**: Secure connections with optional certificate validation.
+- **Overwrite Configuration Support**: Customize configurations dynamically using YAML files with environment variable placeholders.
 
 ## Usage
 
@@ -22,28 +60,37 @@ Kepware.SyncService [command] [options]
 ```
 
 #### Commands
-- **empty** (default): Run as an agent in the background, monitoring for changes and starting synchronization when detected
+- **(default)**: Run as a background agent, monitoring for changes and starting synchronization when detected.
 - **SyncToDisk**: Synchronize configuration data from Kepware servers to the local filesystem.
 - **SyncFromDisk**: Apply configuration data from the local filesystem to Kepware servers.
 
-#### Options
-| Option                             | Description                                                                                  | Default Value          |
-|------------------------------------|----------------------------------------------------------------------------------------------|------------------------|
-| `--primary-kep-api-username`      | Primary Kepware API username (**required**).                                                 |                        |
-| `--primary-kep-api-password`      | Primary Kepware API password (**required**).                                                 |                        |
-| `--primary-kep-api-host`          | Primary Kepware API host URL (**required**).                                                 |                        |
-| `--http-timeout`                  | HTTP timeout in seconds.                                                                     | `60`                  |
-| `--secondary-kep-api`             | Secondary Kepware API configurations in `username:password@host` format.                    | `[]`                  |
-| `--directory`                     | Directory for storing configuration files.                                                   | `ExportedYaml`        |
-| `--persist-default-value`         | Persist default values during synchronization.                                               | `false`               |
-| `--kep-sync-direction`            | Synchronization direction (`DiskToKepware`, `KepwareToDisk`, etc.).                          |                        |
-| `--kep-sync-mode`                 | Synchronization mode (`OneWay` or `TwoWay`).                                                 |                        |
-| `--kep-sync-throtteling`          | Throttling time in milliseconds after detecting a change.                                    |                        |
-| `--version`                       | Show version information.                                                                    |                        |
-| `-?, -h, --help`                  | Show help and usage information.                                                             |                        |
+#### Global Options
+| Option                                     | Description                                                                                              | Default Value     |
+|--------------------------------------------|----------------------------------------------------------------------------------------------------------|-------------------|
+| `--primary-kep-api-username`               | Primary Kepware API username (**required**).                                                             |                   |
+| `--primary-kep-api-password`               | Primary Kepware API password (**required** if no password file is provided).                             |                   |
+| `--primary-kep-api-password-file`          | Path to a file containing the primary Kepware API password.                                              |                   |
+| `--primary-kep-api-host`                   | Primary Kepware API host URL (**required**).                                                             |                   |
+| `--directory`                              | Directory for storing configuration files (**required**).                                                |                   |
+| `--http-timeout`                           | HTTP timeout in seconds.                                                                                 | `60`              |
+| `--http-disable-cert-check`                | Disable certificate validation.                                                                          | `false`           |
+| `--persist-default-value`                  | Persist default values during synchronization.                                                           | `false`           |
+| `--kep-sync-direction`                     | Synchronization direction (`DiskToKepware`, `KepwareToDisk`, `KepwareToDiskAndSecondary`, `KepwareToKepware`). |                   |
+| `--kep-sync-mode`                          | Synchronization mode (`OneWay` or `TwoWay`).                                                             |                   |
+| `--kep-sync-throttling`                    | Throttling time in milliseconds after detecting a change before synchronization starts.                  |                   |
+| `--version`                                | Show version information.                                                                                |                   |
+| `-?, -h, --help`                           | Show help and usage information.                                                                         |                   |
 
-#### CLI examples
-1. **Monitor and Synchronize bidrectional Kepware to Disk**
+#### Additional Options for Sync Commands
+| Option                                     | Description                                                                                              |
+|--------------------------------------------|----------------------------------------------------------------------------------------------------------|
+| `--primary-overwrite-file`                 | Path to a YAML file with overwrite configurations for the primary Kepware server.                         |
+| `--secondary-kep-api`                      | List of secondary Kepware API configurations in the format `username:password@host`.                      |
+| `--secondary-password-files`               | List of paths to files containing secondary Kepware API passwords.                                       |
+| `--secondary-overwrite-files`              | List of paths to YAML files with overwrite configurations for secondary Kepware servers.                  |
+
+### CLI Examples
+1. **Monitor and Bidirectional Synchronization (Kepware <-> Disk)**
    ```bash
    Kepware.SyncService --primary-kep-api-username Administrator \
       --primary-kep-api-password StrongAdminPassword2025! \
@@ -54,18 +101,43 @@ Kepware.SyncService [command] [options]
 2. **Synchronize Kepware to Disk:**
    ```bash
    Kepware.SyncService SyncToDisk --primary-kep-api-username Administrator \
-      --primary-kep-api-password StrongAdminPassword2025! \
+      --primary-kep-api-password-file ./secrets/password.txt \
       --primary-kep-api-host https://localhost:57512 \
       --directory ./ExportedYaml
    ```
 
-3. **Synchronize Disk to Kepware:**
+3. **Synchronize Disk to Kepware with Overwrite Config:**
    ```bash
    Kepware.SyncService SyncFromDisk --primary-kep-api-username Administrator \
       --primary-kep-api-password StrongAdminPassword2025! \
       --primary-kep-api-host https://localhost:57512 \
+      --primary-overwrite-file ./overrides/device_config.yaml \
       --directory ./ExportedYaml
    ```
+
+### Overwrite Configuration Example (`device_config.yaml`)
+```yaml
+Channels:
+  - Name: Channel1
+    Overwrite:
+      servermain.MULTIPLE_TYPES_DEVICE_DRIVER: "ModbusTCP"
+    Devices:
+      - Name: Device1
+        Overwrite:
+          servermain.DEVICE_ID_STRING: "<${MODBUS_DEVICE_IP}>.0"
+          servermain.MULTIPLE_TYPES_DEVICE_DRIVER: "ModbusTCP"
+        Tags:
+          - Tag1:
+              Address: 471
+              DataType: Word
+              ClientAccess: R/W
+          - Tag2:
+              Address: 472
+              DataType: Word
+              ClientAccess: R/W
+```
+*Environment variables like `${MODBUS_DEVICE_IP}` will be resolved during synchronization.*
+
 
 ### Environment Variable Configuration
 The service also supports environment variables for configuration using `AddEnvironmentVariables`. Example environment variables:
@@ -81,21 +153,28 @@ The service also supports environment variables for configuration using `AddEnvi
 Set these variables in your system or Docker container to override appsettings.json.
 
 ### Sample Configuration File (`appsettings.json`)
+The `appsettings.json` file provides an alternative way to configure `KepwareSync.Service`. You can define primary and secondary server configurations, timeouts, and storage settings.
+
 ```json
 {
   "Kepware": {
-    "DisableCertificateValidation": true,
+    "DisableCertificateValidation": false,
+    "TimeoutInSeconds": 60,
     "Primary": {
-      "Username": "Administrator",
-      "Password": "StrongAdminPassword2025!",
-      "Host": "https://localhost:57512"
+      //"Username": "Administrator",
+      //"Password": "<Password>",
+      //"PasswordFile": "<Path to Password File>",
+      //"Host": "https://localhost:57512",
+      //"OverwriteConfigFile": "<Path to YAML overwrite file>"
     },
     "Secondary": [
-      {
-        "Username": "Administrator",
-        "Password": "StrongAdminPassword2025!",
-        "Host": "https://localhost:57513"
-      }
+      //{
+      //  "Username": "Administrator",
+      //  "Password": "<Password>",
+      //  "PasswordFile": "<Path to Password File>",
+      //  "Host": "https://localhost:57513",
+      //  "OverwriteConfigFile": "<Path to YAML overwrite file>"
+      //}
     ]
   },
   "Storage": {
@@ -103,6 +182,9 @@ Set these variables in your system or Docker container to override appsettings.j
   }
 }
 ```
+
+*Commented lines indicate optional configurations that can be enabled as needed. Overwrite files allow dynamic adjustments, such as IP changes, during synchronization.*
+
 
 ### Docker Deployment
 
