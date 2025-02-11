@@ -32,6 +32,40 @@ A sample console application demonstrating how to use `Kepware.Api` to interact 
 
 [Readme for Kepware.Api.Sample](./Kepware.Api.Sample/README.md)
 
+#### 1. Primary <-> Secondary Synchronization
+Automatically synchronize configurations between two Kepware instances. Changes are detected via the REST Config API and propagated to the other instance.
+
+```
++------------+       Sync        +------------+
+|  Primary   |  <------------>   | Secondary  |
+|  Kepware   |                   |  Kepware   |
++------------+                   +------------+
+```
+
+#### 2. GIT Versioning of Configurations
+Synchronize configurations between a Kepware instance and the local filesystem bidirectionally. Changes in files are synced to Kepware and vice versa. Git operations like commits and pulls must be managed separately (e.g., using Git Sync Services or manual Git operations).
+
+```
++------------+       Sync        +--------------+       Git        +-------------+
+|  Kepware   |  <------------>  |  Local Files |  <------------>  |   GIT Repo  |
++------------+                   +--------------+                  +-------------+
+```
+
+#### 3. Mass Deployment of Centralized Configurations
+Deploy a centralized GIT configuration across multiple Kepware instances. Configurations are provided locally via tools like Git or RSync and then synchronized to Kepware using the sync tool. Local specifics like device IP addresses or credentials can be customized using overwrite files.
+
+```
+           +--------------------+
+           |   Central GIT Repo |
+           +--------------------+
+                   |
+          (Git Sync / RSync)
+                   |
++--------------+   +--------------+   +--------------+
+| Kepware #1  |   | Kepware #2   |   | Kepware #n   |
+| [Overwrite] |   | [Overwrite]  |   | [Overwrite]  |
++--------------+   +--------------+   +--------------+
+```
 
 ## Contribution Guidelines
 We welcome contributions to this repository. Please follow these guidelines:
