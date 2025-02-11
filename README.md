@@ -22,16 +22,6 @@ A service application for synchronizing configurations between Kepware servers a
 
 [Readme for KepwareSync.Service](./KepwareSync.Service/README.md)
 
-### 2. `Kepware.Api`
-A .NET library providing an easy-to-use client for interacting with the Kepware Configuration API. Includes functionality for managing channels, devices, tags, and more.
-
-[Readme for Kepware.Api](./Kepware.Api/README.md)
-
-### 3. `Kepware.Api.Sample`
-A sample console application demonstrating how to use `Kepware.Api` to interact with the Kepware Configuration API. Includes examples for creating channels, devices, and tags.
-
-[Readme for Kepware.Api.Sample](./Kepware.Api.Sample/README.md)
-
 #### 1. Primary <-> Secondary Synchronization
 Automatically synchronize configurations between two Kepware instances. Changes are detected via the REST Config API and propagated to the other instance.
 
@@ -66,6 +56,17 @@ Deploy a centralized GIT configuration across multiple Kepware instances. Config
 | [Overwrite] |   | [Overwrite]  |   | [Overwrite]  |
 +--------------+   +--------------+   +--------------+
 ```
+
+### 2. `Kepware.Api`
+A .NET library providing an easy-to-use client for interacting with the Kepware Configuration API. Includes functionality for managing channels, devices, tags, and more.
+
+[Readme for Kepware.Api](./Kepware.Api/README.md)
+
+### 3. `Kepware.Api.Sample`
+A sample console application demonstrating how to use `Kepware.Api` to interact with the Kepware Configuration API. Includes examples for creating channels, devices, and tags.
+
+[Readme for Kepware.Api.Sample](./Kepware.Api.Sample/README.md)
+
 
 ## Contribution Guidelines
 We welcome contributions to this repository. Please follow these guidelines:
