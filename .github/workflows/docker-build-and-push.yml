@@ -3,7 +3,7 @@ name: Container Image
 on:
   push:
     branches:
-      - master
+      - main
     paths:
       - 'Kepware.Api/**'
       - 'KepwareSync.Service/**'
