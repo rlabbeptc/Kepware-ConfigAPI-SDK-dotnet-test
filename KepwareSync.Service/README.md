@@ -1,7 +1,7 @@
 # KepwareSync.Service
 
-[![Build Status](https://github.com/rlabbeptc/Kepware-ConfigAPI-SDK-dotnet/actions/workflows/dotnet.yml/badge.svg)](https://github.com/rlabbeptc/Kepware-ConfigAPI-SDK-dotnet/actions)
-[![Build Status](https://github.com/rlabbeptc/Kepware-ConfigAPI-SDK-dotnet/actions/workflows/docker-build-and-push.yml/badge.svg)](https://github.com/rlabbeptc/Kepware-ConfigAPI-SDK-dotnet/actions)
+[![Build Status](https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/actions/workflows/dotnet.yml/badge.svg)](https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/actions)
+[![Build Status](https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/actions/workflows/docker-build-and-push.yml/badge.svg)](https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/actions)
 
 ## Overview
 `KepwareSync.Service` is a CLI and service tool designed to synchronize configuration data between Kepware servers and the local filesystem. It supports both one-way and two-way synchronization, making it ideal for real-time configuration management.
@@ -283,8 +283,9 @@ networks:
 - Use `--persist-default-value` to retain default values in configurations if required.
 
 ## Licensing
-This tool is provided "as is" under the MIT License. Refer to the [LICENSE](../LICENSE.txt) file for more information.
+This tool is provided "as is" under the MIT License. See the [LICENSE](./LICENSE.txt) file for details.
 
 ## Support
-For issues or feature requests, please open a ticket in the GitHub repository.
+For any issues, please open an Issue within the repository. For questions or feature requests, please open a Discussion thread within the repository. 
 
+See [Repository Guidelines](./docs/repo-guidelines.md) for more information.
