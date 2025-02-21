@@ -108,6 +108,8 @@ namespace Kepware.Api.Test.ApiClient
 
             var project = await _kepwareApiClient.LoadProject(true);
 
+            project.IsLoadedByProjectLoadService.ShouldBe(supportsJsonLoad);
+
             project.ShouldNotBeNull();
             project.Channels.ShouldNotBeEmpty("Channels list should not be empty.");
 
@@ -176,21 +178,19 @@ namespace Kepware.Api.Test.ApiClient
         }
 
         [Theory]
-        [InlineData("KEPServerEX", "12", 6, 17, true)]
-        [InlineData("KEPServerEX", "12", 6, 16, false)]
-        [InlineData("ThingWorxKepwareEdge", "13", 1, 10, true)]
-        [InlineData("ThingWorxKepwareEdge", "13", 1, 9, false)]
-        [InlineData("UnknownProduct", "99", 10, 0, false)]
+        [InlineData("KEPServerEX", "12", 6, 17)]
+        [InlineData("KEPServerEX", "12", 6, 16)]
+        [InlineData("ThingWorxKepwareEdge", "13", 1, 10)]
+        [InlineData("ThingWorxKepwareEdge", "13", 1, 9)]
+        [InlineData("UnknownProduct", "99", 10, 0)]
         public async Task LoadProject_NotFull_ShouldLoadCorrectly_BasedOnProductSupport(
-          string productName, string productId, int majorVersion, int minorVersion, bool supportsJsonLoad)
+          string productName, string productId, int majorVersion, int minorVersion)
         {
             ConfigureConnectedClient(productName, productId, majorVersion, minorVersion);
 
             await ConfigureToServeEndpoints();
 
             var project = await _kepwareApiClient.LoadProject(blnLoadFullProject: false);
-
-            project.IsLoadedByProjectLoadService.ShouldBe(supportsJsonLoad);
 
             project.ShouldNotBeNull();
             project.Channels.ShouldBeNull("Channels list should be null.");
