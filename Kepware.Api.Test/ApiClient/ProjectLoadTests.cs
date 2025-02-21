@@ -22,12 +22,6 @@ namespace Kepware.Api.Test.ApiClient
     {
         private const string ENDPONT_FULL_PROJECT = "/config/v1/project?content=serialize";
 
-        private static async Task<JsonProjectRoot> LoadJsonTestDataAsync()
-        {
-            var json = await File.ReadAllTextAsync("_data/simdemo_en-us.json");
-            return JsonSerializer.Deserialize<JsonProjectRoot>(json, KepJsonContext.Default.JsonProjectRoot)!;
-        }
-
         private async Task ConfigureToServeFullProject()
         {
             var jsonData = await File.ReadAllTextAsync("_data/simdemo_en-us.json");
@@ -49,7 +43,7 @@ namespace Kepware.Api.Test.ApiClient
             _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + "/config/v1/project/channels")
                                    .ReturnsResponse(JsonSerializer.Serialize(channels), "application/json");
 
-            foreach (var channel in projectData.Project?.Channels ?? [])
+            foreach (var channel in projectData?.Project?.Channels ?? [])
             {
                 _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{channel.Name}")
                                        .ReturnsResponse(JsonSerializer.Serialize(new Channel { Name = channel.Name, Description = channel.Description, DynamicProperties = channel.DynamicProperties }), "application/json");
@@ -195,6 +189,8 @@ namespace Kepware.Api.Test.ApiClient
             await ConfigureToServeEndpoints();
 
             var project = await _kepwareApiClient.LoadProject(blnLoadFullProject: false);
+
+            project.IsLoadedByProjectLoadService.ShouldBe(supportsJsonLoad);
 
             project.ShouldNotBeNull();
             project.Channels.ShouldBeNull("Channels list should be null.");

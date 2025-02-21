@@ -15,6 +15,11 @@ namespace Kepware.Api.Model
     public class Project : BaseEntity
     {
         /// <summary>
+        /// If this is true the project was loaded by the JsonProjectLoad service (added to Kepware Server v6.17 / Kepware Edge v1.10)
+        /// </summary>
+        public bool IsLoadedByProjectLoadService { get; internal set; } = false;
+
+        /// <summary>
         /// Gets or sets the channels in the project
         /// </summary>
         [YamlIgnore]
@@ -53,6 +58,7 @@ namespace Kepware.Api.Model
             return await JsonSerializer.DeserializeAsync(stream, KepJsonContext.Default.Project, cancellationToken).ConfigureAwait(false) ??
                 throw new InvalidOperationException("CloneAsync failed");
         }
+
     }
 
     /// <summary>

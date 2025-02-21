@@ -618,6 +618,8 @@ namespace Kepware.Api
 
                         if (prjRoot?.Project != null)
                         {
+                            prjRoot.Project.IsLoadedByProjectLoadService = true;
+
                             if (prjRoot.Project.Channels != null)
                                 foreach (var channel in prjRoot.Project.Channels)
                                 {

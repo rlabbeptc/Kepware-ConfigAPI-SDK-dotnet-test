@@ -68,7 +68,7 @@ namespace Kepware.Api.Test.ApiClient
             var services = new ServiceCollection();
 
             // Act & Assert
-            Should.Throw<ArgumentNullException>(() => services.AddKepwareApiClient("Client1", null));
+            Should.Throw<ArgumentNullException>(() => services.AddKepwareApiClient("Client1", null!));
         }
 
         [Fact]
