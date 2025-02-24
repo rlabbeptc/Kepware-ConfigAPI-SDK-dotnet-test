@@ -16,9 +16,9 @@ This package is designed to work with all versions of Kepware that support the C
 | **Project Properties** <br /> *(Get Only)* | Y | Y |
 | **Connectivity** <br /> *(Channel, Devices, Tags, Tag Groups)* | Y | Y |
 | **Product Info and Health Status\*\*** | Y | Y |
-| ** Export Project\***| Y | Y |
-| ** Import Project (via CompareAndApply)\*\***| Y | Y |
-| ** Import Project (via JsonProjectLoad Service)**| N | N |
+| **Export Project\***| Y | Y |
+| **Import Project (via CompareAndApply)\*\***| Y | Y |
+| **Import Project (via JsonProjectLoad Service)**| N | N |
 
 
 - Note (*) - JsonProjectLoad was added to Kepware Server v6.17 / Kepware Edge v1.10 and later builds, the SDK detects the server version and uses the appropriate service or loads the project by multiple requests if using KepwareApiClient.LoadProject.
