@@ -31,6 +31,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kepware.Api.Sample", "Kepwa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kepware.Api.Test", "Kepware.Api.Test\Kepware.Api.Test.csproj", "{E5F9DE9E-F9F2-4683-A7A9-ACE8501F7566}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{8BD77CD2-2CB2-4EBE-B806-C4A5C8321DF1}"
+	ProjectSection(SolutionItems) = preProject
+		docs\repo-guidelines.md = docs\repo-guidelines.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -59,6 +64,7 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{F0A34611-31AD-4698-A368-4D65F9A0F9D9} = {A904D930-41F6-4016-A8BE-AED91D9E5B26}
+		{8BD77CD2-2CB2-4EBE-B806-C4A5C8321DF1} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B60B443A-DDB4-4D93-AF9F-547702A8492E}

@@ -22,12 +22,6 @@ namespace Kepware.Api.Test.ApiClient
     {
         private const string ENDPONT_FULL_PROJECT = "/config/v1/project?content=serialize";
 
-        private static async Task<JsonProjectRoot> LoadJsonTestDataAsync()
-        {
-            var json = await File.ReadAllTextAsync("_data/simdemo_en-us.json");
-            return JsonSerializer.Deserialize<JsonProjectRoot>(json, KepJsonContext.Default.JsonProjectRoot)!;
-        }
-
         private async Task ConfigureToServeFullProject()
         {
             var jsonData = await File.ReadAllTextAsync("_data/simdemo_en-us.json");
@@ -49,7 +43,7 @@ namespace Kepware.Api.Test.ApiClient
             _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + "/config/v1/project/channels")
                                    .ReturnsResponse(JsonSerializer.Serialize(channels), "application/json");
 
-            foreach (var channel in projectData.Project?.Channels ?? [])
+            foreach (var channel in projectData?.Project?.Channels ?? [])
             {
                 _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{channel.Name}")
                                        .ReturnsResponse(JsonSerializer.Serialize(new Channel { Name = channel.Name, Description = channel.Description, DynamicProperties = channel.DynamicProperties }), "application/json");
@@ -113,6 +107,8 @@ namespace Kepware.Api.Test.ApiClient
             }
 
             var project = await _kepwareApiClient.LoadProject(true);
+
+            project.IsLoadedByProjectLoadService.ShouldBe(supportsJsonLoad);
 
             project.ShouldNotBeNull();
             project.Channels.ShouldNotBeEmpty("Channels list should not be empty.");
@@ -182,13 +178,13 @@ namespace Kepware.Api.Test.ApiClient
         }
 
         [Theory]
-        [InlineData("KEPServerEX", "12", 6, 17, true)]
-        [InlineData("KEPServerEX", "12", 6, 16, false)]
-        [InlineData("ThingWorxKepwareEdge", "13", 1, 10, true)]
-        [InlineData("ThingWorxKepwareEdge", "13", 1, 9, false)]
-        [InlineData("UnknownProduct", "99", 10, 0, false)]
+        [InlineData("KEPServerEX", "12", 6, 17)]
+        [InlineData("KEPServerEX", "12", 6, 16)]
+        [InlineData("ThingWorxKepwareEdge", "13", 1, 10)]
+        [InlineData("ThingWorxKepwareEdge", "13", 1, 9)]
+        [InlineData("UnknownProduct", "99", 10, 0)]
         public async Task LoadProject_NotFull_ShouldLoadCorrectly_BasedOnProductSupport(
-          string productName, string productId, int majorVersion, int minorVersion, bool supportsJsonLoad)
+          string productName, string productId, int majorVersion, int minorVersion)
         {
             ConfigureConnectedClient(productName, productId, majorVersion, minorVersion);
 

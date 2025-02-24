@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFrameworks>net8.0; net9.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -21,7 +21,6 @@
     <PackageProjectUrl>https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/Kepware.Api</PackageProjectUrl>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
-
 
   <ItemGroup>
     <InternalsVisibleTo Include="Kepware.Api.Test" />

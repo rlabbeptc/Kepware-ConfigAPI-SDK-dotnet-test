@@ -99,7 +99,7 @@ namespace Kepware.Api.Serializer
             return dic.Select(kvp => new KeyValuePair<string, object?>(kvp.Key, Unwrap(kvp.Value)));
         }
 
-        
+
 
         public static object? Unwrap(JsonElement element)
         {
@@ -236,7 +236,7 @@ namespace Kepware.Api.Serializer
         {
             if (value == null)
             {
-                return JsonSerializer.SerializeToElement(null, Default.Object);
+                return JsonSerializer.SerializeToElement(null, Default.Object!);
             }
             else if (value is bool blnValue)
             {
@@ -262,13 +262,13 @@ namespace Kepware.Api.Serializer
             {
                 return JsonSerializer.SerializeToElement(strValue, Default.String);
             }
-            else if (value is Dictionary<string, object?> dict)
+            else if (value is Dictionary<string, object?> dict && dict != null)
             {
-                return JsonSerializer.SerializeToElement(dict, Default.DictionaryStringObject);
+                return JsonSerializer.SerializeToElement<Dictionary<string, object?>>(dict, Default.DictionaryStringObject!);
             }
-            else if (value is List<object?> list)
+            else if (value is List<object?> list && list != null)
             {
-                return JsonSerializer.SerializeToElement(list, Default.ListObject);
+                return JsonSerializer.SerializeToElement<List<object?>>(list, Default.ListObject!);
             }
             else if (value is BaseEntity entity)
             {

@@ -3,7 +3,7 @@ name: .NET
 on:
   
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
     paths:
       - 'Kepware.Api/**'
       - 'Kepware.Api.Sample/**'
@@ -11,7 +11,7 @@ on:
       - '.github/workflows/dotnet.yml' 
       - '!**/*.md' # Exclude markdown files
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main" ]
     paths:
       - 'Kepware.Api/**'
       - 'Kepware.Api.Sample/**'
