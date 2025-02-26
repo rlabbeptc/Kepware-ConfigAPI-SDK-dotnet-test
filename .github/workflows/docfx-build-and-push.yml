@@ -1,5 +1,7 @@
 # Your GitHub workflow file under .github/workflows/
 # Trigger the action on push to main
+name: Docfx Builder
+
 on:
   push:
     branches: [ "main" ]
