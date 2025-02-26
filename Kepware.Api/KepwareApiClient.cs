@@ -942,8 +942,6 @@ namespace Kepware.Api
 
         #endregion
 
-
-
         #region private methods
 
         #region deserialize

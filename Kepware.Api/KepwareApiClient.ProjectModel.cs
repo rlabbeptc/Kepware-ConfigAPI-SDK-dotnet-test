@@ -8,20 +8,20 @@ using System.Threading.Tasks;
 
 namespace Kepware.Api
 {
-    public static class KepwareApiClientExtentions
+    public partial class KepwareApiClient
     {
-        public static async Task<Device> GetOrCreateDeviceAsync(this KepwareApiClient apiClient, Channel channel, string name, string? driverName = default, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
+        public async Task<Device> GetOrCreateDeviceAsync(Channel channel, string name, string? driverName = default, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
         {
             if (channel == null)
                 throw new ArgumentNullException(nameof(channel));
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentException("Device name cannot be null or empty", nameof(name));
 
-            var device = await apiClient.LoadEntityAsync<Device>(name, channel, cancellationToken: cancellationToken);
+            var device = await LoadEntityAsync<Device>(name, channel, cancellationToken: cancellationToken);
 
             if (device == null)
             {
-                device = await apiClient.CreateDeviceAsync(channel, name, driverName, properties, cancellationToken);
+                device = await CreateDeviceAsync(channel, name, driverName, properties, cancellationToken);
                 if (device != null)
                 {
                     if (properties != null)
@@ -34,7 +34,7 @@ namespace Kepware.Api
 
                         if (currentHash != device.Hash)
                         {
-                            await apiClient.UpdateItemAsync(device, cancellationToken: cancellationToken);
+                            await UpdateItemAsync(device, cancellationToken: cancellationToken);
                         }
                     }
                 }
@@ -45,19 +45,19 @@ namespace Kepware.Api
             }
             else
             {
-                device.Tags = await apiClient.LoadCollectionAsync<DeviceTagCollection, Tag>(device, cancellationToken: cancellationToken).ConfigureAwait(false);
-                device.TagGroups = await apiClient.LoadCollectionAsync<DeviceTagGroupCollection, DeviceTagGroup>(device, cancellationToken: cancellationToken).ConfigureAwait(false);
+                device.Tags = await LoadCollectionAsync<DeviceTagCollection, Tag>(device, cancellationToken: cancellationToken).ConfigureAwait(false);
+                device.TagGroups = await LoadCollectionAsync<DeviceTagGroupCollection, DeviceTagGroup>(device, cancellationToken: cancellationToken).ConfigureAwait(false);
 
                 if (device.TagGroups != null)
                 {
-                    await apiClient.LoadTagGroupsRecursiveAsync(device.TagGroups, cancellationToken: cancellationToken).ConfigureAwait(false);
+                    await LoadTagGroupsRecursiveAsync(device.TagGroups, cancellationToken: cancellationToken).ConfigureAwait(false);
                 }
             }
 
             return device;
         }
 
-        public static async Task<Device?> CreateDeviceAsync(this KepwareApiClient apiClient, Channel channel, string name, string? driverName = default, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
+        public async Task<Device?> CreateDeviceAsync(Channel channel, string name, string? driverName = default, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
         {
             if (channel == null)
                 throw new ArgumentNullException(nameof(channel));
@@ -77,7 +77,7 @@ namespace Kepware.Api
                 }
             }
 
-            if (await apiClient.InsertItemAsync<DeviceCollection, Device>(device, channel, cancellationToken: cancellationToken))
+            if (await InsertItemAsync<DeviceCollection, Device>(device, channel, cancellationToken: cancellationToken))
             {
                 return device;
             }
@@ -87,18 +87,18 @@ namespace Kepware.Api
             }
         }
 
-        public static async Task<Channel> GetOrCreateChannelAsync(this KepwareApiClient apiClient, string name, string driverName, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
+        public async Task<Channel> GetOrCreateChannelAsync(string name, string driverName, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentException("Channel name cannot be null or empty", nameof(name));
             if (string.IsNullOrEmpty(driverName))
                 throw new ArgumentException("Driver name cannot be null or empty", nameof(driverName));
 
-            var channel = await apiClient.LoadEntityAsync<Channel>(name, cancellationToken: cancellationToken);
+            var channel = await LoadEntityAsync<Channel>(name, cancellationToken: cancellationToken);
 
             if (channel == null)
             {
-                channel = await apiClient.CreateChannelAsync(name, driverName, properties, cancellationToken);
+                channel = await CreateChannelAsync(name, driverName, properties, cancellationToken);
                 if (channel != null)
                 {
                     if (properties != null)
@@ -111,7 +111,7 @@ namespace Kepware.Api
 
                         if (currentHash != channel.Hash)
                         {
-                            await apiClient.UpdateItemAsync(channel, cancellationToken: cancellationToken);
+                            await UpdateItemAsync(channel, cancellationToken: cancellationToken);
                         }
                     }
                 }
@@ -124,7 +124,7 @@ namespace Kepware.Api
             return channel;
         }
 
-        public static async Task<Channel?> CreateChannelAsync(this KepwareApiClient apiClient, string name, string driverName, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
+        public async Task<Channel?> CreateChannelAsync(string name, string driverName, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentException("Channel name cannot be null or empty", nameof(name));
@@ -141,7 +141,7 @@ namespace Kepware.Api
                 }
             }
 
-            if (await apiClient.InsertItemAsync<ChannelCollection, Channel>(channel, cancellationToken: cancellationToken))
+            if (await InsertItemAsync<ChannelCollection, Channel>(channel, cancellationToken: cancellationToken))
             {
                 return channel;
             }
