@@ -10,6 +10,7 @@ on:
       - 'Kepware.Api/**'
       - 'Kepware.Api.Sample/**'
       - 'KepwareSync.Service/**'
+      - 'docs/docfx/**'
       - '.github/workflows/dotnet.yml' 
       - '!**/*.md' # Exclude markdown files
   pull_request:
