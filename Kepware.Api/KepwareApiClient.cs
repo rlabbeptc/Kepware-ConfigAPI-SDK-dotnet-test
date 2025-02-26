@@ -639,7 +639,7 @@ namespace Kepware.Api
                 var response = await m_httpClient.GetAsync(endpoint, cancellationToken).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)
                 {
-                    m_logger.LogError("Failed to load {TypeName} from {Endpoint}: {ReasonPhrase}", typeof(T).Name, endpoint, response.ReasonPhrase);
+                    m_logger.LogWarning("Failed to load {TypeName} from {Endpoint}: {ReasonPhrase}", typeof(T).Name, endpoint, response.ReasonPhrase);
                     return default;
                 }
 

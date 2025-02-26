@@ -235,6 +235,27 @@ namespace Kepware.Api.Model
                 ProjectId = null;
             }
         }
+
+        public virtual Dictionary<string, JsonElement> GetUpdateDiff(DefaultEntity other)
+        {
+            var diff = new Dictionary<string, JsonElement>();
+
+            if (Description != other.Description)
+            {
+                diff[Properties.Description] = KepJsonContext.WrapInJsonElement(Description);
+            }
+
+            foreach (var kvp in DynamicProperties.Except(Properties.NonSerialized.AsHashSet, Properties.NonUpdatable.AsHashSet, ConditionalNonSerialized()))
+            {
+                if (!other.DynamicProperties.TryGetValue(kvp.Key, out var otherValue) ||
+                    !KepJsonContext.JsonElementEquals(kvp.Value, otherValue))
+                {
+                    diff[kvp.Key] = kvp.Value;
+                }
+            }
+
+            return diff;
+        }
     }
 
     /// <summary>
@@ -287,30 +308,20 @@ namespace Kepware.Api.Model
         /// <returns>A dictionary of differences.</returns>
         public virtual Dictionary<string, JsonElement> GetUpdateDiff(NamedEntity other, bool blnAddProjectId = true)
         {
-            var diff = new Dictionary<string, JsonElement>();
+            var diff = base.GetUpdateDiff(other);
             if (Name != other.Name)
             {
                 diff[Properties.Name] = KepJsonContext.WrapInJsonElement(Name);
             }
 
-            if (Description != other.Description)
-            {
-                diff[Properties.Description] = KepJsonContext.WrapInJsonElement(Description);
-            }
 
             if (blnAddProjectId && ProjectId != 0)
             {
                 diff[Properties.ProjectId] = KepJsonContext.WrapInJsonElement(ProjectId);
             }
 
-            foreach (var kvp in DynamicProperties.Except(Properties.NonSerialized.AsHashSet, Properties.NonUpdatable.AsHashSet, ConditionalNonSerialized()))
-            {
-                if (!other.DynamicProperties.TryGetValue(kvp.Key, out var otherValue) ||
-                    !KepJsonContext.JsonElementEquals(kvp.Value, otherValue))
-                {
-                    diff[kvp.Key] = kvp.Value;
-                }
-            }
+
+         
             return diff;
         }
     }

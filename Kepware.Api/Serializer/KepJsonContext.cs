@@ -15,6 +15,7 @@ namespace Kepware.Api.Serializer
     [JsonSerializable(typeof(Project))]
     [JsonSerializable(typeof(JsonProjectRoot))]
     [JsonSerializable(typeof(ProductInfo))]
+    [JsonSerializable(typeof(AdminSettings))]
     [JsonSerializable(typeof(List<ApiStatus>))]
     [JsonSerializable(typeof(List<Channel>))]
     [JsonSerializable(typeof(List<Device>))]
@@ -54,6 +55,10 @@ namespace Kepware.Api.Serializer
             else if (typeof(T) == typeof(DeviceTagGroup))
             {
                 return (JsonTypeInfo<T>)(object)Default.DeviceTagGroup;
+            }
+            else if (typeof(T) == typeof(AdminSettings))
+            {
+                return (JsonTypeInfo<T>)(object)Default.AdminSettings;
             }
             else if (typeof(T) == typeof(DefaultEntity))
             {
