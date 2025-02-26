@@ -217,7 +217,7 @@ namespace Kepware.Api.Model
                 DynamicProperties.Remove(Properties.Description);
             }
 
-            if (TryGetGetDynamicProperty<string>(Properties.DeviceDriver, out var driver))
+            if (TryGetGetDynamicProperty<string>(Properties.Channel.DeviceDriver, out var driver))
             {
                 var defaultValues = await defaultValueProvider.GetDefaultValuesAsync(driver, TypeName, cancellationToken);
                 foreach (var prop in DynamicProperties.ToList())

@@ -14,10 +14,6 @@ namespace Kepware.Api.Model
     public partial class Properties
     {
         /// <summary>
-        /// The device driver property key.
-        /// </summary>
-        public const string DeviceDriver = "servermain.MULTIPLE_TYPES_DEVICE_DRIVER";
-        /// <summary>
         /// The description property key.
         /// </summary>
         public const string Description = "common.ALLTYPES_DESCRIPTION";
@@ -29,11 +25,7 @@ namespace Kepware.Api.Model
         /// The project ID property key.
         /// </summary>
         public const string ProjectId = "PROJECT_ID";
-        /// <summary>
-        /// The channel unique ID property key.
-        /// </summary>
-        public const string ChannelUid = "servermain.CHANNEL_UNIQUE_ID";
-
+        
 
         /// <summary>
         /// Contains constants related to non-updatable properties.

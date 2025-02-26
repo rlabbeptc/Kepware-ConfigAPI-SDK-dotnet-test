@@ -440,7 +440,7 @@ namespace Kepware.Api
                     var groupedItems = items
                       .GroupBy(i =>
                       {
-                          var driver = i.GetDynamicProperty<string>(Properties.DeviceDriver);
+                          var driver = i.GetDynamicProperty<string>(Properties.Channel.DeviceDriver);
                           return !string.IsNullOrEmpty(driver) && drivers.ContainsKey(driver);
                       });
 
@@ -449,7 +449,7 @@ namespace Kepware.Api
                     {
                         items = groupedItems.FirstOrDefault(g => g.Key)?.ToList() ?? [];
                         m_logger.LogWarning("The following {NumItems} {TypeName} have unsupported drivers ({ListOfUsedUnsupportedDrivers}) and will not be inserted: {ItemsNames}",
-                            unsupportedItems.Count, typeof(K).Name, unsupportedItems.Select(i => i.GetDynamicProperty<string>(Properties.DeviceDriver)).Distinct(), unsupportedItems.Select(i => i.Name));
+                            unsupportedItems.Count, typeof(K).Name, unsupportedItems.Select(i => i.GetDynamicProperty<string>(Properties.Channel.DeviceDriver)).Distinct(), unsupportedItems.Select(i => i.Name));
                     }
                 }
 
@@ -591,122 +591,6 @@ namespace Kepware.Api
         #endregion
 
         #region Load
-
-        #region LoadProject
-        /// <summary>
-        /// Loads the project from the Kepware server.
-        /// </summary>
-        /// <param name="blnLoadFullProject"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        public async Task<Project> LoadProject(bool blnLoadFullProject = false, CancellationToken cancellationToken = default)
-        {
-            Stopwatch stopwatch = Stopwatch.StartNew();
-
-            var productInfo = await GetProductInfoAsync(cancellationToken).ConfigureAwait(false);
-
-            if (blnLoadFullProject && productInfo?.SupportsJsonProjectLoadService == true)
-            {
-                try
-                {
-                    var response = await m_httpClient.GetAsync(ENDPONT_FULL_PROJECT, cancellationToken).ConfigureAwait(false);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var prjRoot = await JsonSerializer.DeserializeAsync(
-                            await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false),
-                            KepJsonContext.Default.JsonProjectRoot, cancellationToken).ConfigureAwait(false);
-
-                        if (prjRoot?.Project != null)
-                        {
-                            prjRoot.Project.IsLoadedByProjectLoadService = true;
-
-                            if (prjRoot.Project.Channels != null)
-                                foreach (var channel in prjRoot.Project.Channels)
-                                {
-                                    if (channel.Devices != null)
-                                        foreach (var device in channel.Devices)
-                                        {
-                                            device.Owner = channel;
-
-                                            if (device.Tags != null)
-                                                foreach (var tag in device.Tags)
-                                                    tag.Owner = device;
-
-                                            if (device.TagGroups != null)
-                                                SetOwnerRecursive(device.TagGroups, device);
-                                        }
-                                }
-
-                            m_logger.LogInformation("Loaded project via JsonProjectLoad Service in {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
-                            return prjRoot.Project;
-                        }
-                    }
-                }
-                catch (HttpRequestException httpEx)
-                {
-                    m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
-                    m_blnIsConnected = null;
-                }
-
-                m_logger.LogWarning("Failed to load project");
-                return new Project();
-            }
-            else
-            {
-                var project = await LoadEntityAsync<Project>(cancellationToken: cancellationToken).ConfigureAwait(false);
-
-                if (project == null)
-                {
-                    m_logger.LogWarning("Failed to load project");
-                    project = new Project();
-                }
-                else if (blnLoadFullProject)
-                {
-                    project.Channels = await LoadCollectionAsync<ChannelCollection, Channel>(cancellationToken: cancellationToken).ConfigureAwait(false);
-
-                    if (project.Channels != null)
-                    {
-                        int totalChannelCount = project.Channels.Count;
-                        int loadedChannelCount = 0;
-                        await Task.WhenAll(project.Channels.Select(async channel =>
-                        {
-                            channel.Devices = await LoadCollectionAsync<DeviceCollection, Device>(channel, cancellationToken).ConfigureAwait(false);
-
-                            if (channel.Devices != null)
-                            {
-                                await Task.WhenAll(channel.Devices.Select(async device =>
-                                {
-                                    device.Tags = await LoadCollectionAsync<DeviceTagCollection, Tag>(device, cancellationToken: cancellationToken).ConfigureAwait(false);
-                                    device.TagGroups = await LoadCollectionAsync<DeviceTagGroupCollection, DeviceTagGroup>(device, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-                                    if (device.TagGroups != null)
-                                    {
-                                        await LoadTagGroupsRecursiveAsync(device.TagGroups, cancellationToken: cancellationToken).ConfigureAwait(false);
-                                    }
-                                }));
-                            }
-                            // Log information, loaded channel <Name> x of y
-                            loadedChannelCount++;
-                            if (totalChannelCount == 1)
-                            {
-                                m_logger.LogInformation("Loaded channel {ChannelName}", channel.Name);
-                            }
-                            else
-                            {
-                                m_logger.LogInformation("Loaded channel {ChannelName} {LoadedChannelCount} of {TotalChannelCount}", channel.Name, loadedChannelCount, totalChannelCount);
-                            }
-
-                        }));
-                    }
-
-                    m_logger.LogInformation("Loaded project in {ElapsedMilliseconds} ms", stopwatch.ElapsedMilliseconds);
-                }
-
-                return project;
-            }
-        }
-        #endregion
-
         #region LoadEntity
 
         public Task<T?> LoadEntityAsync<T>(string? name = default, CancellationToken cancellationToken = default)
@@ -1062,7 +946,7 @@ namespace Kepware.Api
                 };
 
                 var defaults = collectionDefinition?.PropertyDefinitions?
-                    .Where(p => !string.IsNullOrEmpty(p.SymbolicName) && p.SymbolicName != Properties.DeviceDriver)
+                    .Where(p => !string.IsNullOrEmpty(p.SymbolicName) && p.SymbolicName != Properties.Channel.DeviceDriver)
                     .ToDictionary(p => p.SymbolicName!, p => p.GetDefaultValue()) ?? [];
 
                 return m_driverDefaultValues[key] = new ReadOnlyDictionary<string, JsonElement>(defaults);

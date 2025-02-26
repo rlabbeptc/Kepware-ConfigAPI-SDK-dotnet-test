@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 namespace Kepware.Api.Model
 {
     using System;
+    using System.Text.Json.Serialization;
+    using YamlDotNet.Serialization;
 
     namespace Kepware.Api.Model
     {
@@ -21,6 +23,7 @@ namespace Kepware.Api.Model
             /// <summary>
             /// The TCP/IP port used for event log communication.
             /// </summary>
+            [YamlIgnore, JsonIgnore]
             public int? EventLogConnectionPort
             {
                 get => GetDynamicProperty<int>(Properties.AdminSettings.EventLog.ConnectionPort);
@@ -30,6 +33,7 @@ namespace Kepware.Api.Model
             /// <summary>
             /// Persistence mode for the event log (Memory, Single File, or Extended Datastore).
             /// </summary>
+            [YamlIgnore, JsonIgnore]
             public string? EventLogPersistence
             {
                 get => GetDynamicProperty<string>(Properties.AdminSettings.EventLog.Persistence);
@@ -39,6 +43,7 @@ namespace Kepware.Api.Model
             /// <summary>
             /// Maximum number of records retained in the event log before deletion of oldest records.
             /// </summary>
+            [YamlIgnore, JsonIgnore]
             public int? EventLogMaxRecords
             {
                 get => GetDynamicProperty<int>(Properties.AdminSettings.EventLog.MaxRecords);
@@ -48,6 +53,7 @@ namespace Kepware.Api.Model
             /// <summary>
             /// Directory path where event log files are stored.
             /// </summary>
+            [YamlIgnore, JsonIgnore]
             public string? EventLogLogFilePath
             {
                 get => GetDynamicProperty<string>(Properties.AdminSettings.EventLog.LogFilePath);
@@ -57,6 +63,7 @@ namespace Kepware.Api.Model
             /// <summary>
             /// Maximum size in KB of a single event log file.
             /// </summary>
+            [YamlIgnore, JsonIgnore]
             public int? EventLogMaxSingleFileSizeKb
             {
                 get => GetDynamicProperty<int>(Properties.AdminSettings.EventLog.MaxSingleFileSizeKb);
@@ -66,6 +73,7 @@ namespace Kepware.Api.Model
             /// <summary>
             /// Minimum number of days before event log files are deleted.
             /// </summary>
+            [YamlIgnore, JsonIgnore]
             public int? EventLogMinDaysToPreserve
             {
                 get => GetDynamicProperty<int>(Properties.AdminSettings.EventLog.MinDaysToPreserve);
@@ -79,6 +87,7 @@ namespace Kepware.Api.Model
             /// <summary>
             /// The persistence mode for OPC Diagnostics log data.
             /// </summary>
+            [YamlIgnore, JsonIgnore]
             public string? OpcDiagnosticsPersistence
             {
                 get => GetDynamicProperty<string>(Properties.AdminSettings.OpcDiagnostics.Persistence);
@@ -88,6 +97,7 @@ namespace Kepware.Api.Model
             /// <summary>
             /// Maximum number of OPC Diagnostics log records before removal of oldest records.
             /// </summary>
+            [YamlIgnore, JsonIgnore]
             public int? OpcDiagnosticsMaxRecords
             {
                 get => GetDynamicProperty<int>(Properties.AdminSettings.OpcDiagnostics.MaxRecords);
@@ -97,6 +107,7 @@ namespace Kepware.Api.Model
             /// <summary>
             /// Directory path where OPC Diagnostics log files are stored.
             /// </summary>
+            [YamlIgnore, JsonIgnore]
             public string? OpcDiagnosticsLogFilePath
             {
                 get => GetDynamicProperty<string>(Properties.AdminSettings.OpcDiagnostics.LogFilePath);
@@ -106,6 +117,7 @@ namespace Kepware.Api.Model
             /// <summary>
             /// Maximum size in KB of a single OPC Diagnostics log file.
             /// </summary>
+            [YamlIgnore, JsonIgnore]
             public int? OpcDiagnosticsMaxSingleFileSizeKb
             {
                 get => GetDynamicProperty<int>(Properties.AdminSettings.OpcDiagnostics.MaxSingleFileSizeKb);
@@ -115,6 +127,7 @@ namespace Kepware.Api.Model
             /// <summary>
             /// Minimum number of days before OPC Diagnostics log files are deleted.
             /// </summary>
+            [YamlIgnore, JsonIgnore]
             public int? OpcDiagnosticsMinDaysToPreserve
             {
                 get => GetDynamicProperty<int>(Properties.AdminSettings.OpcDiagnostics.MinDaysToPreserve);

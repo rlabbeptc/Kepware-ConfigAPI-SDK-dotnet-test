@@ -3,7 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using YamlDotNet.Serialization;
 
 namespace Kepware.Api.Model.Admin
 {
@@ -13,6 +15,7 @@ namespace Kepware.Api.Model.Admin
         /// <summary>
         /// Host name or IP address for the license server (character limit is 63 characters).
         /// </summary>
+        [YamlIgnore, JsonIgnore]
         public string? LicensingServerName
         {
             get => GetDynamicProperty<string>(Properties.AdminSettings.Licensing.ServerName);
@@ -22,6 +25,7 @@ namespace Kepware.Api.Model.Admin
         /// <summary>
         /// Enables or disables the connection to the licensing server.
         /// </summary>
+        [YamlIgnore, JsonIgnore]
         public bool? LicensingServerEnable
         {
             get => GetDynamicProperty<bool>(Properties.AdminSettings.Licensing.ServerEnable);
@@ -31,6 +35,7 @@ namespace Kepware.Api.Model.Admin
         /// <summary>
         /// The port number used to connect to license server for non-TLS connections
         /// </summary>
+        [YamlIgnore, JsonIgnore]
         public int? LicensingServerPort
         {
             get => GetDynamicProperty<int>(Properties.AdminSettings.Licensing.ServerPort);
@@ -41,6 +46,7 @@ namespace Kepware.Api.Model.Admin
         /// <summary>
         /// The port number used for TLS-secured connections to the licensing server.
         /// </summary>
+        [YamlIgnore, JsonIgnore]
         public int? LicensingServerSslPort
         {
             get => GetDynamicProperty<int>(Properties.AdminSettings.Licensing.ServerSslPort);
@@ -50,6 +56,7 @@ namespace Kepware.Api.Model.Admin
         /// <summary>
         /// Allows insecure (non-TLS) communication with the licensing server.
         /// </summary>
+        [YamlIgnore, JsonIgnore]
         public bool? LicensingAllowInsecureComms
         {
             get => GetDynamicProperty<bool>(Properties.AdminSettings.Licensing.AllowInsecureComms);
@@ -59,6 +66,7 @@ namespace Kepware.Api.Model.Admin
         /// <summary>
         /// Allows the use of self-signed certificates for licensing server communication.
         /// </summary>
+        [YamlIgnore, JsonIgnore]
         public bool? LicensingAllowSelfSignedCerts
         {
             get => GetDynamicProperty<bool>(Properties.AdminSettings.Licensing.AllowSelfSignedCerts);
@@ -68,6 +76,7 @@ namespace Kepware.Api.Model.Admin
         /// <summary>
         /// Custom alias used for requesting a license from the licensing server (character limit: 63).
         /// </summary>
+        [YamlIgnore, JsonIgnore]
         public string? LicensingClientAlias
         {
             get => GetDynamicProperty<string>(Properties.AdminSettings.Licensing.ClientAlias);
@@ -77,6 +86,7 @@ namespace Kepware.Api.Model.Admin
         /// <summary>
         /// Time interval (in minutes) between automatic license state checks.
         /// </summary>
+        [YamlIgnore, JsonIgnore]
         public int? LicensingRecheckIntervalMinutes
         {
             get => GetDynamicProperty<int>(Properties.AdminSettings.Licensing.RecheckIntervalMinutes);
