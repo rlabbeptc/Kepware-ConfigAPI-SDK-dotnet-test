@@ -38,7 +38,7 @@ namespace Kepware.Api.Util
             var ipv4Address = addresses.FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork);
 
             // If no IPv4 address is found, throw an exception
-            if (ipv4Address.isNullnull)
+            if (ipv4Address == null)
             {
                 throw new NotSupportedException($"No IPv4 address found for the hostname {host}.");
             }
