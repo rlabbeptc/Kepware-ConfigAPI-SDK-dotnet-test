@@ -98,7 +98,8 @@ namespace Kepware.Api
         private static Action<IHttpClientBuilder> ConfigureHttpClientBuilder(KepwareApiClientOptions options)
             => clientBuilder =>
             {
-                var handler = new Ipv4OnlyHttpClientHandler();
+                var handler = options.EnableIpv6 ? new HttpClientHandler() : new Ipv4OnlyHttpClientHandler();
+
                 if (options.DisableCertifcateValidation)
                 {
 #pragma warning disable S4830 // Server certificates should be verified during SSL/TLS connections
