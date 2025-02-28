@@ -83,6 +83,16 @@ namespace Kepware.Api
         #region UaEndpoint
 
         /// <summary>
+        /// Retrieves a collection of OPC UA endpoints asynchronously.
+        /// </summary>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>A collection of <see cref="UaEndpoint"/> or null if retrieval fails.</returns>
+        public Task<UaEndpointCollection?> GetUaEndpointsAsync(CancellationToken cancellationToken = default)
+        {
+            return LoadCollectionAsync<UaEndpointCollection, UaEndpoint>(cancellationToken: cancellationToken);
+        }
+
+        /// <summary>
         /// Retrieves an OPC UA endpoint configuration asynchronously.
         /// </summary>
         /// <param name="name">The name of the OPC UA endpoint.</param>
@@ -136,6 +146,75 @@ namespace Kepware.Api
         /// <returns>True if the endpoint was successfully deleted; otherwise, false.</returns>
         public Task<bool> DeleteUaEndpointAsync(string name, CancellationToken cancellationToken = default)
             => DeleteItemAsync<UaEndpoint>(name, cancellationToken);
+
+        #endregion
+
+        #region ServerUserGroup
+
+        /// <summary>
+        /// Retrieves a collection of Server User Groups asynchronously.
+        /// </summary>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>A collection of <see cref="ServerUserGroup"/> or null if retrieval fails.</returns>
+        public Task<ServerUserGroupCollection?> GetServerUserGroupsAsync(CancellationToken cancellationToken = default)
+        {
+            return LoadCollectionAsync<ServerUserGroupCollection, ServerUserGroup>(cancellationToken: cancellationToken);
+        }
+
+        /// <summary>
+        /// Retrieves a Server User Group configuration asynchronously.
+        /// </summary>
+        /// <param name="name">The name of the Server User Group.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>The <see cref="ServerUserGroup"/> configuration, or null if not found.</returns>
+        public Task<ServerUserGroup?> GetServerUserGroupAsync(string name, CancellationToken cancellationToken = default)
+        {
+            return LoadEntityAsync<ServerUserGroup>(name, cancellationToken);
+        }
+
+        /// <summary>
+        /// Creates a new Server User Group or updates an existing one.
+        /// </summary>
+        /// <param name="userGroup">The <see cref="ServerUserGroup"/> to create or update.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>True if the operation succeeds; otherwise, false.</returns>
+        /// <exception cref="ArgumentException">Thrown if the <paramref name="userGroup"/> has no name specified.</exception>
+        public async Task<bool> CreateOrUpdateServerUserGroupAsync(ServerUserGroup userGroup, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(userGroup.Name))
+                throw new ArgumentException("Name is required", nameof(userGroup));
+
+            try
+            {
+                var endpointUrl = EndpointResolver.ResolveEndpoint<ServerUserGroup>([userGroup.Name]);
+                var currentGroup = await LoadEntityByEndpointAsync<ServerUserGroup>(endpointUrl, cancellationToken);
+
+                if (currentGroup == null)
+                {
+                    return await InsertItemAsync<ServerUserGroupCollection, ServerUserGroup>(userGroup, cancellationToken: cancellationToken);
+                }
+                else
+                {
+                    return await UpdateItemAsync(endpoint: endpointUrl, item: userGroup, currentEntity: currentGroup, cancellationToken: cancellationToken);
+                }
+            }
+            catch (HttpRequestException httpEx)
+            {
+                m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
+                m_blnIsConnected = null;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Deletes a Server User Group configuration asynchronously.
+        /// </summary>
+        /// <param name="name">The name of the group to delete.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>True if the group was successfully deleted; otherwise, false.</returns>
+        public Task<bool> DeleteServerUserGroupAsync(string name, CancellationToken cancellationToken = default)
+            => DeleteItemAsync<ServerUserGroup>(name, cancellationToken);
 
         #endregion
     }

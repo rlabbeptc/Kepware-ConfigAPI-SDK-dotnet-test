@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Xunit;
 using System.Net.Http.Json;
+using Kepware.Api.Model.Admin;
 
 namespace Kepware.Api.Test.ApiClient
 {

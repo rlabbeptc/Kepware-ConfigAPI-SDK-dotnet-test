@@ -728,7 +728,7 @@ namespace Kepware.Api
                 var response = await m_httpClient.GetAsync(endpoint, cancellationToken).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)
                 {
-                    m_logger.LogError("Failed to load {TypeName} from {Endpoint}: {ReasonPhrase}", typeof(T).Name, endpoint, response.ReasonPhrase);
+                    m_logger.LogWarning("Failed to load {TypeName} from {Endpoint}: {ReasonPhrase}", typeof(T).Name, endpoint, response.ReasonPhrase);
                     return default;
                 }
 
@@ -741,7 +741,7 @@ namespace Kepware.Api
                 }
                 else
                 {
-                    m_logger.LogError("Failed to deserialize {TypeName} from {Endpoint}", typeof(T).Name, endpoint);
+                    m_logger.LogWarning("Failed to deserialize {TypeName} from {Endpoint}", typeof(T).Name, endpoint);
                     return default;
                 }
             }

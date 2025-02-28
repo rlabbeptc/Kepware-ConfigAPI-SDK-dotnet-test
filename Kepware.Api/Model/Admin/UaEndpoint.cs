@@ -9,15 +9,36 @@ using YamlDotNet.Serialization;
 
 namespace Kepware.Api.Model.Admin
 {
+    /// <summary>
+    /// Defines the security modes available for an OPC UA Endpoint.
+    /// </summary>
     [Flags]
     public enum UaEndpointSecurityMode
     {
+        /// <summary>
+        /// No security applied to the endpoint.
+        /// </summary>
         None = 0,
+
+        /// <summary>
+        /// Messages are signed but not encrypted.
+        /// </summary>
         Sign = 1,
+
+        /// <summary>
+        /// Messages are both signed and encrypted.
+        /// </summary>
         SignAndEncrypt = 2,
+
+        /// <summary>
+        /// Allows either Sign or SignAndEncrypt.
+        /// </summary>
         SignOrSignAndEncrypt = Sign | SignAndEncrypt
     }
 
+    /// <summary>
+    /// Represents an OPC UA Endpoint configuration in Kepware.
+    /// </summary>
     [Endpoint("/config/v1/admin/ua_endpoints/{name}")]
     public class UaEndpoint : NamedEntity
     {
@@ -112,6 +133,9 @@ namespace Kepware.Api.Model.Admin
         #endregion
     }
 
+    /// <summary>
+    /// Represents a collection of OPC UA Endpoints.
+    /// </summary>
     [Endpoint("/config/v1/admin/ua_endpoints")]
     public class UaEndpointCollection : EntityCollection<UaEndpoint>
     {

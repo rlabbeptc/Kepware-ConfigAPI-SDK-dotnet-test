@@ -139,11 +139,55 @@ namespace Kepware.Api.Test.ApiClient
                 Times.Once);
         }
 
-        private static UaEndpoint CreateTestUaEndpoint()
+        [Fact]
+        public async Task GetUaEndpointsAsync_ShouldReturnUaEndpointCollection_WhenApiRespondsSuccessfully()
+        {
+            // Arrange
+            var uaEndpoints = new UaEndpointCollection
+            {
+                CreateTestUaEndpoint("TestEndpoint1"),
+                CreateTestUaEndpoint("TestEndpoint2")
+            };
+            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_UA}")
+                .ReturnsResponse(HttpStatusCode.OK, JsonSerializer.Serialize(uaEndpoints), "application/json");
+
+            // Act
+            var result = await _kepwareApiClient.GetUaEndpointsAsync();
+
+            // Assert
+            result.ShouldNotBeNull();
+            result.Count.ShouldBe(2);
+            result[0].Name.ShouldBe(uaEndpoints[0].Name);
+            result[1].Name.ShouldBe(uaEndpoints[1].Name);
+        }
+
+        [Fact]
+        public async Task GetUaEndpointsAsync_ShouldReturnNull_WhenApiReturnsError()
+        {
+            // Arrange
+            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_UA}")
+                .ReturnsResponse(HttpStatusCode.InternalServerError, "Internal Server Error");
+
+            // Act
+            var result = await _kepwareApiClient.GetUaEndpointsAsync();
+
+            // Assert
+            result.ShouldBeNull();
+            _loggerMock.Verify(logger => 
+                logger.Log(
+                    LogLevel.Warning,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => true),
+                    It.IsAny<Exception>(),
+                    It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)), 
+                Times.Once);
+        }
+
+        private static UaEndpoint CreateTestUaEndpoint(string endpointName= "TestEndpoint")
         {
             return new UaEndpoint
             {
-                Name = "TestEndpoint",
+                Name = endpointName,
                 Enabled = true,
                 Adapter = "Ethernet",
                 Port = 49320,

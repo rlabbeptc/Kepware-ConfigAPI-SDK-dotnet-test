@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using YamlDotNet.Serialization;
 
-namespace Kepware.Api.Model
+namespace Kepware.Api.Model.Admin
 {
     /// <summary>
     /// Represents the administrative settings of the Kepware server.
