@@ -9,6 +9,7 @@ using System.Collections;
 using System.Text.Json;
 using Kepware.Api.Serializer;
 using Kepware.Api.Model;
+using Kepware.Api.Model.Admin;
 
 namespace Kepware.Api.Serializer
 {
@@ -16,7 +17,9 @@ namespace Kepware.Api.Serializer
     [JsonSerializable(typeof(JsonProjectRoot))]
     [JsonSerializable(typeof(ProductInfo))]
     [JsonSerializable(typeof(AdminSettings))]
+    [JsonSerializable(typeof(UaEndpoint))]
     [JsonSerializable(typeof(List<ApiStatus>))]
+    [JsonSerializable(typeof(List<UaEndpoint>))]
     [JsonSerializable(typeof(List<Channel>))]
     [JsonSerializable(typeof(List<Device>))]
     [JsonSerializable(typeof(List<Tag>))]
@@ -60,6 +63,10 @@ namespace Kepware.Api.Serializer
             {
                 return (JsonTypeInfo<T>)(object)Default.AdminSettings;
             }
+            else if (typeof(T) == typeof(UaEndpoint))
+            {
+                return (JsonTypeInfo<T>)(object)Default.UaEndpoint;
+            }
             else if (typeof(T) == typeof(DefaultEntity))
             {
                 return (JsonTypeInfo<T>)(object)Default.DefaultEntity;
@@ -88,6 +95,10 @@ namespace Kepware.Api.Serializer
             else if (typeof(T) == typeof(Tag))
             {
                 return (JsonTypeInfo<List<T>>)(object)Default.ListTag;
+            }
+            else if (typeof(T) == typeof(UaEndpoint))
+            {
+                return (JsonTypeInfo<List<T>>)(object)Default.ListUaEndpoint;
             }
             else if (typeof(T) == typeof(DefaultEntity))
             {
