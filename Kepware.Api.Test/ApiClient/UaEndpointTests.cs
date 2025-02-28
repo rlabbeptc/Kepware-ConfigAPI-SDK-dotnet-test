@@ -152,7 +152,7 @@ namespace Kepware.Api.Test.ApiClient
                 .ReturnsResponse(HttpStatusCode.OK, JsonSerializer.Serialize(uaEndpoints), "application/json");
 
             // Act
-            var result = await _kepwareApiClient.GetUaEndpointsAsync();
+            var result = await _kepwareApiClient.GetUaEndpointListAsync();
 
             // Assert
             result.ShouldNotBeNull();
@@ -169,7 +169,7 @@ namespace Kepware.Api.Test.ApiClient
                 .ReturnsResponse(HttpStatusCode.InternalServerError, "Internal Server Error");
 
             // Act
-            var result = await _kepwareApiClient.GetUaEndpointsAsync();
+            var result = await _kepwareApiClient.GetUaEndpointListAsync();
 
             // Assert
             result.ShouldBeNull();

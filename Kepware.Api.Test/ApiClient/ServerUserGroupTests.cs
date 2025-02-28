@@ -152,7 +152,7 @@ namespace Kepware.Api.Test.ApiClient
                 .ReturnsResponse(HttpStatusCode.OK, JsonSerializer.Serialize(userGroups), "application/json");
 
             // Act
-            var result = await _kepwareApiClient.GetServerUserGroupsAsync();
+            var result = await _kepwareApiClient.GetServerUserGroupListAsync();
 
             // Assert
             result.ShouldNotBeNull();
@@ -167,7 +167,7 @@ namespace Kepware.Api.Test.ApiClient
                 .ReturnsResponse(HttpStatusCode.InternalServerError, "Internal Server Error");
 
             // Act
-            var result = await _kepwareApiClient.GetServerUserGroupsAsync();
+            var result = await _kepwareApiClient.GetServerUserGroupListAsync();
 
             // Assert
             result.ShouldBeNull();

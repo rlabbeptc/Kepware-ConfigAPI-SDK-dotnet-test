@@ -141,7 +141,6 @@ namespace Kepware.Api.Test.ApiClient
                   .ReturnsResponse(HttpStatusCode.OK, JsonSerializer.Serialize(user), "application/json");
 
             user.Password = "short";
-
             // Act & Assert
             await Should.ThrowAsync<ArgumentException>(async () =>
                 await _kepwareApiClient.CreateOrUpdateServerUserAsync(user));
@@ -224,7 +223,7 @@ namespace Kepware.Api.Test.ApiClient
                 .ReturnsResponse(HttpStatusCode.OK, JsonSerializer.Serialize(users), "application/json");
 
             // Act
-            var result = await _kepwareApiClient.GetServerUsersAsync();
+            var result = await _kepwareApiClient.GetServerUserListAsync();
 
             // Assert
             result.ShouldNotBeNull();
@@ -239,7 +238,7 @@ namespace Kepware.Api.Test.ApiClient
                 .ReturnsResponse(HttpStatusCode.InternalServerError, "Internal Server Error");
 
             // Act
-            var result = await _kepwareApiClient.GetServerUsersAsync();
+            var result = await _kepwareApiClient.GetServerUserListAsync();
 
             // Assert
             result.ShouldBeNull();

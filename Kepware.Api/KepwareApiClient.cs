@@ -410,6 +410,39 @@ namespace Kepware.Api
         #endregion
 
         #region Insert
+
+        public async Task<bool> InsertItemAsync<T>(T item, NamedEntity? owner = null, CancellationToken cancellationToken = default)
+         where T : NamedEntity
+        {
+            try
+            {
+                var endpoint = EndpointResolver.ResolveEndpoint<T>(owner, item.Name).TrimEnd('/');
+
+                if(endpoint.EndsWith("/"+item.Name))
+                    endpoint = endpoint[..(endpoint.Length - item.Name.Length - 1)];
+
+                var jsonContent = JsonSerializer.Serialize(item, KepJsonContext.GetJsonTypeInfo<T>());
+                HttpContent httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+                var response = await m_httpClient.PostAsync(endpoint, httpContent, cancellationToken).ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var message = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    m_logger.LogError("Failed to insert {TypeName} to {Endpoint}: {ReasonPhrase}\n{Message}", typeof(T).Name, endpoint, response.ReasonPhrase, message);
+                }
+                else
+                {
+                    return true;
+                }
+            }
+            catch (HttpRequestException httpEx)
+            {
+                m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
+                m_blnIsConnected = null;
+
+            }
+            return false;
+        }
+
         /// <summary>
         /// Inserts an item in the Kepware server.
         /// </summary>

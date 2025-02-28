@@ -87,7 +87,7 @@ namespace Kepware.Api
         /// </summary>
         /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
         /// <returns>A collection of <see cref="UaEndpoint"/> or null if retrieval fails.</returns>
-        public Task<UaEndpointCollection?> GetUaEndpointsAsync(CancellationToken cancellationToken = default)
+        public Task<UaEndpointCollection?> GetUaEndpointListAsync(CancellationToken cancellationToken = default)
         {
             return LoadCollectionAsync<UaEndpointCollection, UaEndpoint>(cancellationToken: cancellationToken);
         }
@@ -122,7 +122,7 @@ namespace Kepware.Api
 
                 if (currentEndpoint == null)
                 {
-                    return await InsertItemAsync<UaEndpointCollection, UaEndpoint>(endpoint, cancellationToken: cancellationToken);
+                    return await InsertItemAsync(endpoint, cancellationToken: cancellationToken);
                 }
                 else
                 {
@@ -156,7 +156,7 @@ namespace Kepware.Api
         /// </summary>
         /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
         /// <returns>A collection of <see cref="ServerUserGroup"/> or null if retrieval fails.</returns>
-        public Task<ServerUserGroupCollection?> GetServerUserGroupsAsync(CancellationToken cancellationToken = default)
+        public Task<ServerUserGroupCollection?> GetServerUserGroupListAsync(CancellationToken cancellationToken = default)
         {
             return LoadCollectionAsync<ServerUserGroupCollection, ServerUserGroup>(cancellationToken: cancellationToken);
         }
@@ -191,7 +191,7 @@ namespace Kepware.Api
 
                 if (currentGroup == null)
                 {
-                    return await InsertItemAsync<ServerUserGroupCollection, ServerUserGroup>(userGroup, cancellationToken: cancellationToken);
+                    return await InsertItemAsync(userGroup, cancellationToken: cancellationToken);
                 }
                 else
                 {
@@ -224,7 +224,7 @@ namespace Kepware.Api
         /// </summary>
         /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
         /// <returns>A collection of <see cref="ServerUser"/> or null if retrieval fails.</returns>
-        public Task<ServerUserCollection?> GetServerUsersAsync(CancellationToken cancellationToken = default)
+        public Task<ServerUserCollection?> GetServerUserListAsync(CancellationToken cancellationToken = default)
         {
             return LoadCollectionAsync<ServerUserCollection, ServerUser>(cancellationToken: cancellationToken);
         }
@@ -294,6 +294,85 @@ namespace Kepware.Api
         public Task<bool> DeleteServerUserAsync(string name, CancellationToken cancellationToken = default)
             => DeleteItemAsync<ServerUser>(name, cancellationToken);
 
+        #endregion
+
+        #region ProjectPermission
+
+        /// <summary>
+        /// Retrieves a collection of project permissions asynchronously.
+        /// </summary>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>A collection of <see cref="ProjectPermission"/> or null if retrieval fails.</returns>
+        public Task<ProjectPermissionCollection?> GetProjectPermissionListAsync(CancellationToken cancellationToken = default)
+        {
+            return LoadCollectionAsync<ProjectPermissionCollection, ProjectPermission>(cancellationToken: cancellationToken);
+        }
+
+        /// <summary>
+        /// Retrieves a project permission for a specific server user group asynchronously.
+        /// </summary>
+        /// <param name="serverUserGroup">The server user group for which to retrieve the project permission.</param>
+        /// <param name="projectPermissionName">The name of the project permission to retrieve.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>The <see cref="ProjectPermission"/> or null if not found.</returns>
+        public Task<ProjectPermission?> GetProjectPermissionAsync(ServerUserGroup serverUserGroup, ProjectPermissionName projectPermissionName, CancellationToken cancellationToken = default)
+            => GetProjectPermissionAsync(serverUserGroup.Name, projectPermissionName, cancellationToken);
+
+        /// <summary>
+        /// Retrieves a project permission for a specific server user group asynchronously.
+        /// </summary>
+        /// <param name="serverUserGroupName">The name of the server user group for which to retrieve the project permission.</param>
+        /// <param name="projectPermissionName">The name of the project permission to retrieve.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>The <see cref="ProjectPermission"/> or null if not found.</returns>
+        public Task<ProjectPermission?> GetProjectPermissionAsync(string serverUserGroupName, ProjectPermissionName projectPermissionName, CancellationToken cancellationToken = default)
+        {
+            var endpoint = EndpointResolver.ResolveEndpoint<ProjectPermission>([serverUserGroupName, projectPermissionName]);
+            return LoadEntityByEndpointAsync<ProjectPermission>(endpoint, cancellationToken);
+        }
+
+        /// <summary>
+        /// Updates a project permission for a specific server user group asynchronously.
+        /// </summary>
+        /// <param name="serverUserGroup">The server user group for which to update the project permission.</param>
+        /// <param name="projectPermission">The project permission to update.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>True if the operation succeeds; otherwise, false.</returns>
+        public Task<bool> UpdateProjectPermissionAsync(ServerUserGroup serverUserGroup, ProjectPermission projectPermission, CancellationToken cancellationToken = default)
+            => UpdateProjectPermissionAsync(serverUserGroup.Name, projectPermission, cancellationToken);
+
+        /// <summary>
+        /// Updates a project permission for a specific server user group asynchronously.
+        /// </summary>
+        /// <param name="serverUserGroupName">The name of the server user group for which to update the project permission.</param>
+        /// <param name="projectPermission">The project permission to update.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>True if the operation succeeds; otherwise, false.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the project permission cannot be found.</exception>
+        public async Task<bool> UpdateProjectPermissionAsync(string serverUserGroupName, ProjectPermission projectPermission, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var endpointUrl = EndpointResolver.ResolveEndpoint<ProjectPermission>([serverUserGroupName, projectPermission.Name]);
+                var existingPermission = await LoadEntityByEndpointAsync<ProjectPermission>(endpointUrl, cancellationToken);
+
+                if (existingPermission == null)
+                {
+                    throw new InvalidOperationException($"Project permission {projectPermission.Name} not found for {serverUserGroupName}");
+                }
+                else
+                {
+                    return await UpdateItemAsync(endpoint: endpointUrl, item: projectPermission, currentEntity: existingPermission, cancellationToken: cancellationToken);
+                }
+            }
+            catch (HttpRequestException httpEx)
+            {
+                m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
+                m_blnIsConnected = null;
+            }
+
+            return false;
+        }
         #endregion
     }
 }

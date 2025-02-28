@@ -20,6 +20,7 @@ namespace Kepware.Api.Serializer
     [JsonSerializable(typeof(UaEndpoint))]
     [JsonSerializable(typeof(ServerUserGroup))]
     [JsonSerializable(typeof(ServerUser))]
+    [JsonSerializable(typeof(ProjectPermission))]
     [JsonSerializable(typeof(List<ApiStatus>))]
     [JsonSerializable(typeof(List<UaEndpoint>))]
     [JsonSerializable(typeof(List<ServerUserGroup>))]
@@ -31,6 +32,7 @@ namespace Kepware.Api.Serializer
     [JsonSerializable(typeof(List<DefaultEntity>))]
     [JsonSerializable(typeof(List<object?>))]
     [JsonSerializable(typeof(List<ApiResult>))]
+    [JsonSerializable(typeof(List<ProjectPermission>))]
     [JsonSerializable(typeof(int))]
     [JsonSerializable(typeof(long))]
     [JsonSerializable(typeof(float))]
@@ -79,6 +81,10 @@ namespace Kepware.Api.Serializer
             {
                 return (JsonTypeInfo<T>)(object)Default.UaEndpoint;
             }
+            else if (typeof(T) == typeof(ProjectPermission))
+            {
+                return (JsonTypeInfo<T>)(object)Default.ProjectPermission;
+            }
             else if (typeof(T) == typeof(DefaultEntity))
             {
                 return (JsonTypeInfo<T>)(object)Default.DefaultEntity;
@@ -119,6 +125,10 @@ namespace Kepware.Api.Serializer
             else if (typeof(T) == typeof(ServerUser))
             {
                 return (JsonTypeInfo<List<T>>)(object)Default.ListServerUser;
+            }
+            else if (typeof(T) == typeof(ProjectPermission))
+            {
+                return (JsonTypeInfo<List<T>>)(object)Default.ListProjectPermission;
             }
             else if (typeof(T) == typeof(DefaultEntity))
             {
