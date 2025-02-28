@@ -217,5 +217,83 @@ namespace Kepware.Api
             => DeleteItemAsync<ServerUserGroup>(name, cancellationToken);
 
         #endregion
+
+        #region ServerUser
+        /// <summary>
+        /// Retrieves a collection of Server Users asynchronously.
+        /// </summary>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>A collection of <see cref="ServerUser"/> or null if retrieval fails.</returns>
+        public Task<ServerUserCollection?> GetServerUsersAsync(CancellationToken cancellationToken = default)
+        {
+            return LoadCollectionAsync<ServerUserCollection, ServerUser>(cancellationToken: cancellationToken);
+        }
+
+        /// <summary>
+        /// Retrieves a Server User configuration asynchronously.
+        /// </summary>
+        /// <param name="name">The name of the Server User.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>The <see cref="ServerUser"/> configuration, or null if not found.</returns>
+        public Task<ServerUser?> GetServerUserAsync(string name, CancellationToken cancellationToken = default)
+        {
+            return LoadEntityAsync<ServerUser>(name, cancellationToken);
+        }
+
+        /// <summary>
+        /// Creates a new Server User or updates an existing one.
+        /// </summary>
+        /// <param name="user">The <see cref="ServerUser"/> to create or update.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>True if the operation succeeds; otherwise, false.</returns>
+        /// <exception cref="ArgumentException">Thrown if the <paramref name="user"/> has no name specified or the password is invalid.</exception>
+        public async Task<bool> CreateOrUpdateServerUserAsync(ServerUser user, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(user.Name))
+                throw new ArgumentException("Name is required", nameof(user));
+
+            try
+            {
+                var endpointUrl = EndpointResolver.ResolveEndpoint<ServerUser>([user.Name]);
+                var currentUser = await LoadEntityByEndpointAsync<ServerUser>(endpointUrl, cancellationToken);
+
+                if (currentUser == null)
+                {
+                    if (string.IsNullOrEmpty(user.Password) || user.Password.Length < 14)
+#pragma warning disable S3928 // Parameter names used into ArgumentException constructors should match an existing one 
+                        throw new ArgumentException("Password must be at least 14 characters long", nameof(user.Password));
+#pragma warning restore S3928 // Parameter names used into ArgumentException constructors should match an existing one 
+
+                    return await InsertItemAsync<ServerUserCollection, ServerUser>(user, cancellationToken: cancellationToken);
+                }
+                else
+                {
+                    if (!string.IsNullOrEmpty(user.Password) && user.Password.Length < 14)
+#pragma warning disable S3928 // Parameter names used into ArgumentException constructors should match an existing one 
+                        throw new ArgumentException("Password must be at least 14 characters long", nameof(user.Password));
+#pragma warning restore S3928 // Parameter names used into ArgumentException constructors should match an existing one 
+
+                    return await UpdateItemAsync(endpoint: endpointUrl, item: user, currentEntity: currentUser, cancellationToken: cancellationToken);
+                }
+            }
+            catch (HttpRequestException httpEx)
+            {
+                m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
+                m_blnIsConnected = null;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Deletes a Server User configuration asynchronously.
+        /// </summary>
+        /// <param name="name">The name of the user to delete.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>True if the user was successfully deleted; otherwise, false.</returns>
+        public Task<bool> DeleteServerUserAsync(string name, CancellationToken cancellationToken = default)
+            => DeleteItemAsync<ServerUser>(name, cancellationToken);
+
+        #endregion
     }
 }

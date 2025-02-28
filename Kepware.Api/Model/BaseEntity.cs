@@ -143,8 +143,20 @@ namespace Kepware.Api.Model
         /// <returns>The current instance for chaining.</returns>
         public BaseEntity SetDynamicProperty<T>(string key, T value)
         {
-            DynamicProperties[key] = value is JsonElement jsonElement ? jsonElement : KepJsonContext.WrapInJsonElement(value);
-            _hash = null;
+            if (value is null)
+            {
+                if (DynamicProperties.ContainsKey(key))
+                {
+                    DynamicProperties.Remove(key);
+                    _hash = null;
+                }
+            }
+            else
+            {
+                DynamicProperties[key] = value is JsonElement jsonElement ? jsonElement : KepJsonContext.WrapInJsonElement(value);
+                _hash = null;
+            }
+            
             return this;
         }
 

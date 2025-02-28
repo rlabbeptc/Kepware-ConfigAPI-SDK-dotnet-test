@@ -19,9 +19,11 @@ namespace Kepware.Api.Serializer
     [JsonSerializable(typeof(AdminSettings))]
     [JsonSerializable(typeof(UaEndpoint))]
     [JsonSerializable(typeof(ServerUserGroup))]
+    [JsonSerializable(typeof(ServerUser))]
     [JsonSerializable(typeof(List<ApiStatus>))]
     [JsonSerializable(typeof(List<UaEndpoint>))]
     [JsonSerializable(typeof(List<ServerUserGroup>))]
+    [JsonSerializable(typeof(List<ServerUser>))]
     [JsonSerializable(typeof(List<Channel>))]
     [JsonSerializable(typeof(List<Device>))]
     [JsonSerializable(typeof(List<Tag>))]
@@ -69,6 +71,10 @@ namespace Kepware.Api.Serializer
             {
                 return (JsonTypeInfo<T>)(object)Default.ServerUserGroup;
             }
+            else if (typeof(T) == typeof(ServerUser))
+            {
+                return (JsonTypeInfo<T>)(object)Default.ServerUser;
+            }
             else if (typeof(T) == typeof(UaEndpoint))
             {
                 return (JsonTypeInfo<T>)(object)Default.UaEndpoint;
@@ -109,6 +115,10 @@ namespace Kepware.Api.Serializer
             else if (typeof(T) == typeof(ServerUserGroup))
             {
                 return (JsonTypeInfo<List<T>>)(object)Default.ListServerUserGroup;
+            }
+            else if (typeof(T) == typeof(ServerUser))
+            {
+                return (JsonTypeInfo<List<T>>)(object)Default.ListServerUser;
             }
             else if (typeof(T) == typeof(DefaultEntity))
             {
