@@ -10,7 +10,12 @@
           ]
         }
       ],
-      "dest": "api"
+      "dest": "api",
+      "memberLayout": "separatePages",
+      "properties": {
+        "TargetFramework": "net8.0"
+    }
+
     }
   ],
   "build": {
