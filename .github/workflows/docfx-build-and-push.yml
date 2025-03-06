@@ -56,7 +56,7 @@ jobs:
     - run: cp ./README.md ./docs/docfx/
     - name: Modify markdown file to be index page
       run: |
-        sed -i '1i ---\noutputFileName: index.html\n---' your_markdown_file.md
+        sed -i '1i ---\noutputFileName: index.html\n---' ./README.md
     - run: dotnet tool update -g docfx
     - run: docfx ./docs/docfx/docfx.json
 
