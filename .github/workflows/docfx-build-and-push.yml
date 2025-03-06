@@ -39,23 +39,33 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+          fetch-depth: 0 # avoid shallow clone so nbgv can do its work.
+    - uses: dotnet/nbgv@master
+      id: nbgv
+      with:
+          setAllVars: true
     - name: Dotnet Setup
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.x
-    - run: cp $GITHUB_WORKSPACE/README.md $GITHUB_WORKSPACE/docs/docfx/
+    - run: cp ./README.md ./docs/docfx/
+    - name: Modify markdown file to be index page
+      run: sed -i '1i ---\noutputFileName: index.html\n---' your_markdown_file.md
     - run: dotnet tool update -g docfx
-    - run: docfx .docs/docfx/docfx.json
+    - run: docfx ./docs/docfx/docfx.json
 
     - name: Upload artifact
+      if: github.event_name != 'pull_request'
       uses: actions/upload-pages-artifact@v3
       with:
         # Upload entire repository
-        path: '.docs/docfx/_site'
+        path: './docs/docfx/_site'
     - name: Deploy to GitHub Pages
+      if: github.event_name != 'pull_request'
       id: deployment
       uses: actions/deploy-pages@v4
