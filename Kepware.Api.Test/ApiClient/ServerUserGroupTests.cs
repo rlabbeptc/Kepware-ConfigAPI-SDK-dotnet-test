@@ -200,7 +200,14 @@ namespace Kepware.Api.Test.ApiClient
                 BrowseNamespace = true,
                 ProjectModificationAdd = true,
                 ProjectModificationEdit = true,
-                ProjectModificationDelete = true
+                ProjectModificationDelete = true,
+                ResetOpcDiagsLog = true,
+                ResetCommDiagsLog = true,
+                ConfigApiLogAccess = true,
+                ViewEventLogSecurity = true,
+                ViewEventLogError = true,
+                ViewEventLogWarning = true,
+                ViewEventLogInfo = true
             };
         }
     }

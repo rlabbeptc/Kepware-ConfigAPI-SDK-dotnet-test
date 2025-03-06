@@ -259,7 +259,8 @@ namespace Kepware.Api.Test.ApiClient
                 Name = name,
                 Enabled = true,
                 UserGroupName = "TestGroup",
-                Password = "ValidPassword123!"
+                Password = "ValidPassword123!",
+                UserType = 0
             };
         }
     }

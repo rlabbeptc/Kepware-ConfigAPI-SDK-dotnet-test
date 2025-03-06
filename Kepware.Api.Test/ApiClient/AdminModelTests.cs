@@ -310,6 +310,7 @@ namespace Kepware.Api.Test.ApiClient
                 EventLogLogFilePath = "C:\\ProgramData\\Kepware\\Logs\\Event",
                 EventLogMaxSingleFileSizeKb = 1024,
                 EventLogMinDaysToPreserve = 30,
+                EventLogLogToConsole = true,
                 OpcDiagnosticsPersistence = 1,
                 OpcDiagnosticsMaxRecords = 1000,
                 OpcDiagnosticsLogFilePath = "C:\\ProgramData\\Kepware\\Logs\\OpcDiagnostics",
