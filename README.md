@@ -1,7 +1,3 @@
----
-outputFileName: index.html
----
-
 # Kepware Configuration API SDK for .NET
 
 [![Build Status](https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/actions/workflows/dotnet.yml/badge.svg)](https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/actions)
