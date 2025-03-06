@@ -298,7 +298,7 @@ namespace Kepware.Api
             var currentEntity = await LoadEntityAsync<T>((oldItem ?? item).Flatten().Select(i => i.Name).Reverse(), cancellationToken: cancellationToken).ConfigureAwait(false);
             if (currentEntity == null)
             {
-                return false; // Entity nicht gefunden, kein Update möglich
+                return false; // Entity not found, update not possible
             }
             return await UpdateItemAsync(endpoint, item, currentEntity, cancellationToken).ConfigureAwait(false);
         }
