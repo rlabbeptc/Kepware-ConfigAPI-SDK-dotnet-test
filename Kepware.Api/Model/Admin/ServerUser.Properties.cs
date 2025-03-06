@@ -27,6 +27,11 @@ namespace Kepware.Api.Model
             /// </summary>
             public const string Password = "libadminsettings.USERMANAGER_USER_PASSWORD";
 
+            /// <summary>
+            /// The type of user account, either server based or Active Directory based.
+            /// </summary>
+            public const string UserType = "libadminsettings.USERMANAGER_USER_TYPE";
+
         }
     }
 }

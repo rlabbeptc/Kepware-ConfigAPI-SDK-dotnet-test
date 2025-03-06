@@ -100,6 +100,40 @@ namespace Kepware.Api.Model
             /// </summary>
             public const string ProjectModificationDelete = "libadminsettings.USERMANAGER_PROJECTMOD_DELETE";
 
+            /// <summary>
+            /// Allows or denies resetting the OPC diagnostics log.
+            /// </summary>
+            public const string ResetOpcDiagsLog = "libadminsettings.USERMANAGER_SERVER_RESET_OPC_DIAGS_LOG";
+
+            /// <summary>
+            /// Allows or denies resetting the communications diagnostics log.
+            /// </summary>
+            public const string ResetCommDiagsLog = "libadminsettings.USERMANAGER_SERVER_RESET_COMM_DIAGS_LOG";
+
+            /// <summary>
+            /// Allows or denies access to the Configuration API Transaction Log.
+            /// </summary>
+            public const string ConfigApiLogAccess = "libadminsettings.USERMANAGER_SERVER_CONFIG_API_LOG_ACCESS";
+
+            /// <summary>
+            /// Allows or denies viewing security messages in the event log.
+            /// </summary>
+            public const string ViewEventLogSecurity = "libadminsettings.USERMANAGER_SERVER_VIEW_EVENT_LOG_SECURITY";
+
+            /// <summary>
+            /// Allows or denies viewing error messages in the event log.
+            /// </summary>
+            public const string ViewEventLogError = "libadminsettings.USERMANAGER_SERVER_VIEW_EVENT_LOG_ERROR";
+
+            /// <summary>
+            /// Allows or denies viewing warning messages in the event log.
+            /// </summary>
+            public const string ViewEventLogWarning = "libadminsettings.USERMANAGER_SERVER_VIEW_EVENT_LOG_WARNING";
+
+            /// <summary>
+            /// Allows or denies viewing informational messages in the event log.
+            /// </summary>
+            public const string ViewEventLogInfo = "libadminsettings.USERMANAGER_SERVER_VIEW_EVENT_LOG_INFO";
         }
     }
 }

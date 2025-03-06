@@ -45,6 +45,17 @@ namespace Kepware.Api.Model.Admin
             get => GetDynamicProperty<string>(Properties.ServerUser.Password);
             set => SetDynamicProperty(Properties.ServerUser.Password, value);
         }
+
+        /// <summary>
+        /// The type of user account, either server based or Active Directory based.
+        /// User type: Enum=Kepware User:0, Enum=Active Directory User:1, Enum=Active Directory Group:2
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public int? UserType
+        {
+            get => GetDynamicProperty<int>(Properties.ServerUser.UserType);
+            set => SetDynamicProperty(Properties.ServerUser.UserType, value);
+        }
     }
 
     [Endpoint("/config/v1/admin/server_users")]

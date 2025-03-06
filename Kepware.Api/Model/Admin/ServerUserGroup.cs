@@ -82,6 +82,30 @@ namespace Kepware.Api.Model.Admin
 
         #endregion
 
+        #region Internal Tag Access
+
+        /// <summary>
+        /// Allows or denies read access to internal tags.
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public bool? InternalTagRead
+        {
+            get => GetDynamicProperty<bool>(Properties.ServerUserGroup.InternalTagRead);
+            set => SetDynamicProperty(Properties.ServerUserGroup.InternalTagRead, value);
+        }
+
+        /// <summary>
+        /// Allows or denies write access to internal tags.
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public bool? InternalTagWrite
+        {
+            get => GetDynamicProperty<bool>(Properties.ServerUserGroup.InternalTagWrite);
+            set => SetDynamicProperty(Properties.ServerUserGroup.InternalTagWrite, value);
+        }
+
+        #endregion
+
         #region Server Permissions
 
         /// <summary>
@@ -135,13 +159,83 @@ namespace Kepware.Api.Model.Admin
         }
 
         /// <summary>
-        /// Allows or denies browsing of the project namespace.
+        /// Allows or denies resetting the OPC diagnostics log.
         /// </summary>
         [YamlIgnore, JsonIgnore]
-        public bool? BrowseNamespace
+        public bool? ResetOpcDiagsLog
         {
-            get => GetDynamicProperty<bool>(Properties.ServerUserGroup.BrowseNamespace);
-            set => SetDynamicProperty(Properties.ServerUserGroup.BrowseNamespace, value);
+            get => GetDynamicProperty<bool>(Properties.ServerUserGroup.ResetOpcDiagsLog);
+            set => SetDynamicProperty(Properties.ServerUserGroup.ResetOpcDiagsLog, value);
+        }
+
+        /// <summary>
+        /// Allows or denies resetting the communications diagnostics log.
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public bool? ResetCommDiagsLog
+        {
+            get => GetDynamicProperty<bool>(Properties.ServerUserGroup.ResetCommDiagsLog);
+            set => SetDynamicProperty(Properties.ServerUserGroup.ResetCommDiagsLog, value);
+        }
+
+        /// <summary>
+        /// Allows or denies access to OPC UA or XI configuration settings.
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public bool? OpcUaConfiguration
+        {
+            get => GetDynamicProperty<bool>(Properties.ServerUserGroup.OpcUaConfiguration);
+            set => SetDynamicProperty(Properties.ServerUserGroup.OpcUaConfiguration, value);
+        }
+
+        /// <summary>
+        /// Allows or denies access to the Configuration API Transaction Log.
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public bool? ConfigApiLogAccess
+        {
+            get => GetDynamicProperty<bool>(Properties.ServerUserGroup.ConfigApiLogAccess);
+            set => SetDynamicProperty(Properties.ServerUserGroup.ConfigApiLogAccess, value);
+        }
+
+        /// <summary>
+        /// Allows or denies viewing security messages in the event log.
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public bool? ViewEventLogSecurity
+        {
+            get => GetDynamicProperty<bool>(Properties.ServerUserGroup.ViewEventLogSecurity);
+            set => SetDynamicProperty(Properties.ServerUserGroup.ViewEventLogSecurity, value);
+        }
+
+        /// <summary>
+        /// Allows or denies viewing error messages in the event log.
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public bool? ViewEventLogError
+        {
+            get => GetDynamicProperty<bool>(Properties.ServerUserGroup.ViewEventLogError);
+            set => SetDynamicProperty(Properties.ServerUserGroup.ViewEventLogError, value);
+        }
+
+        /// <summary>
+        /// Allows or denies viewing warning messages in the event log.
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public bool? ViewEventLogWarning
+        {
+            get => GetDynamicProperty<bool>(Properties.ServerUserGroup.ViewEventLogWarning);
+            set => SetDynamicProperty(Properties.ServerUserGroup.ViewEventLogWarning, value);
+        }
+
+        /// <summary>
+        /// Allows or denies viewing informational messages in the event log.
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public bool? ViewEventLogInfo
+        {
+            get => GetDynamicProperty<bool>(Properties.ServerUserGroup.ViewEventLogInfo);
+            set => SetDynamicProperty(Properties.ServerUserGroup.ViewEventLogInfo, value);
         }
 
         #endregion
@@ -179,11 +273,25 @@ namespace Kepware.Api.Model.Admin
         }
 
         #endregion
+
+        #region Browse Project Namespace
+
+        /// <summary>
+        /// Allows or denies browsing of the project namespace.
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public bool? BrowseNamespace
+        {
+            get => GetDynamicProperty<bool>(Properties.ServerUserGroup.BrowseNamespace);
+            set => SetDynamicProperty(Properties.ServerUserGroup.BrowseNamespace, value);
+        }
+
+        #endregion
     }
 
     [Endpoint("/config/v1/admin/server_user_groups")]
     public class ServerUserGroupCollection : EntityCollection<ServerUserGroup>
     {
-        
+
     }
 }

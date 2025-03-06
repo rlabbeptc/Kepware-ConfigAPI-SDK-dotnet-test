@@ -89,6 +89,16 @@ namespace Kepware.Api.Model.Admin
             set => SetDynamicProperty(Properties.AdminSettings.EventLog.MinDaysToPreserve, value);
         }
 
+        /// <summary>
+        /// Set to true to print event log messages to the console window/stdout.
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public bool? EventLogLogToConsole
+        {
+            get => GetDynamicProperty<bool>(Properties.AdminSettings.EventLog.LogToConsole);
+            set => SetDynamicProperty(Properties.AdminSettings.EventLog.LogToConsole, value);
+        }
+
         #endregion
 
         #region OPC Diagnostics
@@ -141,6 +151,60 @@ namespace Kepware.Api.Model.Admin
         {
             get => GetDynamicProperty<int>(Properties.AdminSettings.OpcDiagnostics.MinDaysToPreserve);
             set => SetDynamicProperty(Properties.AdminSettings.OpcDiagnostics.MinDaysToPreserve, value);
+        }
+
+        #endregion
+
+        #region Comm Diagnostics
+
+        /// <summary>
+        /// The persistence mode for Communication Diagnostics log data.
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public int? CommDiagnosticsPersistence
+        {
+            get => GetDynamicProperty<int>(Properties.AdminSettings.CommDiagnostics.Persistence);
+            set => SetDynamicProperty(Properties.AdminSettings.CommDiagnostics.Persistence, value);
+        }
+
+        /// <summary>
+        /// Maximum number of Communication Diagnostics log records before removal of oldest records.
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public int? CommDiagnosticsMaxRecords
+        {
+            get => GetDynamicProperty<int>(Properties.AdminSettings.CommDiagnostics.MaxRecords);
+            set => SetDynamicProperty(Properties.AdminSettings.CommDiagnostics.MaxRecords, value);
+        }
+
+        /// <summary>
+        /// Directory path where Communication Diagnostics log files are stored.
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public string? CommDiagnosticsLogFilePath
+        {
+            get => GetDynamicProperty<string>(Properties.AdminSettings.CommDiagnostics.LogFilePath);
+            set => SetDynamicProperty(Properties.AdminSettings.CommDiagnostics.LogFilePath, value);
+        }
+
+        /// <summary>
+        /// Maximum size in KB of a single Communication Diagnostics log file.
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public int? CommDiagnosticsMaxSingleFileSizeKb
+        {
+            get => GetDynamicProperty<int>(Properties.AdminSettings.CommDiagnostics.MaxSingleFileSizeKb);
+            set => SetDynamicProperty(Properties.AdminSettings.CommDiagnostics.MaxSingleFileSizeKb, value);
+        }
+
+        /// <summary>
+        /// Minimum number of days before Communication Diagnostics log files are deleted.
+        /// </summary>
+        [YamlIgnore, JsonIgnore]
+        public int? CommDiagnosticsMinDaysToPreserve
+        {
+            get => GetDynamicProperty<int>(Properties.AdminSettings.CommDiagnostics.MinDaysToPreserve);
+            set => SetDynamicProperty(Properties.AdminSettings.CommDiagnostics.MinDaysToPreserve, value);
         }
 
         #endregion

@@ -43,7 +43,18 @@ namespace Kepware.Api.Model.Admin
             return new ProjectPermissionName(value);
         }
 
-        // **Definierte bekannte Werte**
+        // **Defined known values**
+        // TODO: Add more permissions that are used in Kepware Server. This only includes Kepware Edge project permissions.
+
+        /// <summary>
+        /// Configure default 'Iot Gateway IOTItem' access permissions for the selected user group.
+        /// </summary>
+        public static readonly ProjectPermissionName IotGatewayIOTItem = new("Iot Gateway IOTItem");
+
+        /// <summary>
+        /// Configure default 'Iot Gateway MQTTClient' access permissions for the selected user group.
+        /// </summary>
+        public static readonly ProjectPermissionName IotGatewayMQTTClient = new("Iot Gateway MQTTClient");
 
         /// <summary>
         /// Configure default 'Servermain Alias' access permissions for the selected user group.
@@ -65,6 +76,11 @@ namespace Kepware.Api.Model.Admin
         /// Add and delete properties are disabled for this endpoint.
         /// </summary>
         public static readonly ProjectPermissionName ServermainMeterOrder = new("Servermain Meter Order");
+
+        /// <summary>
+        /// Configure default 'Servermain Model' access permissions for the selected user group.
+        /// </summary>
+        public static readonly ProjectPermissionName ServermainModel = new("Servermain Model");
 
         /// <summary>
         /// Configure default 'Servermain Phone Number' access permissions for the selected user group.
@@ -97,17 +113,20 @@ namespace Kepware.Api.Model.Admin
         /// List of all known project permissions.
         /// </summary>
         public static readonly IReadOnlySet<string> Known = new HashSet<string>
-        {
-            ServermainAlias,
-            ServermainChannel,
-            ServermainDevice,
-            ServermainMeterOrder,
-            ServermainPhoneNumber,
-            ServermainPhonePriority,
-            ServermainProject,
-            ServermainTag,
-            ServermainTagGroup
-        };
+            {
+                IotGatewayIOTItem,
+                IotGatewayMQTTClient,
+                ServermainAlias,
+                ServermainChannel,
+                ServermainDevice,
+                ServermainMeterOrder,
+                ServermainModel,
+                ServermainPhoneNumber,
+                ServermainPhonePriority,
+                ServermainProject,
+                ServermainTag,
+                ServermainTagGroup
+            };
 
         /// <summary>
         /// Attempts to create a valid project permission name.
