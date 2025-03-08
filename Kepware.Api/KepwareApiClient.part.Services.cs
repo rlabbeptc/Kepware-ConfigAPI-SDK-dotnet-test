@@ -17,6 +17,15 @@ namespace Kepware.Api
     {
         private const string ENDPOINT_REINITIALIZE_RUNTIME = "/config/v1/project/services/ReinitializeRuntime";
 
+
+        /// <summary>
+        /// Initiates the Reinitialize Runtime service.
+        /// </summary>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a KepServerJobPromise.</returns>
+        public Task<KepServerJobPromise> ReinitializeRuntimeAsync(CancellationToken cancellationToken = default)
+            => ReinitializeRuntimeAsync(TimeSpan.FromSeconds(30), cancellationToken);
+
         /// <summary>
         /// Initiates the Reinitialize Runtime service.
         /// </summary>
