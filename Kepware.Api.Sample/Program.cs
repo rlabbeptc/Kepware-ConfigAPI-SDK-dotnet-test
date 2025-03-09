@@ -72,6 +72,7 @@ namespace Kepware.Api.Sample
                 {
                     Console.WriteLine("ReinitializeRuntimeAsync failed.");
                 }
+
             }
 
             Console.WriteLine();

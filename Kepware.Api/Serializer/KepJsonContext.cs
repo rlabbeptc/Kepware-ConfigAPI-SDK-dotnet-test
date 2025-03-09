@@ -25,7 +25,7 @@ namespace Kepware.Api.Serializer
     [JsonSerializable(typeof(ApiResponseMessage))]
     [JsonSerializable(typeof(JobResponseMessage))]
     [JsonSerializable(typeof(JobStatusMessage))]
-    [JsonSerializable(typeof(ReinitializeRuntimeRequest))]
+    [JsonSerializable(typeof(ServiceInvocationRequest))]
     
     [JsonSerializable(typeof(List<ApiStatus>))]
     [JsonSerializable(typeof(List<UaEndpoint>))]

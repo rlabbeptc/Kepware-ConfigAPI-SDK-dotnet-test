@@ -4,15 +4,32 @@ using System.Text.Json;
 
 namespace Kepware.Api.Model.Services
 {
+    /// <summary>
+    /// Represents a promise for a job initiated on the Kepware server, allowing for asynchronous completion tracking and disposal.
+    /// </summary>
     public class KepServerJobPromise : IDisposable
     {
         private readonly Task<ApiResponse<bool>> m_completionTask;
         private readonly CancellationTokenSource? m_cancellationTokenSource;
         private bool m_hasBeenDisposed = false;
 
+        /// <summary>
+        /// Gets the endpoint associated with the job.
+        /// </summary>
         public string Endpoint { get; }
+
+        /// <summary>
+        /// Gets the time-to-live duration for the job.
+        /// </summary>
         public TimeSpan JobTimeToLive { get; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="KepServerJobPromise"/> class with a job creation response message.
+        /// </summary>
+        /// <param name="endpoint">The endpoint associated with the job.</param>
+        /// <param name="timeout">The time-to-live duration for the job.</param>
+        /// <param name="jobCreationResponseMsg">The job creation response message.</param>
+        /// <param name="httpClient">The HTTP client used to track the job status.</param>
         internal KepServerJobPromise(string endpoint, TimeSpan timeout, JobResponseMessage jobCreationResponseMsg, HttpClient httpClient)
         {
             Endpoint = endpoint;
@@ -29,6 +46,13 @@ namespace Kepware.Api.Model.Services
             }
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="KepServerJobPromise"/> class with a response code and message.
+        /// </summary>
+        /// <param name="endpoint">The endpoint associated with the job.</param>
+        /// <param name="timeout">The time-to-live duration for the job.</param>
+        /// <param name="responseCode">The response code indicating the job status.</param>
+        /// <param name="message">The message associated with the job status.</param>
         internal KepServerJobPromise(string endpoint, TimeSpan timeout, ApiResponseCode responseCode, string message)
         {
             Endpoint = endpoint;
@@ -36,7 +60,16 @@ namespace Kepware.Api.Model.Services
             m_completionTask = Task.FromResult(new ApiResponse<bool>(responseCode, message, endpoint));
         }
 
-
+        /// <summary>
+        /// Awaits the completion of the job asynchronously.
+        /// If the job is completed successfully, the task result will contain <see langword="true"/>.
+        /// You can call this method multiple times to get the result, it will not re-run the job or wait again for the completion.
+        /// It is safe to call this method after the job has been completed.
+        /// This is thread-safe.
+        /// </summary>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains an <see cref="ApiResponse{T}"/> indicating the job completion status.</returns>
+        /// <exception cref="ObjectDisposedException">Thrown if the object has been disposed.</exception>
         public async Task<ApiResponse<bool>> AwaitCompletionAsync(CancellationToken cancellationToken = default)
         {
             if (!m_hasBeenDisposed)
@@ -53,7 +86,6 @@ namespace Kepware.Api.Model.Services
         private static async Task<ApiResponse<bool>> AwaitCompletionAsync(string jobHref, TimeSpan timeout, HttpClient httpClient, CancellationToken cancellationToken)
         {
             using var timeoutCts = new CancellationTokenSource(timeout);
-
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
             TaskCanceledException? taskCanceledException = null;
@@ -87,13 +119,13 @@ namespace Kepware.Api.Model.Services
             }
             catch (TaskCanceledException tce)
             {
-                // operation has been cancled
+                // operation has been canceled
                 taskCanceledException = tce;
             }
 
             if (timeoutCts.Token.IsCancellationRequested)
             {
-                return new ApiResponse<bool>(ApiResponseCode.Timeout, "Timeout whaiting for the job completition", jobHref);
+                return new ApiResponse<bool>(ApiResponseCode.Timeout, "Timeout waiting for the job completion", jobHref);
             }
             else
             {
@@ -101,6 +133,10 @@ namespace Kepware.Api.Model.Services
             }
         }
 
+        /// <summary>
+        /// Releases the unmanaged resources used by the <see cref="KepServerJobPromise"/> and optionally releases the managed resources.
+        /// </summary>
+        /// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
         protected virtual void Dispose(bool disposing)
         {
             if (!m_hasBeenDisposed)
@@ -114,6 +150,9 @@ namespace Kepware.Api.Model.Services
             }
         }
 
+        /// <summary>
+        /// Releases all resources used by the <see cref="KepServerJobPromise"/>.
+        /// </summary>
         public void Dispose()
         {
             Dispose(disposing: true);
