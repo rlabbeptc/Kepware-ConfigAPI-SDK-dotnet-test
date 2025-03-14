@@ -79,8 +79,11 @@ namespace Kepware.Api
             ClientName = name;
             ClientOptions = options;
 
-            GenericConfig = new GenericApiHandler(this,loggerFactory.CreateLogger<GenericApiHandler>());
-            Project = new ProjectApiHandler(this, loggerFactory.CreateLogger<ProjectApiHandler>());
+            GenericConfig = new GenericApiHandler(this, loggerFactory.CreateLogger<GenericApiHandler>());
+
+            var channelsApiHandler = new ChannelApiHandler(this, loggerFactory.CreateLogger<ChannelApiHandler>());
+            var devicesApiHandler = new DeviceApiHandler(this, loggerFactory.CreateLogger<DeviceApiHandler>());
+            Project = new ProjectApiHandler(this, channelsApiHandler, devicesApiHandler, loggerFactory.CreateLogger<ProjectApiHandler>());
             Admin = new AdminApiHandler(this, loggerFactory.CreateLogger<AdminApiHandler>());
             ApiServices = new ServicesApiHandler(this, loggerFactory.CreateLogger<ServicesApiHandler>());
         }

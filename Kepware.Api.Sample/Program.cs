@@ -41,12 +41,12 @@ namespace Kepware.Api.Sample
             if (await api.TestConnectionAsync())
             {
                 //connection is established
-                var channel1 = await api.Project.GetOrCreateChannelAsync("Channel by Api", "Simulator");
-                var device = await api.Project.GetOrCreateDeviceAsync(channel1, "Device by Api");
+                var channel1 = await api.Project.Channels.GetOrCreateChannelAsync("Channel by Api", "Simulator");
+                var device = await api.Project.Devices.GetOrCreateDeviceAsync(channel1, "Device by Api");
 
                 device.Description = "Test";
 
-                await api.Project.UpdateDeviceAsync(device);
+                await api.Project.Devices.UpdateDeviceAsync(device);
 
 
                 device.Tags = new DeviceTagCollection([
@@ -55,10 +55,10 @@ namespace Kepware.Api.Sample
                     new Tag { Name = "BooleanByApi", TagAddress = "B0001" },
                     ]);
 
-                await api.Project.UpdateDeviceAsync(device, true);
+                await api.Project.Devices.UpdateDeviceAsync(device, true);
 
-                await api.Project.DeleteDeviceAsync(device);
-                await api.Project.DeleteChannelAsync(channel1);
+                await api.Project.Devices.DeleteDeviceAsync(device);
+                await api.Project.Channels.DeleteChannelAsync(channel1);
 
                 var reinitJob = await api.ApiServices.ReinitializeRuntimeAsync();
 

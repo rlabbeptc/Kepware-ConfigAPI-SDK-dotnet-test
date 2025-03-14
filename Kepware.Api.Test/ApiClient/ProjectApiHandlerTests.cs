@@ -41,7 +41,7 @@ namespace Kepware.Api.Test.ApiClient
                                    .ReturnsResponse(channelJson, "application/json");
 
             // Act
-            var result = await _projectApiHandler.GetOrCreateChannelAsync(channelName, "Simulator");
+            var result = await _projectApiHandler.Channels.GetOrCreateChannelAsync(channelName, "Simulator");
 
             // Assert
             Assert.NotNull(result);
@@ -72,7 +72,7 @@ namespace Kepware.Api.Test.ApiClient
                                    .ReturnsResponse(channelJson, "application/json");
 
             // Act
-            var result = await _projectApiHandler.GetOrCreateChannelAsync(channelName, driverName);
+            var result = await _projectApiHandler.Channels.GetOrCreateChannelAsync(channelName, driverName);
 
             // Assert
             Assert.NotNull(result);
@@ -102,7 +102,7 @@ namespace Kepware.Api.Test.ApiClient
                                    .ReturnsResponse(HttpStatusCode.OK);
 
             // Act
-            var result = await _projectApiHandler.UpdateChannelAsync(channel);
+            var result = await _projectApiHandler.Channels.UpdateChannelAsync(channel);
 
             // Assert
             Assert.True(result);
@@ -117,7 +117,7 @@ namespace Kepware.Api.Test.ApiClient
                                    .ReturnsResponse(HttpStatusCode.OK);
 
             // Act
-            var result = await _projectApiHandler.DeleteChannelAsync(channel);
+            var result = await _projectApiHandler.Channels.DeleteChannelAsync(channel);
 
             // Assert
             Assert.True(result);
@@ -153,7 +153,7 @@ namespace Kepware.Api.Test.ApiClient
                                 .ReturnsResponse("[]", "application/json");
 
             // Act
-            var result = await _projectApiHandler.GetOrCreateDeviceAsync(channel, deviceName);
+            var result = await _projectApiHandler.Devices.GetOrCreateDeviceAsync(channel, deviceName);
 
             // Assert
             Assert.NotNull(result);
@@ -183,7 +183,7 @@ namespace Kepware.Api.Test.ApiClient
                                    .ReturnsResponse(deviceJson, "application/json");
 
             // Act
-            var result = await _projectApiHandler.GetOrCreateDeviceAsync(channel, deviceName);
+            var result = await _projectApiHandler.Devices.GetOrCreateDeviceAsync(channel, deviceName);
 
             // Assert
             Assert.NotNull(result);
@@ -211,7 +211,7 @@ namespace Kepware.Api.Test.ApiClient
                                    .ReturnsResponse(HttpStatusCode.OK);
 
             // Act
-            var result = await _projectApiHandler.UpdateDeviceAsync(device);
+            var result = await _projectApiHandler.Devices.UpdateDeviceAsync(device);
 
             // Assert
             Assert.True(result);
@@ -226,7 +226,7 @@ namespace Kepware.Api.Test.ApiClient
                                    .ReturnsResponse(HttpStatusCode.OK);
 
             // Act
-            var result = await _projectApiHandler.DeleteDeviceAsync(device);
+            var result = await _projectApiHandler.Devices.DeleteDeviceAsync(device);
 
             // Assert
             Assert.True(result);
@@ -272,7 +272,7 @@ namespace Kepware.Api.Test.ApiClient
             var tagGroups = new List<DeviceTagGroup> { tagGroup };
 
             // Act
-            await _projectApiHandler.LoadTagGroupsRecursiveAsync(tagGroups);
+            await ProjectApiHandler.LoadTagGroupsRecursiveAsync(_kepwareApiClient, tagGroups);
 
             // Assert
             Assert.NotNull(tagGroup.TagGroups);
