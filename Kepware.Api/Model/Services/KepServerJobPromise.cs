@@ -24,6 +24,12 @@ namespace Kepware.Api.Model.Services
         public TimeSpan JobTimeToLive { get; }
 
         /// <summary>
+        /// Gets or sets the delay between completion polls.
+        /// </summary>
+        public TimeSpan WaitDelayBetweenCompletionPolls { get; set; } = TimeSpan.FromSeconds(1);
+
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="KepServerJobPromise"/> class with a job creation response message.
         /// </summary>
         /// <param name="endpoint">The endpoint associated with the job.</param>
@@ -38,7 +44,7 @@ namespace Kepware.Api.Model.Services
             if (jobCreationResponseMsg.ResponseStatus == ApiResponseCode.Accepted && jobCreationResponseMsg.JobId != null)
             {
                 m_cancellationTokenSource = new();
-                m_completionTask = AwaitCompletionAsync(jobCreationResponseMsg.JobId, timeout, httpClient, m_cancellationTokenSource.Token);
+                m_completionTask = AwaitCompletionAsync(jobCreationResponseMsg.JobId, this, httpClient, m_cancellationTokenSource.Token);
             }
             else
             {
@@ -83,9 +89,9 @@ namespace Kepware.Api.Model.Services
             }
         }
 
-        private static async Task<ApiResponse<bool>> AwaitCompletionAsync(string jobHref, TimeSpan timeout, HttpClient httpClient, CancellationToken cancellationToken)
+        private static async Task<ApiResponse<bool>> AwaitCompletionAsync(string jobHref, KepServerJobPromise kepServerJobPromise, HttpClient httpClient, CancellationToken cancellationToken)
         {
-            using var timeoutCts = new CancellationTokenSource(timeout);
+            using var timeoutCts = new CancellationTokenSource(kepServerJobPromise.JobTimeToLive);
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
             TaskCanceledException? taskCanceledException = null;
@@ -113,7 +119,7 @@ namespace Kepware.Api.Model.Services
                     }
                     else if (!linkedCts.Token.IsCancellationRequested)
                     {
-                        await Task.Delay(250, linkedCts.Token).ConfigureAwait(false); // Poll every 0.25 second
+                        await Task.Delay(kepServerJobPromise.WaitDelayBetweenCompletionPolls, linkedCts.Token).ConfigureAwait(false); // Poll every second
                     }
                 }
             }

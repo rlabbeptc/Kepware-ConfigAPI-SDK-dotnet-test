@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Kepware.Api.Model
+﻿namespace Kepware.Api.Model
 {
     /// <summary>
     /// Represents API response codes according to HTTP standards.
@@ -19,6 +13,9 @@ namespace Kepware.Api.Model
 
         /// <summary>202 Accepted - The request has been accepted for processing.</summary>
         Accepted = 202,
+
+        /// <summary>207 Multi-Status - The message body that follows request that contains a number of separate response codes.</summary>
+        MultiStatus = 207,
 
         /// <summary>400 Bad Request - The request was invalid or malformed.</summary>
         BadRequest = 400,
