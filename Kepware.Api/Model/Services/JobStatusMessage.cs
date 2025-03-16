@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Kepware.Api.Model.Services
 {
-    public class JobStatusMessage
+    public class JobStatusMessage : DefaultEntity
     {
         [JsonPropertyName(Properties.Name)]
         public string? Name { get; set; }
