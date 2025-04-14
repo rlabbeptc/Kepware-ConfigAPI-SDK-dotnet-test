@@ -1,6 +1,6 @@
 # Your GitHub workflow file under .github/workflows/
 # Trigger the action on push to main
-name: Docfx Builder
+name: Docfx Builder and Publisher for Web Pages
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ on:
       - 'KepwareSync.Service/**'
       - 'docs/docfx/**'
       - '.github/workflows/dotnet.yml' 
-      - '!**/*.md' # Exclude markdown files
+      # - '!**/*.md' Exclude markdown files
   # pull_request:
   #   branches: [ "main" ]
   #   paths:
@@ -53,10 +53,14 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.x
+    # Updates repo README.md to be index page for website
     - name: Modify markdown file to be index page
       run: |
         sed -i '1i ---\noutputFileName: index.html\n---' ./README.md
-    - run: cp ./README.md ./docs/docfx/
+    # Copys markdown files to docfx folder to be used in docfx build
+    - name: Run markdown copy script
+      run: ./docs/docfx/copy_md_files.ps1
+    # - run: cp ./README.md ./docs/docfx/
     - run: dotnet tool update -g docfx
     - run: docfx ./docs/docfx/docfx.json
 
