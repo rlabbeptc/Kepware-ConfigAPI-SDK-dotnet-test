@@ -11,17 +11,21 @@ using YamlDotNet.Serialization;
 namespace Kepware.Api.Model
 {
     /// <summary>
-    /// Represents a project in the Kepware configuration
+    /// Represents a project in the Kepware configuration. It provides the project properties for the client
+    /// interfaces that Kepware supports.
     /// </summary>
     [Endpoint("/config/v1/project")]
     public class Project : DefaultEntity 
-    //Updated from BaseEntity to leverage GetUpdateDiff methods for Project Properties updates
+    // Updated from BaseEntity to leverage GetUpdateDiff methods for Project Properties updates
     {
         /// <summary>
         /// If this is true the project was loaded by the JsonProjectLoad service (added to Kepware Server v6.17 / Kepware Edge v1.10)
         /// </summary>
         public bool IsLoadedByProjectLoadService { get; internal set; } = false;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="Project"/> class.
+        /// </summary>
         public Project()
         {
             ProjectProperties = new(this);
@@ -30,7 +34,7 @@ namespace Kepware.Api.Model
         #region ProjectProperties
 
         /// <summary>
-        /// Gets or sets the project properties in the project
+        /// Gets the project properties in the project
         /// </summary>
         [YamlIgnore, JsonIgnore]
         public ProjectProperties ProjectProperties { get; }
