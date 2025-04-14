@@ -42,9 +42,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{8BD77CD2-2
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docfx", "docfx", "{EF3D2F75-E504-4800-A182-6BFB98C31225}"
 	ProjectSection(SolutionItems) = preProject
+		docs\docfx\copy_md_files.ps1 = docs\docfx\copy_md_files.ps1
 		docs\docfx\docfx.json = docs\docfx\docfx.json
 		docs\docfx\README.md = docs\docfx\README.md
 		docs\docfx\toc.yml = docs\docfx\toc.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{457CB96C-D60B-4994-B87C-BCDBF4035D58}"
+	ProjectSection(SolutionItems) = preProject
+		docs\docfx\docs\toc.yml = docs\docfx\docs\toc.yml
 	EndProjectSection
 EndProject
 Global
@@ -77,6 +83,7 @@ Global
 		{F0A34611-31AD-4698-A368-4D65F9A0F9D9} = {A904D930-41F6-4016-A8BE-AED91D9E5B26}
 		{8BD77CD2-2CB2-4EBE-B806-C4A5C8321DF1} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{EF3D2F75-E504-4800-A182-6BFB98C31225} = {8BD77CD2-2CB2-4EBE-B806-C4A5C8321DF1}
+		{457CB96C-D60B-4994-B87C-BCDBF4035D58} = {EF3D2F75-E504-4800-A182-6BFB98C31225}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B60B443A-DDB4-4D93-AF9F-547702A8492E}
