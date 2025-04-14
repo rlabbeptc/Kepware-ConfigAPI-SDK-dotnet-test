@@ -9,6 +9,9 @@ using System.Threading.Tasks;
 
 namespace Kepware.Api.ClientHandler
 {
+    /// <summary>
+    /// Handles operations related to device configurations in the Kepware server.
+    /// </summary>
     public class DeviceApiHandler
     {
         private readonly KepwareApiClient m_kepwareApiClient;

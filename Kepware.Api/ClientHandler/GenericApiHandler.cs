@@ -14,6 +14,9 @@ using System.Threading.Tasks;
 
 namespace Kepware.Api.ClientHandler
 {
+    /// <summary>
+    /// Provides general operation APIs related to configuring objects in the Kepware server.
+    /// </summary>
     public class GenericApiHandler
     {
         private readonly ILogger<GenericApiHandler> m_logger;
@@ -36,21 +39,21 @@ namespace Kepware.Api.ClientHandler
         #region CompareAndApply
         /// <summary>
         /// Compares two collections of entities and applies the changes to the target collection.
-        /// Left should represent the source and Right should represent the API (target).
+        /// Left should represent the source collection and Right should represent the target collection in the Kepware server.
         /// </summary>
         /// <typeparam name="T">The type of the entity collection.</typeparam>
         /// <typeparam name="K">The type of the entity.</typeparam>
         /// <param name="sourceCollection">The source collection.</param>
-        /// <param name="apiCollection">The collection representing the current state of the API</param>
+        /// <param name="targetCollection">The collection representing the current state of the API</param>
         /// <param name="owner">The owner of the entities.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>A task that represents the asynchronous operation. The task result contains the comparison result.</returns>
 
-        public async Task<EntityCompare.CollectionResultBucket<K>> CompareAndApply<T, K>(T? sourceCollection, T? apiCollection, NamedEntity? owner = null, CancellationToken cancellationToken = default)
+        public async Task<EntityCompare.CollectionResultBucket<K>> CompareAndApply<T, K>(T? sourceCollection, T? targetCollection, NamedEntity? owner = null, CancellationToken cancellationToken = default)
           where T : EntityCollection<K>
           where K : NamedEntity, new()
         {
-            var compareResult = EntityCompare.Compare<T, K>(sourceCollection, apiCollection);
+            var compareResult = EntityCompare.Compare<T, K>(sourceCollection, targetCollection);
 
             // This are the items that are in the API but not in the source
             // --> we need to delete them
@@ -199,7 +202,14 @@ namespace Kepware.Api.ClientHandler
         #endregion
 
         #region Insert
-
+        /// <summary>
+        /// Inserts an item in the Kepware server.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="item"></param>
+        /// <param name="owner"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<bool> InsertItemAsync<T>(T item, NamedEntity? owner = null, CancellationToken cancellationToken = default)
          where T : NamedEntity
         {
@@ -355,6 +365,13 @@ namespace Kepware.Api.ClientHandler
             return DeleteItemByEndpointAsync<T>(endpoint, cancellationToken);
         }
 
+        /// <summary>
+        /// Deletes an item from the Kepware server using the item name.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="itemName"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public Task<bool> DeleteItemAsync<T>(string itemName, CancellationToken cancellationToken = default)
          where T : NamedEntity, new()
          => DeleteItemAsync<T>([itemName], cancellationToken);
@@ -364,20 +381,6 @@ namespace Kepware.Api.ClientHandler
             var endpoint = EndpointResolver.ResolveEndpoint<T>(itemNames).TrimEnd('/');
             return DeleteItemByEndpointAsync<T>(endpoint, cancellationToken);
         }
-
-        /// <summary>
-        /// Deletes an item from the Kepware server.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <typeparam name="K"></typeparam>
-        /// <param name="item"></param>
-        /// <param name="owner"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        public Task DeleteItemAsync<T, K>(K item, NamedEntity? owner = null, CancellationToken cancellationToken = default)
-            where T : EntityCollection<K>
-            where K : NamedEntity, new()
-            => DeleteItemsAsync<T, K>([item], owner, cancellationToken);
 
         protected async Task<bool> DeleteItemByEndpointAsync<T>(string endpoint, CancellationToken cancellationToken = default)
          where T : NamedEntity, new()
@@ -405,6 +408,20 @@ namespace Kepware.Api.ClientHandler
         }
 
         /// <summary>
+        /// Deletes an item from the Kepware server.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <typeparam name="K"></typeparam>
+        /// <param name="item"></param>
+        /// <param name="owner"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public Task DeleteItemAsync<T, K>(K item, NamedEntity? owner = null, CancellationToken cancellationToken = default)
+            where T : EntityCollection<K>
+            where K : NamedEntity, new()
+            => DeleteItemsAsync<T, K>([item], owner, cancellationToken);
+
+        /// <summary>
         /// Deletes a list of items from the Kepware server.
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -413,7 +430,6 @@ namespace Kepware.Api.ClientHandler
         /// <param name="owner"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-
         public async Task DeleteItemsAsync<T, K>(List<K> items, NamedEntity? owner = null, CancellationToken cancellationToken = default)
             where T : EntityCollection<K>
             where K : NamedEntity, new()
@@ -448,6 +464,13 @@ namespace Kepware.Api.ClientHandler
         #region Load
         #region LoadEntity
 
+        /// <summary>
+        /// Loads an entity of type <typeparamref name="T"/> asynchronously by its name from the Kepware server.
+        /// </summary>
+        /// <typeparam name="T">The type of the entity to load.</typeparam>
+        /// <param name="name">The name of the entity to load. If null, loads the default entity.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>The loaded entity of type <typeparamref name="T"/> or null if not found.</returns>
         public Task<T?> LoadEntityAsync<T>(string? name = default, CancellationToken cancellationToken = default)
             where T : BaseEntity, new()
         {
@@ -455,6 +478,13 @@ namespace Kepware.Api.ClientHandler
             return LoadEntityByEndpointAsync<T>(endpoint, cancellationToken);
         }
 
+        /// <summary>
+        /// Loads an entity of type <typeparamref name="T"/> asynchronously by its owner from the Kepware server.
+        /// </summary>
+        /// <typeparam name="T">The type of the entity to load.</typeparam>
+        /// <param name="owner">The owner of the entity.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>The loaded entity of type <typeparamref name="T"/> or null if not found.</returns>
         public Task<T?> LoadEntityAsync<T>(IEnumerable<string> owner, CancellationToken cancellationToken = default)
             where T : BaseEntity, new()
         {
@@ -462,6 +492,14 @@ namespace Kepware.Api.ClientHandler
             return LoadEntityByEndpointAsync<T>(endpoint, cancellationToken);
         }
 
+        /// <summary>
+        /// Loads an entity of type <typeparamref name="T"/> asynchronously by its name and owner from the Kepware server.
+        /// </summary>
+        /// <typeparam name="T">The type of the entity to load.</typeparam>
+        /// <param name="name">The name of the entity to load.</param>
+        /// <param name="owner">The owner of the entity.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>The loaded entity of type <typeparamref name="T"/> or null if not found.</returns>
         public async Task<T?> LoadEntityAsync<T>(string name, NamedEntity owner, CancellationToken cancellationToken = default)
             where T : BaseEntity, new()
         {
@@ -501,19 +539,54 @@ namespace Kepware.Api.ClientHandler
                 return default;
             }
         }
+
         #endregion
 
         #region LoadCollection
+
+        /// <summary>
+        /// Loads a collection of entities of type <typeparamref name="T"/> asynchronously by its owner from the Kepware server.
+        /// </summary>
+        /// <typeparam name="T">The type of the entity collection to load.</typeparam>
+        /// <param name="owner">The owner of the entity collection.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>The loaded collection of entities of type <typeparamref name="T"/> or null if not found.</returns>
         public Task<T?> LoadCollectionAsync<T>(string? owner = default, CancellationToken cancellationToken = default)
              where T : EntityCollection<DefaultEntity>, new()
          => LoadCollectionAsync<T, DefaultEntity>(owner, cancellationToken);
+
+        /// <summary>
+        /// Loads a collection of entities of type <typeparamref name="T"/> asynchronously by its owner from the Kepware server.
+        /// </summary>
+        /// <typeparam name="T">The type of the entity collection to load.</typeparam>
+        /// <param name="owner">The owner of the entity collection.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>The loaded collection of entities of type <typeparamref name="T"/> or null if not found.</returns>
         public Task<T?> LoadCollectionAsync<T>(NamedEntity owner, CancellationToken cancellationToken = default)
           where T : EntityCollection<DefaultEntity>, new()
          => LoadCollectionAsync<T, DefaultEntity>(owner, cancellationToken);
+
+        /// <summary>
+        /// Loads a collection of entities of type <typeparamref name="T"/> asynchronously by its owner from the Kepware server.
+        /// </summary>
+        /// <typeparam name="T">The type of the entity collection to load.</typeparam>
+        /// <typeparam name="K">The type of the entities in the collection.</typeparam>
+        /// <param name="owner">The owner of the entity collection.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>The loaded collection of entities of type <typeparamref name="T"/> or null if not found.</returns>
         public Task<T?> LoadCollectionAsync<T, K>(string? owner = default, CancellationToken cancellationToken = default)
             where T : EntityCollection<K>, new()
             where K : BaseEntity, new()
             => LoadCollectionAsync<T, K>(string.IsNullOrEmpty(owner) ? [] : [owner], cancellationToken);
+
+        /// <summary>
+        /// Loads a collection of entities of type <typeparamref name="T"/> asynchronously by its owner from the Kepware server.
+        /// </summary>
+        /// <typeparam name="T">The type of the entity collection to load.</typeparam>
+        /// <typeparam name="K">The type of the entities in the collection.</typeparam>
+        /// <param name="owner">The owner of the entity collection.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>The loaded collection of entities of type <typeparamref name="T"/> or null if not found.</returns>
         public async Task<T?> LoadCollectionAsync<T, K>(NamedEntity owner, CancellationToken cancellationToken = default)
             where T : EntityCollection<K>, new()
             where K : BaseEntity, new()
@@ -530,6 +603,14 @@ namespace Kepware.Api.ClientHandler
             return collection;
         }
 
+        /// <summary>
+        /// Loads a collection of entities of type <typeparamref name="T"/> asynchronously by its endpoint from the Kepware server.
+        /// </summary>
+        /// <typeparam name="T">The type of the entity collection to load.</typeparam>
+        /// <typeparam name="K">The type of the entities in the collection.</typeparam>
+        /// <param name="owner">The owner of the entity collection.</param>
+        /// <param name="cancellationToken">A token that can be used to request cancellation of the operation.</param>
+        /// <returns>The loaded collection of entities of type <typeparamref name="T"/> or null if not found.</returns>
         public Task<T?> LoadCollectionAsync<T, K>(IEnumerable<string> owner, CancellationToken cancellationToken = default)
             where T : EntityCollection<K>, new()
             where K : BaseEntity, new()
@@ -574,9 +655,17 @@ namespace Kepware.Api.ClientHandler
                 throw new InvalidOperationException($"Failed to load {typeof(T).Name} from {endpoint}", ex);
             }
         }
+
+        #endregion
+
         #endregion
 
         #region docs
+        /// <summary>
+        /// Returns a list of all supported drivers from the Kepware server.
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<ReadOnlyDictionary<string, Docs.Driver>> SupportedDriversAsync(CancellationToken cancellationToken = default)
         {
             if (m_cachedSupportedDrivers == null)
@@ -588,6 +677,12 @@ namespace Kepware.Api.ClientHandler
             return m_cachedSupportedDrivers;
         }
 
+        /// <summary>
+        /// Returns the channel properties for the specified driver in the Kepware server.
+        /// </summary>
+        /// <param name="driver"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public Task<Docs.Channel> GetChannelPropertiesAsync(Docs.Driver driver, CancellationToken cancellationToken = default)
          => GetChannelPropertiesAsync(driver.DisplayName!, cancellationToken);
 
@@ -609,9 +704,22 @@ namespace Kepware.Api.ClientHandler
             }
         }
 
+        /// <summary>
+        /// Returns the device properties for the specified driver in the Kepware server.
+        /// </summary>
+        /// <param name="driver"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public Task<Docs.Device> GetDevicePropertiesAsync(Docs.Driver driver, CancellationToken cancellationToken = default)
             => GetDevicePropertiesAsync(driver.DisplayName!, cancellationToken);
 
+        /// <summary>
+        /// Returns the device properties for the specified driver in the Kepware server.
+        /// </summary>
+        /// <param name="driverName"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
         public async Task<Docs.Device> GetDevicePropertiesAsync(string driverName, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(driverName))
@@ -669,8 +777,6 @@ namespace Kepware.Api.ClientHandler
             return await DeserializeJsonAsync(response, KepDocsJsonContext.Default.Channel, cancellationToken).ConfigureAwait(false) ??
                 throw new HttpRequestException($"Failed to load channel properties from {endpoint}: unable to desrialze");
         }
-        #endregion
-
         #endregion
 
         #region private methods

@@ -14,11 +14,19 @@ using System.Xml.Linq;
 
 namespace Kepware.Api.ClientHandler
 {
+    /// <summary>
+    /// Handles operations related to administrative settings and configurations in the Kepware server.
+    /// </summary>
     public class AdminApiHandler
     {
         private readonly KepwareApiClient m_kepwareApiClient;
         private readonly ILogger<AdminApiHandler> m_logger;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AdminApiHandler"/> class.
+        /// </summary>
+        /// <param name="kepwareApiClient">The Kepware Configuration API client.</param>
+        /// <param name="logger">The logger instance.</param>
         public AdminApiHandler(KepwareApiClient kepwareApiClient, ILogger<AdminApiHandler> logger)
         {
             m_kepwareApiClient = kepwareApiClient;
