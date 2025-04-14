@@ -155,10 +155,10 @@ Add the following configuration to your `NuGet.config` file in the root of your 
   ```
 
 ## Licensing
-This SDK is provided "as is" under the MIT License. See the [LICENSE](./LICENSE.txt) file for details.
+This SDK is provided "as is" under the MIT License. See the [LICENSE](../LICENSE.txt) file for details.
 
 ## Support
 For any issues, please open an Issue within the repository. For questions or feature requests, please open a Discussion thread within the repository. 
 
-See [Repository Guidelines](./docs/repo-guidelines.md) for more information.
+See [Repository Guidelines](../docs/repo-guidelines.md) for more information.
 

@@ -12,8 +12,18 @@ using System.Xml.Linq;
 
 namespace Kepware.Api
 {
+    /// <summary>
+    /// Provides extension methods for registering Kepware Configuration API clients with the dependency injection container.
+    /// </summary>
     public static class KepwareApiServiceCollectionExtensions
     {
+        /// <summary>
+        /// Adds multiple Kepware Configuration API clients to the service collection.
+        /// </summary>
+        /// <param name="services">The service collection to add the clients to.</param>
+        /// <param name="options">A collection of key-value pairs where the key is the client name and the value is the client options.</param>
+        /// <returns>The updated service collection.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when the services parameter is null.</exception>
         public static IServiceCollection AddKepwareApiClients(this IServiceCollection services, IEnumerable<KeyValuePair<string, KepwareApiClientOptions>> options)
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
@@ -47,6 +57,16 @@ namespace Kepware.Api
             return services;
         }
 
+        /// <summary>
+        /// Adds a single Kepware Configuration API client to the service collection.
+        /// </summary>
+        /// <param name="services">The service collection to add the client to.</param>
+        /// <param name="name">The name of the client.</param>
+        /// <param name="options">The options for configuring the client.</param>
+        /// <returns>The updated service collection.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when the services or options parameter is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when the name parameter is null or empty.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when a client with the same name is already registered or the host URI is not absolute.</exception>
         public static IServiceCollection AddKepwareApiClient(this IServiceCollection services, string name, KepwareApiClientOptions options)
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
@@ -77,6 +97,19 @@ namespace Kepware.Api
             return services;
         }
 
+        /// <summary>
+        /// Adds a single Kepware API client to the service collection with specified parameters.
+        /// </summary>
+        /// <param name="services">The service collection to add the client to.</param>
+        /// <param name="name">The name of the client.</param>
+        /// <param name="baseUrl">The base URL of the Kepware Configuration API in the format of https://{hostname}:{port} or http://{hostname}:{port}</param>
+        /// <param name="apiUserName">The username for authentication.</param>
+        /// <param name="apiPassword">The password for authentication.</param>
+        /// <param name="timeoutInSeconds">The timeout period for the HTTP client in seconds. Default is 60 seconds.</param>
+        /// <param name="disableCertificateValidation">Indicates whether to disable certificate validation. Default is false.</param>
+        /// <param name="configureClient">An optional action to configure the <see cref="HttpClient"/>.</param>
+        /// <param name="configureHttpClientBuilder">An optional action to configure the <see cref="IHttpClientBuilder"/>.</param>
+        /// <returns>The updated service collection.</returns>
         public static IServiceCollection AddKepwareApiClient(this IServiceCollection services,
             string name, string baseUrl, string apiUserName, string apiPassword,
             int timeoutInSeconds = 60, bool disableCertificateValidation = false,
@@ -95,6 +128,11 @@ namespace Kepware.Api
                 });
         }
 
+        /// <summary>
+        /// Configures the HTTP client builder with the specified options.
+        /// </summary>
+        /// <param name="options">The options for configuring the client builder.</param>
+        /// <returns>An action to configure the <see cref="IHttpClientBuilder"/>.</returns>
         private static Action<IHttpClientBuilder> ConfigureHttpClientBuilder(KepwareApiClientOptions options)
             => clientBuilder =>
             {
@@ -111,6 +149,11 @@ namespace Kepware.Api
                 options.ConfigureClientBuilder?.Invoke(clientBuilder);
             };
 
+        /// <summary>
+        /// Configures the HTTP client with the specified options.
+        /// </summary>
+        /// <param name="options">The options for configuring the client.</param>
+        /// <returns>An action to configure the <see cref="HttpClient"/>.</returns>
         private static Action<HttpClient> ConfigureHttpClient(KepwareApiClientOptions options)
             => client =>
             {
