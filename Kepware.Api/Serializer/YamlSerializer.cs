@@ -8,6 +8,7 @@ using YamlDotNet.Serialization.NamingConventions;
 using YamlDotNet.Serialization;
 using Microsoft.Extensions.Logging;
 using Kepware.Api.Util;
+using System.IO;
 
 namespace Kepware.Api.Serializer
 {
@@ -68,7 +69,11 @@ namespace Kepware.Api.Serializer
 
             if (entity is NamedEntity namedEntity)
             {
-                namedEntity.Name = file.DirectoryName!.Split('\\').Last().UnescapeDiskEntry();
+                if (file.Directory == null)
+                    throw new InvalidOperationException($"Directory of file {filePath} is null");
+
+                // Use DirectoryInfo.Name for robust, platform-independent directory name extraction
+                namedEntity.Name = file.Directory.Name.UnescapeDiskEntry();
             }
 
             return entity;
@@ -83,7 +88,7 @@ namespace Kepware.Api.Serializer
         public async Task SaveAsYaml(string filePath, object entity, CancellationToken cancellationToken = default)
         {
             var yaml = _serializer.Serialize(entity);
-            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!); // Erstelle Verzeichnis, falls es nicht existiert
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath)!); // Create directory if it doesn't exist
 
             if (yaml.Trim().Equals("{}"))
             {
