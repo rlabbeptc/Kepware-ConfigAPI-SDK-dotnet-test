@@ -18,11 +18,12 @@
     <Description>A .NET library for interacting with the Kepware Configuration API.</Description>
     <RepositoryUrl>https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/Kepware.Api</PackageProjectUrl>
+    <PackageProjectUrl>https://ptcinc.github.io/Kepware-ConfigAPI-SDK-dotnet</PackageProjectUrl>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     <Title>Kepware Config API SDK</Title>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReadmeFile>nuget-README.md</PackageReadmeFile>
     <PackageTags>Kepware; PTC</PackageTags>
+    <Copyright>PTC Inc.</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
@@ -39,7 +40,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\docs\docfx\Kepware.Api\README.md">
+    <None Include="..\docs\nuget-README.md">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>

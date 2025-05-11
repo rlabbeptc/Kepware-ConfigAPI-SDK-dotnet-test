@@ -10,6 +10,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionFiles", "SolutionFi
 		.copilot.json = .copilot.json
 		.dockerignore = .dockerignore
 		.gitignore = .gitignore
+		.runsettings = .runsettings
 		Directory.Build.props = Directory.Build.props
 		LICENSE.txt = LICENSE.txt
 		README.md = README.md
@@ -37,6 +38,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kepware.Api.Test", "Kepware
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{8BD77CD2-2CB2-4EBE-B806-C4A5C8321DF1}"
 	ProjectSection(SolutionItems) = preProject
+		docs\nuget-README.md = docs\nuget-README.md
 		docs\repo-guidelines.md = docs\repo-guidelines.md
 	EndProjectSection
 EndProject
