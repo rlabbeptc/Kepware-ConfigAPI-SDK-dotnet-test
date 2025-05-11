@@ -2,6 +2,8 @@
 
 [![Build Status](https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/actions/workflows/dotnet.yml/badge.svg)](https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/actions)
 [![Build Status](https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/actions/workflows/docker-build-and-push.yml/badge.svg)](https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/actions)
+[![NuGet](https://img.shields.io/nuget/v/Kepware.Api.svg)](https://www.nuget.org/packages/Kepware.Api/)
+
 
 ## Overview
 The Kepware Configuration API SDK for .NET provides tools and libraries to interact with the Kepware Configuration REST API, enabling configuration management for Kepware servers. This repository includes examples and utilities to streamline development for deployment tools, including a service for continuous synchronization and an API client library. 
