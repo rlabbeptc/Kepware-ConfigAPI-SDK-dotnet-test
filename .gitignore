@@ -6,6 +6,8 @@
 # Custom ignore files
 docs/docfx/api/
 docs/docfx/_*
+docs/docfx/Kepware*
+docs/docfx/*.md
 
 # User-specific files
 *.rsuser

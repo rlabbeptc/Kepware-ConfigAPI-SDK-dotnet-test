@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 
 namespace Kepware.Api.ClientHandler
 {
+    /// <summary>
+    /// Handles operations related to channel configurations in the Kepware server.
+    /// </summary>
     public class ChannelApiHandler
     {
         private readonly KepwareApiClient m_kepwareApiClient;
@@ -16,7 +19,7 @@ namespace Kepware.Api.ClientHandler
         /// <summary>
         /// Initializes a new instance of the <see cref="ChannelApiHandler"/> class.
         /// </summary>
-        /// <param name="kepwareApiClient">The Kepware API client.</param>
+        /// <param name="kepwareApiClient">The Kepware Configuration API client.</param>
         /// <param name="logger">The logger instance.</param>
         public ChannelApiHandler(KepwareApiClient kepwareApiClient, ILogger<ChannelApiHandler> logger)
         {
@@ -24,7 +27,6 @@ namespace Kepware.Api.ClientHandler
             m_logger = logger;
         }
 
-        #region Channels
         #region GetOrCreateChannelAsync
         /// <summary>
         /// Gets or creates a channel with the specified name and driver.
@@ -152,7 +154,6 @@ namespace Kepware.Api.ClientHandler
                 throw new ArgumentException("Channel name cannot be null or empty", nameof(channelName));
             return m_kepwareApiClient.GenericConfig.DeleteItemAsync<Channel>(channelName, cancellationToken: cancellationToken);
         }
-        #endregion
         #endregion
     }
 }

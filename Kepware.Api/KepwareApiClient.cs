@@ -19,12 +19,15 @@ using System.Xml.Linq;
 namespace Kepware.Api
 {
     /// <summary>
-    /// Client for interacting with the Kepware server.
+    /// Client for interacting with the Kepware server Configuration API. Using the <see cref="KepwareApiClient"/> class
+    /// provides the ability to create, read, update and delete configuration of a Kepware server instance.
+    /// 
+    /// All handlers are defined in the <see cref="Kepware.Api.ClientHandler"/> namespace.
     /// </summary>
     public partial class KepwareApiClient : IKepwareDefaultValueProvider
     {
         /// <summary>
-        /// The value for an unknown client or host name.
+        /// The value for an unknown client or hostname.
         /// </summary>
         public const string UNKNOWN = "Unknown";
         private const string ENDPOINT_STATUS = "/config/v1/status";
@@ -33,37 +36,58 @@ namespace Kepware.Api
         private readonly ILogger<KepwareApiClient> m_logger;
         private readonly HttpClient m_httpClient;
 
-
         private bool? m_blnIsConnected = null;
 
         /// <summary>
-        /// Gets the name of the client.
+        /// Gets the name of the client instance.
         /// </summary>
         public string ClientName { get; }
 
         /// <summary>
-        /// Gets the host name of the client.
+        /// Gets the hostname of the Kepware server the client is connecting to.
         /// </summary>
         public string ClientHostName => m_httpClient.BaseAddress?.Host ?? UNKNOWN;
 
+        /// <summary>
+        /// Gets the client options for the Kepware server connection.
+        /// </summary>
         public KepwareApiClientOptions ClientOptions { get; init; }
 
+        /// <summary>
+        /// Gets the generic configuration handlers.
+        /// </summary>
+        /// <remarks> See <see cref="Kepware.Api.ClientHandler.GenericApiHandler"/> for method references.</remarks>
         public GenericApiHandler GenericConfig { get; init; }
+
+        /// <summary>
+        /// Gets the project handlers.
+        /// </summary>
+        /// <remarks> See <see cref="Kepware.Api.ClientHandler.ProjectApiHandler"/> for method references.</remarks>
         public ProjectApiHandler Project { get; init; }
 
+        /// <summary>
+        /// Gets the admin handlers.
+        /// </summary>
+        /// <remarks> See <see cref="Kepware.Api.ClientHandler.AdminApiHandler"/> for method references.</remarks>
         public AdminApiHandler Admin { get; init; }
 
+        /// <summary>
+        /// Gets the services handlers.
+        /// </summary>
+        /// <remarks> See <see cref="Kepware.Api.ClientHandler.ServicesApiHandler"/> for method references.</remarks>
         public ServicesApiHandler ApiServices { get; init; }
 
         internal HttpClient HttpClient { get { return m_httpClient; } }
 
         #region Constructors
         /// <summary>
-        /// Initializes a new instance of the <see cref="KepwareApiClient"/> class.
+        /// Initializes a new instance of the <see cref="KepwareApiClient"/> class. This class 
+        /// represents a connection to an instance of Kepware. An instance of this is 
+        /// used in all configuration calls done.
         /// </summary>
-        /// <param name="options">The client options.</param>
+        /// <param name="options">The client options as <see cref="KepwareApiClientOptions"/>.</param>
         /// <param name="loggerFactory">The loggerFactory instance.</param>
-        /// <param name="httpClient">The HTTP client instance.</param>
+        /// <param name="httpClient">The <see cref="HttpClient"/> instance for the connection.</param>
         public KepwareApiClient(KepwareApiClientOptions options, ILoggerFactory loggerFactory, HttpClient httpClient)
             : this(UNKNOWN, options, loggerFactory, httpClient)
         {
@@ -91,7 +115,8 @@ namespace Kepware.Api
 
         #region connection test & product info
         /// <summary>
-        /// Tests the connection to the Kepware server.
+        /// Tests the connection to the Kepware server and checks if the server runtime is healthy. Uses the 
+        /// /config/v1/status endpoint for health verification.
         /// </summary>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>A task that represents the asynchronous operation. The task result contains a boolean indicating whether the connection was successful.</returns>
@@ -142,7 +167,8 @@ namespace Kepware.Api
         }
 
         /// <summary>
-        /// Gets the product information from the Kepware server.
+        /// Gets the product information from the Kepware server which includes product name and version information.
+        /// Uses the /config/v1/about endpoint
         /// </summary>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>A task that represents the asynchronous operation. The task result contains the product information.</returns>
