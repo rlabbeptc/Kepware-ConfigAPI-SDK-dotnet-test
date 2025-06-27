@@ -31,12 +31,14 @@ namespace Kepware.Api
         /// </summary>
         public const string UNKNOWN = "Unknown";
         private const string ENDPOINT_STATUS = "/config/v1/status";
+        private const string ENDPOINT_DOC = "/config/v1/doc";
         private const string ENDPOINT_ABOUT = "/config/v1/about";
 
         private readonly ILogger<KepwareApiClient> m_logger;
         private readonly HttpClient m_httpClient;
 
         private bool? m_blnIsConnected = null;
+        private bool? m_blnHasValidCredentials = null;
 
         /// <summary>
         /// Gets the name of the client instance.
@@ -154,6 +156,8 @@ namespace Kepware.Api
                     {
                         var prodInfo = await GetProductInfoAsync(cancellationToken).ConfigureAwait(false);
                         m_logger.LogInformation("Successfully connected to {ClientName}-client: {ProductName} {ProductVersion} on {BaseAddress}", ClientName, prodInfo?.ProductName, prodInfo?.ProductVersion, m_httpClient.BaseAddress);
+
+                        m_blnHasValidCredentials = await TestCredentialsAsync(cancellationToken).ConfigureAwait(false);
                     }
                 }
             }
@@ -163,7 +167,7 @@ namespace Kepware.Api
                     m_logger.LogWarning(httpEx, "Failed to connect to {ClientName}-client at {BaseAddress}", ClientName, m_httpClient.BaseAddress);
             }
             m_blnIsConnected = blnIsConnected;
-            return blnIsConnected;
+            return blnIsConnected && m_blnHasValidCredentials == true;
         }
 
         /// <summary>
@@ -192,7 +196,7 @@ namespace Kepware.Api
             }
             catch (HttpRequestException httpEx)
             {
-                m_logger.LogWarning(httpEx, "Failed to connect to {BaseAddress}", m_httpClient.BaseAddress);
+                m_logger.LogWarning(httpEx, "Failed to connect to {ClientName}-client at {BaseAddress}: {Message}", ClientName, m_httpClient.BaseAddress, httpEx.Message);
                 m_blnIsConnected = null;
             }
             catch (JsonException jsonEx)
@@ -201,6 +205,32 @@ namespace Kepware.Api
             }
 
             return null;
+        }
+
+        private async Task<bool> TestCredentialsAsync(CancellationToken cancellationToken = default)
+        {
+            bool blnHasValidCredentials = false;
+            try
+            {
+                var response = await m_httpClient.GetAsync(ENDPOINT_DOC, cancellationToken).ConfigureAwait(false);
+                blnHasValidCredentials = response.IsSuccessStatusCode;
+                if (blnHasValidCredentials)
+                {
+                    // credentials are valid
+                }
+                else
+                {
+                    // log a warning, that we don't have valid credentials
+                    m_logger.LogWarning("Failed to connect to {ClientName}-client at {BaseAddress} with valid credentials, Reason: {ReasonPhrase}",
+                        ClientName, m_httpClient.BaseAddress, response.ReasonPhrase);
+                }
+            }
+            catch (HttpRequestException httpEx)
+            {
+                m_logger.LogWarning(httpEx, "Failed to connect to {ClientName}-client at {BaseAddress}", ClientName, m_httpClient.BaseAddress);
+            }
+
+            return blnHasValidCredentials;
         }
         #endregion
 
