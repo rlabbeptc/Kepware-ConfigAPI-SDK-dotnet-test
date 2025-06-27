@@ -300,7 +300,7 @@ namespace Kepware.SyncService
             }
             else
             {
-                // No connection to the kepware server, log a warning that the sync could not be performed (conection error is alread logged)
+                // No connection to the Kepware server, log a warning that the sync could not be performed (connection error is already logged)
                 m_logger.LogWarning("No connection to {ClientName}-kepserver ({ClientHostName}). Sync from {ProjectSource} skipped.", clientName, kepServerClient.ClientHostName, projectSource);
             }
         }
