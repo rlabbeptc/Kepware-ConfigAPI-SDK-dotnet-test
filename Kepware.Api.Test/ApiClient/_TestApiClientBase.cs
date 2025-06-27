@@ -97,6 +97,9 @@ namespace Kepware.Api.Test.ApiClient
             var statusResponse = "[{\"Name\": \"ConfigAPI REST Service\", \"Healthy\": true}]";
             _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}/config/v1/status")
                 .ReturnsResponse(HttpStatusCode.OK, statusResponse, "application/json");
+
+            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}/config/v1/doc")
+                .ReturnsResponse(HttpStatusCode.OK, statusResponse, "application/json");
         }
 
         protected Channel CreateTestChannel(string name = "TestChannel", string driver = "Advanced Simulator")

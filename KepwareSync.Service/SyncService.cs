@@ -52,7 +52,7 @@ namespace Kepware.SyncService
         {
             m_logger.LogInformation("Starting SyncService...");
 
-            await InititalizeAsync();
+            await InititalizeAsync().ConfigureAwait(false);
 
             if (m_syncOptions.SyncDirection == SyncDirection.DiskToKepware)
             {
@@ -67,27 +67,36 @@ namespace Kepware.SyncService
             {
                 try
                 {
-                    if (await m_kepServerClient.TestConnectionAsync(stoppingToken))
+                    if (await m_kepServerClient.TestConnectionAsync(stoppingToken).ConfigureAwait(false))
                     {
-                        if (m_syncOptions.SyncMode == SyncMode.TwoWay ||
-                            m_syncOptions.SyncDirection == SyncDirection.KepwareToDisk)
+                        if (m_changeQueue.TryDequeue(out var changeEvent))
                         {
-                            if (m_changeQueue.TryDequeue(out var changeEvent))
+                            // check if there are more events for the same source
+                            while (m_changeQueue.TryPeek(out var nextPending) && nextPending.Source == changeEvent!.Source)
                             {
-                                while (m_changeQueue.TryPeek(out var nextPending) && nextPending.Source == changeEvent!.Source)
-                                {
-                                    m_changeQueue.TryDequeue(out changeEvent);
-                                }
-                                await ProcessChangeAsync(changeEvent!, stoppingToken);
+                                m_changeQueue.TryDequeue(out changeEvent);
+                            }
+                            // Process the change event
+                            await ProcessChangeAsync(changeEvent!, stoppingToken).ConfigureAwait(false);
+                        }
+                        // We don't need to read the project Id in "DiskToKepware"-only mode, due to the fact that we are not syncing from Kepware to disk
+                        else if (m_syncOptions.SyncMode == SyncMode.TwoWay || m_syncOptions.SyncDirection != SyncDirection.DiskToKepware)
+                        {
+                            // If we are in two-way sync or Kepware to disk mode, we need to check the current project ID
+                            var currentProjectId = await FetchCurrentProjectIdAsync(m_kepServerClient, stoppingToken).ConfigureAwait(false);
+                            if (m_lastProjectId != currentProjectId)
+                            {
+                                // If the project ID has changed, we need to sync from Kepware to disk
+                                await ProcessChangeAsync(new ChangeEvent { Source = ChangeSource.PrimaryKepServer, Reason = "Project changed" }, stoppingToken).ConfigureAwait(false);
                             }
                             else
                             {
-                                var currentProjectId = await FetchCurrentProjectIdAsync(m_kepServerClient, stoppingToken);
-                                if (m_lastProjectId != currentProjectId)
-                                {
-                                    await ProcessChangeAsync(new ChangeEvent { Source = ChangeSource.PrimaryKepServer, Reason = "Project changed" }, stoppingToken);
-                                }
+                                // No changes to process, but we still want to check the connection
                             }
+                        }
+                        else
+                        {
+                            // No changes to process, but we still want to check the connection
                         }
 
                         blnFirstDisconnect = true;
@@ -270,22 +279,30 @@ namespace Kepware.SyncService
                     targetOptions.OverwriteConfigFile, projectSource, clientName, kepServerClient.ClientHostName);
 
                 project = await project.CloneAsync(cancellationToken).ConfigureAwait(false);
-                var overwrite= await RuntimeOverwriteConfig.LoadFromYamlFileAsync(targetOptions.OverwriteConfigFile, cancellationToken).ConfigureAwait(false);
+                var overwrite = await RuntimeOverwriteConfig.LoadFromYamlFileAsync(targetOptions.OverwriteConfigFile, cancellationToken).ConfigureAwait(false);
                 overwrite.Apply(project);
             }
 
-            var (inserts, updates, deletes) = await kepServerClient.Project.CompareAndApply(project, cancellationToken).ConfigureAwait(false);
-
-            if (updates > 0 || deletes > 0 || inserts > 0)
+            if (await kepServerClient.TestConnectionAsync(cancellationToken))
             {
-                m_logger.LogInformation("Completed synchronisation from {ProjectSource} to {ClientName}-kepserver ({ClientHostName}): {NumUpdates} updates, {NumInserts} inserts, {NumDeletes} deletes",
-                 projectSource, clientName, kepServerClient.ClientHostName, updates, inserts, deletes);
-                onSyncedWithChanges?.Invoke();
+                var (inserts, updates, deletes) = await kepServerClient.Project.CompareAndApply(project, cancellationToken).ConfigureAwait(false);
+
+                if (updates > 0 || deletes > 0 || inserts > 0)
+                {
+                    m_logger.LogInformation("Completed synchronisation from {ProjectSource} to {ClientName}-kepserver ({ClientHostName}): {NumUpdates} updates, {NumInserts} inserts, {NumDeletes} deletes",
+                     projectSource, clientName, kepServerClient.ClientHostName, updates, inserts, deletes);
+                    onSyncedWithChanges?.Invoke();
+                }
+                else
+                {
+                    m_logger.LogInformation("Completed synchronisation from {ProjectSource} to {ClientName}-kepserver ({ClientHostName}):: no changes made",
+                        projectSource, clientName, kepServerClient.ClientHostName);
+                }
             }
             else
             {
-                m_logger.LogInformation("Completed synchronisation from {ProjectSource} to {ClientName}-kepserver ({ClientHostName}):: no changes made",
-                    projectSource, clientName, kepServerClient.ClientHostName);
+                // No connection to the kepware server, log a warning that the sync could not be performed (conection error is alread logged)
+                m_logger.LogWarning("No connection to {ClientName}-kepserver ({ClientHostName}). Sync from {ProjectSource} skipped.", clientName, kepServerClient.ClientHostName, projectSource);
             }
         }
 
