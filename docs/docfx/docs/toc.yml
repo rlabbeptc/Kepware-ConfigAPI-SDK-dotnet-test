@@ -1,4 +1,6 @@
-- name: Introduction
-  href: introduction.md
-- name: Getting Started
-  href: getting-started.md
+- name: Kepware.Api Readme
+  href: Kepware.Api/README.html
+- name: Kepware.Api Sample Readme
+  href: Kepware.Api.Sample/README.html
+- name: Kepware Sync Service Readme
+  href: KepwareSync.Service/README.html

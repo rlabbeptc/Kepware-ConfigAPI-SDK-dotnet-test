@@ -1,4 +1,4 @@
-# KepwareSync.Service
+# KepwareSync.Service (Currently in Beta)
 
 [![Build Status](https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/actions/workflows/dotnet.yml/badge.svg)](https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/actions)
 [![Build Status](https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/actions/workflows/docker-build-and-push.yml/badge.svg)](https://github.com/PTCInc/Kepware-ConfigAPI-SDK-dotnet/actions)
@@ -283,9 +283,9 @@ networks:
 - Use `--persist-default-value` to retain default values in configurations if required.
 
 ## Licensing
-This tool is provided "as is" under the MIT License. See the [LICENSE](./LICENSE.txt) file for details.
+This tool is provided "as is" under the MIT License. See the [LICENSE](../LICENSE.txt) file for details.
 
 ## Support
 For any issues, please open an Issue within the repository. For questions or feature requests, please open a Discussion thread within the repository. 
 
-See [Repository Guidelines](./docs/repo-guidelines.md) for more information.
+See [Repository Guidelines](../docs/repo-guidelines.md) for more information.

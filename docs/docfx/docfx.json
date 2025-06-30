@@ -14,19 +14,29 @@
       "memberLayout": "separatePages",
       "properties": {
         "TargetFramework": "net8.0"
-    }
+      }
 
     }
   ],
   "build": {
+    "xref": [
+      "https://learn.microsoft.com/en-us/dotnet/.xrefmap.json"
+    ],
     "content": [
       {
         "files": [
           "**/*.{md,yml}"
         ],
         "exclude": [
-          "_site/**"
+          "_site/**",
+          "Kepware*/**"
         ]
+      },
+      {
+        "files": [
+          "Kepware*/**/*.md"
+        ],
+        "dest": "docs"
       }
     ],
     "resource": [

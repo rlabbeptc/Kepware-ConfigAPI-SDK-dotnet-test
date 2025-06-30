@@ -15,7 +15,7 @@ using System.Threading.Tasks;
 namespace Kepware.Api.ClientHandler
 {
     /// <summary>
-    /// Handles operations related to projects in the Kepware server.
+    /// Handles operations related to projects and project properties in the Kepware server.
     /// </summary>
     public class ProjectApiHandler
     {
@@ -24,7 +24,16 @@ namespace Kepware.Api.ClientHandler
         private readonly KepwareApiClient m_kepwareApiClient;
         private readonly ILogger<ProjectApiHandler> m_logger;
 
+        /// <summary>
+        /// Gets the channel handlers.
+        /// </summary>
+        /// <remarks> See <see cref="Kepware.Api.ClientHandler.ChannelApiHandler"/> for method references.</remarks>
         public ChannelApiHandler Channels { get; }
+
+        /// <summary>
+        /// Gets the device handlers.
+        /// </summary>
+        /// <remarks> See <see cref="Kepware.Api.ClientHandler.DeviceApiHandler"/> for method references.</remarks>
         public DeviceApiHandler Devices { get; }
 
         /// <summary>
@@ -203,11 +212,14 @@ namespace Kepware.Api.ClientHandler
 
         #region LoadProject
         /// <summary>
-        /// Loads the project from the Kepware server.
+        /// Loads the project from the Kepware server. If <paramref name="blnLoadFullProject"/> is true, it loads the full project, otherwise only
+        /// the project properties will be returned. 
         /// </summary>
         /// <param name="blnLoadFullProject">Indicates whether to load the full project.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns>A task that represents the asynchronous operation. The task result contains the loaded project.</returns>
+        /// <remarks>NOTE: When loading a full project, the project will be loaded via the JsonProjectLoad service if supported by the server. (Kepware Server 6.17+
+        /// and Thingworx Kepware Server 1.10+) Otherwise, the project will be loaded by recursively loading all objects in the project.</remarks>
         public async Task<Project> LoadProject(bool blnLoadFullProject = false, CancellationToken cancellationToken = default)
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
@@ -393,11 +405,11 @@ namespace Kepware.Api.ClientHandler
         {
             foreach (var tagGroup in tagGroups)
             {
-                // Lade die TagGroups der aktuellen TagGroup
+                // Load the Tag Groups and Tags of the current Tag Group
                 tagGroup.TagGroups = await apiClient.GenericConfig.LoadCollectionAsync<DeviceTagGroupCollection, DeviceTagGroup>(tagGroup, cancellationToken).ConfigureAwait(false);
                 tagGroup.Tags = await apiClient.GenericConfig.LoadCollectionAsync<DeviceTagGroupTagCollection, Tag>(tagGroup, cancellationToken).ConfigureAwait(false);
 
-                // Rekursiver Aufruf für die geladenen TagGroups
+                // Recursively load the Tag Groups and Tags of the child Tag Groups
                 if (tagGroup.TagGroups != null && tagGroup.TagGroups.Count > 0)
                 {
                     await LoadTagGroupsRecursiveAsync(apiClient, tagGroup.TagGroups, cancellationToken).ConfigureAwait(false);

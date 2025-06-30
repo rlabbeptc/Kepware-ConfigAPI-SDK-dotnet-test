@@ -19,7 +19,7 @@ namespace Kepware.Api.Sample
                         name: "sample",
                         baseUrl: "https://localhost:57512",
                         apiUserName: "Administrator",
-                        apiPassword: "InrayTkeDocker2024!",
+                        apiPassword: "ReallyStrongPassword400!",
                         disableCertificateValidation: true
                         );
                 })

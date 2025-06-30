@@ -14,6 +14,9 @@ using System.Threading.Tasks;
 
 namespace Kepware.Api.ClientHandler
 {
+    /// <summary>
+    /// Handles operations related to services in the Kepware server.
+    /// </summary>
     public class ServicesApiHandler
     {
         private const string ENDPOINT_REINITIALIZE_RUNTIME = "/config/v1/project/services/ReinitializeRuntime";
@@ -94,10 +97,11 @@ namespace Kepware.Api.ClientHandler
         /// <returns>A task that represents the asynchronous operation. The task result contains a KepServerJobPromise.</returns>
         /// <remarks>
         /// Jobs are automatically cleaned up after their wait time has expired. This wait time is configurable.
+        /// 
         /// Note: Not all drivers support Automatic Tag Generation.
-        /// Tip for TKE: Automatic Tag Generation files must be located in the &lt;installation_directory&gt;/user_data directory. All
-        /// files in the user_data directory must be world readable or owned by the TKE user and 
-        /// group that were created during installation, by default this is tkedge.
+        /// Tip for TKE: If using file sources for Automatic Tag Generation files must be located in the 
+        /// &lt;installation_directory&gt;/user_data directory. All files in the user_data directory must be world readable 
+        /// or owned by the TKE user and group that were created during installation, by default this is tkedge.
         /// </remarks>
         public Task<KepServerJobPromise> AutomaticTagGenerationAsync(string channelName, string deviceName, CancellationToken cancellationToken = default)
             => AutomaticTagGenerationAsync(channelName, deviceName, TimeSpan.FromSeconds(30), cancellationToken);
@@ -112,10 +116,11 @@ namespace Kepware.Api.ClientHandler
         /// <returns>A task that represents the asynchronous operation. The task result contains a KepServerJobPromise.</returns>
         /// <remarks>
         /// Jobs are automatically cleaned up after their wait time has expired. This wait time is configurable.
+        /// 
         /// Note: Not all drivers support Automatic Tag Generation.
-        /// Tip for TKE: Automatic Tag Generation files must be located in the &lt;installation_directory&gt;/user_data directory. All
-        /// files in the user_data directory must be world readable or owned by the TKE user and 
-        /// group that were created during installation, by default this is tkedge.
+        /// Tip for TKE: If using file sources for Automatic Tag Generation files must be located in the 
+        /// &lt;installation_directory&gt;/user_data directory. All files in the user_data directory must be world readable 
+        /// or owned by the TKE user and group that were created during installation, by default this is tkedge.
         /// </remarks>
         public async Task<KepServerJobPromise> AutomaticTagGenerationAsync(string channelName, string deviceName, TimeSpan timeToLive, CancellationToken cancellationToken = default)
         {
