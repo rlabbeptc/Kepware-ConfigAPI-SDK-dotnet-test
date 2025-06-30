@@ -29,7 +29,7 @@ namespace Kepware.Api.TestIntg.ApiClient
             result.ShouldNotBeNull();
             result.EventLogConnectionPort.ShouldNotBe(default(int));
             result.EventLogMaxRecords.ShouldNotBe(default(int));
-            if (_productInfo.ProductName == "ThingWorx Kepware Edge")
+            if (_productInfo.ProductId != "013")
             {
                 result.LicenseServer.ShouldNotBeNull();
                 result.LicenseServer.RecheckIntervalMinutes.ShouldNotBe(default(int));
@@ -60,7 +60,7 @@ namespace Kepware.Api.TestIntg.ApiClient
             // Arrange
             var newSettings = new AdminSettings();
             newSettings.EventLogMaxRecords = new Random().Next(10000, 30001);
-            if (_productInfo.ProductName == "ThingWorx Kepware Edge")
+            if (_productInfo.ProductId != "013")
             {
                 newSettings.LicenseServer.Port = new Random().Next(10000, 30001);
             }
