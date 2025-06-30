@@ -283,20 +283,7 @@ namespace Kepware.SyncService
                 overwrite.Apply(project);
             }
 
-            if (await kepServerClient.TestConnectionAsync(cancellationToken).ConfigureAwait(false))
-            {
-                m_logger.LogInformation("Synchronizing project from {ProjectSource} to {ClientName}-kepserver ({ClientHostName})",
-                    projectSource, clientName, kepServerClient.ClientHostName);
-
-                // If the project is not loaded, we need to load it first
-                if (project.ProjectId == 0)
-                {
-                    var currentProject = await kepServerClient.Project.LoadProject(false, cancellationToken).ConfigureAwait(false);
-                    if (currentProject != null)
-                    {
-                        project.ProjectId = currentProject.ProjectId;
-                    }
-                }
+            if (await kepServerClient.TestConnectionAsync(cancellationToken))
             {
                 var (inserts, updates, deletes) = await kepServerClient.Project.CompareAndApply(project, cancellationToken).ConfigureAwait(false);
 
