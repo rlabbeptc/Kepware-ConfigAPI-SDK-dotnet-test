@@ -31,6 +31,7 @@ namespace Kepware.Api.TestIntg.ApiClient
         protected readonly Mock<ILogger<GenericApiHandler>> _loggerMockGeneric;
         protected readonly Mock<ILoggerFactory> _loggerFactoryMock;
         protected readonly KepwareApiClient _kepwareApiClient;
+        protected readonly KepwareApiClient _badCredKepwareApiClient;
         protected readonly ProductInfo _productInfo;
 
         protected TestApiClientBase()
@@ -78,6 +79,14 @@ namespace Kepware.Api.TestIntg.ApiClient
                         apiPassword: $"{configuration["TestSettings:TestServer:Password"]}",
                         disableCertificateValidation: true
                         );
+                    // Add application services
+                    services.AddKepwareApiClient(
+                        name: "BadCredClient",
+                        baseUrl: TEST_ENDPOINT,
+                        apiUserName: $"{configuration["TestSettings:TestServer:UserName"]}",
+                        apiPassword: $"Test1234567890",
+                        disableCertificateValidation: true
+                        );
                 })
                 .ConfigureLogging(logging =>
                 {
@@ -92,11 +101,14 @@ namespace Kepware.Api.TestIntg.ApiClient
                 .Build();
 
             // 2. Get the KepwareApiClient
-            _kepwareApiClient = testHost.Services.GetRequiredService<KepwareApiClient>();
+            var listClients = testHost.Services.GetServices<KepwareApiClient>();
+            _kepwareApiClient = listClients.First(client => client.ClientName == "TestClient");
+            _badCredKepwareApiClient = listClients.First(client => client.ClientName == "BadCredClient");
 
             // 3. Get the ProductInfo
 
             // Update the assignment to properly await the asynchronous method and handle the nullable return type.
+            var connected = _kepwareApiClient.TestConnectionAsync().GetAwaiter().GetResult();
             _productInfo = _kepwareApiClient.GetProductInfoAsync().GetAwaiter().GetResult() ?? new ProductInfo();
 
 
@@ -147,10 +159,10 @@ namespace Kepware.Api.TestIntg.ApiClient
                     }
                     """, "application/json");
 
-            // Mock for the status endpoint
-            var statusResponse = "[{\"Name\": \"ConfigAPI REST Service\", \"Healthy\": true}]";
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}/config/v1/status")
-                .ReturnsResponse(HttpStatusCode.OK, statusResponse, "application/json");
+            //    // Mock for the status endpoint
+            //    var statusResponse = "[{\"Name\": \"ConfigAPI REST Service\", \"Healthy\": true}]";
+            //    _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}/config/v1/status")
+            //        .ReturnsResponse(HttpStatusCode.OK, statusResponse, "application/json");
         }
 
         protected Channel CreateTestChannel(string name = "TestChannel", string driver = "Advanced Simulator")
