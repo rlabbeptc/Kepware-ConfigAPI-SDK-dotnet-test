@@ -14,7 +14,7 @@ namespace Kepware.Api.Test.ApiClient
 {
     public class ServerUserGroupTests : TestApiClientBase
     {
-        private const string ENDPOINT_USER_GROUP = "/config/v1/admin/server_user_groups";
+        private const string ENDPOINT_USER_GROUP = "/config/v1/admin/server_usergroups";
 
         [Fact]
         public async Task GetServerUserGroupAsync_ShouldReturnServerUserGroup_WhenApiRespondsSuccessfully()
