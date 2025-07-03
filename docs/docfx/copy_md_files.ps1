@@ -3,7 +3,7 @@
 # 
 
 # Define source and destination directories
-$sourceDir = "..\..\"
+$sourceDir = ".\"
 $destinationDir = ".\"
 
 # Define the subfolders in the repository that md files will be migrated to the website
