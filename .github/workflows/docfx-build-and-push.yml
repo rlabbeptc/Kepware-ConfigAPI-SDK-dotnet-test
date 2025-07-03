@@ -60,7 +60,7 @@ jobs:
     # Copys markdown files to docfx folder to be used in docfx build
     - name: Run markdown copy script
       run: ./docs/docfx/copy_md_files.ps1
-    # - run: cp ./README.md ./docs/docfx/
+    - run: cp ./README.md ./docs/docfx/
     - run: dotnet tool update -g docfx
     - run: docfx ./docs/docfx/docfx.json
 
