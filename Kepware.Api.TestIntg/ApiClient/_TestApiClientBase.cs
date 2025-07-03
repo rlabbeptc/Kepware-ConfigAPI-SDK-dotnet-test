@@ -165,25 +165,143 @@ namespace Kepware.Api.TestIntg.ApiClient
             //        .ReturnsResponse(HttpStatusCode.OK, statusResponse, "application/json");
         }
 
-        protected Channel CreateTestChannel(string name = "TestChannel", string driver = "Advanced Simulator")
+        protected Channel CreateTestChannel(string name = "TestChannel", string driver = "Simulator")
         {
             var channel = new Channel { Name = name };
             channel.SetDynamicProperty("servermain.MULTIPLE_TYPES_DEVICE_DRIVER", driver);
+            channel.SetDynamicProperty("common.ALLTYPES_DESCRIPTION", "Example Simulator Channel");
             return channel;
         }
 
-        protected Device CreateTestDevice(Channel owner, string name = "TestDevice", string driver = "Advanced Simulator")
+        protected async Task<Channel> AddTestChannel(string name = "TestChannel", string driver = "Simulator")
+        {
+            var channel = CreateTestChannel(name, driver);
+            return await _kepwareApiClient.Project.Channels.GetOrCreateChannelAsync(channel.Name, channel.DeviceDriver!);
+        }
+        protected async Task DeleteAllChannelsAsync()
+        {
+            var channels = await _kepwareApiClient.GenericConfig.LoadCollectionAsync<ChannelCollection, Channel>();
+            if (channels != null)
+            {
+                foreach (var channel in channels)
+                {
+                    await _kepwareApiClient.Project.Channels.DeleteChannelAsync(channel.Name);
+                }
+            }
+        }
+
+        protected Device CreateTestDevice(Channel owner, string name = "TestDevice", string driver = "Simulator")
         {
             var device = new Device { Name = name, Owner = owner };
             device.SetDynamicProperty("servermain.MULTIPLE_TYPES_DEVICE_DRIVER", driver);
+            device.SetDynamicProperty("common.ALLTYPES_DESCRIPTION", "Example Simulator Device");
             return device;
         }
 
-        protected List<Tag> CreateTestTags(int count = 2)
+        protected async Task<Device> AddTestDevice(Channel owner, string name = "TestDevice", string driver = "Simulator")
+        {
+            var device = CreateTestDevice(owner, name, driver);
+            return await _kepwareApiClient.Project.Devices.GetOrCreateDeviceAsync(owner, device.Name);
+        }
+
+        protected async Task<Device> AddAtgTestDevice(Channel owner, string name = "TestDevice")
+        {
+            var device = new Device { Name = name, Owner = owner };
+            device.SetDynamicProperty("servermain.MULTIPLE_TYPES_DEVICE_DRIVER", owner.DeviceDriver);
+            device.SetDynamicProperty("common.ALLTYPES_DESCRIPTION", "Example Simulator Device");
+            device.SetDynamicProperty("servermain.DEVICE_MODEL", 0);
+            device.SetDynamicProperty("servermain.DEVICE_ID_STRING", "10.10.10.10,1,0");
+
+            await _kepwareApiClient.GenericConfig.InsertItemAsync<Device>(device, owner);
+
+            return device;
+        }
+
+        protected Tag CreateTestTag(string name = "Tag1", string address = "K0001")
+        {
+            return new Tag { Name = name, TagAddress = address };
+        }
+
+        protected async Task<Tag> AddSimulatorTestTag(Device owner, string name = "Tag1", string address = "K0001")
+        {
+            var tag = CreateTestTag(name, address);
+            tag.Owner = owner;
+            await _kepwareApiClient.GenericConfig.InsertItemAsync<DeviceTagCollection, Tag>(tag, owner);
+            return await _kepwareApiClient.GenericConfig.LoadEntityAsync<Tag>(tag.Name, owner);
+        }
+
+        protected async Task<Tag> AddSimulatorTestTag(DeviceTagGroup owner, string name = "Tag1", string address = "K0001")
+        {
+            var tag = CreateTestTag(name, address);
+            tag.Owner = owner;
+            await _kepwareApiClient.GenericConfig.InsertItemAsync<DeviceTagCollection, Tag>(tag, owner);
+            return await _kepwareApiClient.GenericConfig.LoadEntityAsync<Tag>(tag.Name, owner);
+        }
+
+        protected List<Tag> CreateSimulatorTestTags(string name = "Tag", string address = "K000", int count = 2)
         {
             return Enumerable.Range(1, count)
-                .Select(i => new Tag { Name = $"Tag{i}" })
+                .Select(i => CreateTestTag(name: $"{name}{i}", address: $"{address}{i}"))
                 .ToList();
+        }
+
+        protected async Task<List<Tag>> AddSimulatorTestTags(Device owner, string name = "Tag", string address = "K000", int count = 2)
+        {
+            var tagsList = CreateSimulatorTestTags(name, address);
+            foreach (var tag in tagsList)
+            {
+                tag.Owner = owner;
+            }
+            await _kepwareApiClient.GenericConfig.InsertItemsAsync<DeviceTagCollection, Tag>(tagsList, owner: owner);
+            return tagsList;
+        }
+
+        protected async Task<List<Tag>> AddSimulatorTestTags(DeviceTagGroup owner, string name = "Tag1", string address = "K000", int count = 2)
+        {
+            var tagsList = CreateSimulatorTestTags(name, address);
+            foreach (var tag in tagsList)
+            {
+                tag.Owner = owner;
+            }
+            await _kepwareApiClient.GenericConfig.InsertItemsAsync<DeviceTagCollection, Tag>(tagsList, owner: owner);
+            return tagsList;
+        }
+
+        protected DeviceTagGroup CreateTestTagGroup(string name = "TagGroup1")
+        {
+            return new DeviceTagGroup { Name = name };
+
+        }
+        protected DeviceTagGroup CreateTestTagGroup(Device owner, string name = "TagGroup1")
+        {
+            return new DeviceTagGroup(name: name, owner);
+
+        }
+        protected DeviceTagGroup CreateTestTagGroup(DeviceTagGroup owner, string name = "TagGroup1")
+        {
+            return new DeviceTagGroup(name: name, owner);
+
+        }
+        protected async Task<DeviceTagGroup> AddTestTagGroup(Device owner, string name = "TagGroup1", string driver = "Simulator")
+        {
+
+            var tagGroup = new DeviceTagGroup();
+            tagGroup.Name = name;
+            tagGroup.Owner = owner;
+            await _kepwareApiClient.GenericConfig.InsertItemAsync<DeviceTagGroup>(tagGroup, tagGroup.Owner);
+            return await _kepwareApiClient.GenericConfig.LoadEntityAsync<DeviceTagGroup>(tagGroup.Name, owner);
+            
+        }
+
+        protected async Task<DeviceTagGroup> AddTestTagGroup(DeviceTagGroup owner, string name = "TagGroup1", string driver = "Simulator")
+        {
+
+            var tagGroup = new DeviceTagGroup();
+            tagGroup.Name = name;
+            tagGroup.Owner = owner;
+            await _kepwareApiClient.GenericConfig.InsertItemAsync<DeviceTagGroup>(tagGroup, tagGroup.Owner);
+            return await _kepwareApiClient.GenericConfig.LoadEntityAsync<DeviceTagGroup>(tagGroup.Name, owner);
+
         }
     }
 }

@@ -53,7 +53,10 @@ namespace Kepware.Api.TestIntg.ApiClient
         {
             // Arrange
             var newSettings = new Project();
-            newSettings.ProjectProperties.OpcDaMaxConnections = new Random().Next(1, 4001);
+            if (_productInfo.ProductId != "013")
+            {
+                newSettings.ProjectProperties.OpcDaMaxConnections = new Random().Next(1, 4001);
+            }
             newSettings.ProjectProperties.OpcUaMaxConnections = new Random().Next(1, 257);
 
             // Act

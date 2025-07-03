@@ -29,7 +29,7 @@ namespace Kepware.Api.TestIntg.ApiClient
             result.ShouldNotBeNull();
             result.EventLogConnectionPort.ShouldNotBe(default(int));
             result.EventLogMaxRecords.ShouldNotBe(default(int));
-            if (_productInfo.ProductId != "013")
+            if (_productInfo.ProductId == "013")
             {
                 result.LicenseServer.ShouldNotBeNull();
                 result.LicenseServer.RecheckIntervalMinutes.ShouldNotBe(default(int));

@@ -172,25 +172,32 @@ namespace Kepware.Api.TestIntg.ApiClient
         [Fact]
         public async Task LoadTagGroupsRecursiveAsync_ShouldLoadTagGroupsCorrectly()
         {
-            //TODO: Currently in a failed state do to SDK errors.
-            // Arrange
-            var channel = await AddTestChannel();
-            var device = await AddTestDevice(channel);
-            var tagGroup = await AddTestTagGroup(device);
-            var tagGroup2 = await AddTestTagGroup(device, "TagGroup2");
-            var tagGroup3 = await AddTestTagGroup(tagGroup);
+            // TODO: Currently this test fails due to isse in EndpointResolver.
+            try
+            {
+                // Arrange
+                var channel = await AddTestChannel();
+                var device = await AddTestDevice(channel);
+                var tagGroup = await AddTestTagGroup(device);
+                var tagGroup2 = await AddTestTagGroup(device, "TagGroup2");
+                var tagGroup3 = await AddTestTagGroup(tagGroup);
 
-            var tagGroups = new List<DeviceTagGroup> { tagGroup, tagGroup2, tagGroup3 };
+                var tagGroups = new List<DeviceTagGroup> { tagGroup, tagGroup2, tagGroup3 };
 
-            // Act
-            await ProjectApiHandler.LoadTagGroupsRecursiveAsync(_kepwareApiClient, tagGroups);
+                // Act
+                await ProjectApiHandler.LoadTagGroupsRecursiveAsync(_kepwareApiClient, tagGroups);
 
-            // Assert
-            Assert.NotNull(tagGroup.TagGroups);
-            Assert.Single(tagGroup.TagGroups);
-            Assert.Equal("TagGroup1", tagGroup.TagGroups.First().Name);
-            Assert.NotNull(tagGroup2.TagGroups);
-            Assert.Empty(tagGroup2.TagGroups);
+                // Assert
+                Assert.NotNull(tagGroup.TagGroups);
+                Assert.Single(tagGroup.TagGroups);
+                Assert.Equal("TagGroup1", tagGroup.TagGroups.First().Name);
+                Assert.NotNull(tagGroup2.TagGroups);
+                Assert.Empty(tagGroup2.TagGroups);
+            }
+            catch (Exception ex)
+            {
+                Assert.Fail($"Currently this test fails due to issue in EndpointResolver. Test failed with exception: \n {ex}");
+            }
 
             // Clean up
             await DeleteAllChannelsAsync();

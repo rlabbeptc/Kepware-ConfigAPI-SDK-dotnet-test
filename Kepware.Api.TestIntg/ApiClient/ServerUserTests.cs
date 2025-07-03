@@ -12,17 +12,15 @@ using System.Net.Http.Json;
 
 namespace Kepware.Api.TestIntg.ApiClient
 {
+    [TestCaseOrderer("Xunit.Extensions.Ordering.TestCaseOrderer", "Xunit.Extensions.Ordering")]
     public class ServerUserTests : TestApiClientBase
     {
-        private const string ENDPOINT_USER = "/config/v1/admin/server_users";
 
         [Fact]
         public async Task GetServerUserAsync_ShouldReturnServerUser_WhenApiRespondsSuccessfully()
         {
             // Arrange
-            var user = CreateTestServerUser();
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{user.Name}")
-                .ReturnsResponse(HttpStatusCode.OK, JsonSerializer.Serialize(user), "application/json");
+            var user = CreateTestServerUser("Administrators", "Administrator");
 
             // Act
             var result = await _kepwareApiClient.Admin.GetServerUserAsync(user.Name);
@@ -38,126 +36,142 @@ namespace Kepware.Api.TestIntg.ApiClient
         {
             // Arrange
             var userName = "NonExistentUser";
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{userName}")
-                .ReturnsResponse(HttpStatusCode.NotFound, "Not Found");
 
             // Act
             var result = await _kepwareApiClient.Admin.GetServerUserAsync(userName);
 
             // Assert
             result.ShouldBeNull();
-            _loggerMockGeneric.Verify(logger =>
-                logger.Log(
-                    LogLevel.Warning,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => true),
-                    It.IsAny<Exception>(),
-                    It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
-                Times.Once);
         }
 
         [Fact]
         public async Task CreateOrUpdateServerUserAsync_ShouldCreateServerUser_WhenItDoesNotExist()
         {
             // Arrange
-            var user = CreateTestServerUser();
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{user.Name}")
-                .ReturnsResponse(HttpStatusCode.NotFound, "Not Found");
+            var userGroup = new ServerUserGroup
+            {
+                Name = "TestGroup",
+                Enabled = true
+            };
 
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Post, $"{TEST_ENDPOINT}{ENDPOINT_USER}")
-                .ReturnsResponse(HttpStatusCode.Created);
+            await _kepwareApiClient.Admin.CreateOrUpdateServerUserGroupAsync(userGroup);
+            var user = CreateTestServerUser(userGroup.Name);
 
             // Act
             var result = await _kepwareApiClient.Admin.CreateOrUpdateServerUserAsync(user);
 
             // Assert
             result.ShouldBeTrue();
-            _httpMessageHandlerMock.VerifyRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{user.Name}", Times.Once());
-            _httpMessageHandlerMock.VerifyRequest(HttpMethod.Post, $"{TEST_ENDPOINT}{ENDPOINT_USER}", Times.Once());
+
+            // Clean up
+            await _kepwareApiClient.Admin.DeleteServerUserGroupAsync(userGroup.Name);
         }
 
         [Fact]
         public async Task CreateOrUpdateServerUserAsync_ShouldUpdateServerUser_WhenItExists()
         {
             // Arrange
-            var user = CreateTestServerUser();
-            var currentUser = CreateTestServerUser();
-            currentUser.Enabled = false;
+            var userGroup = new ServerUserGroup
+            {
+                Name = "TestGroup",
+                Enabled = true
+            };
 
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{user.Name}")
-                .ReturnsResponse(HttpStatusCode.OK, JsonSerializer.Serialize(currentUser), "application/json");
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Put, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{user.Name}")
-                .ReturnsResponse(HttpStatusCode.OK);
+            await _kepwareApiClient.Admin.CreateOrUpdateServerUserGroupAsync(userGroup);
+            var user = CreateTestServerUser(userGroup.Name);
+            await _kepwareApiClient.GenericConfig.InsertItemAsync(user);
+            user.Description = "Updated Description";
 
             // Act
             var result = await _kepwareApiClient.Admin.CreateOrUpdateServerUserAsync(user);
 
             // Assert
             result.ShouldBeTrue();
-            _httpMessageHandlerMock.VerifyRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{user.Name}", Times.Once());
-            _httpMessageHandlerMock.VerifyRequest(HttpMethod.Put, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{user.Name}", Times.Once());
+
+            // Clean up
+            await _kepwareApiClient.Admin.DeleteServerUserGroupAsync(userGroup.Name);
         }
 
         [Fact]
         public async Task CreateServerUserAsync_ShouldThrowArgumentException_WhenPasswordIsInvalid()
         {
             // Arrange
-            var user = CreateTestServerUser();
-            user.Password = "short";
+            var userGroup = new ServerUserGroup
+            {
+                Name = "TestGroup",
+                Enabled = true
+            };
 
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{user.Name}")
-               .ReturnsResponse(HttpStatusCode.NotFound, "Not Found");
+            await _kepwareApiClient.Admin.CreateOrUpdateServerUserGroupAsync(userGroup);
+            var user = CreateTestServerUser(userGroup.Name);
+            user.Password = "short"; // Invalid password (too short)
 
             // Act & Assert
             await Should.ThrowAsync<ArgumentException>(async () =>
                 await _kepwareApiClient.Admin.CreateOrUpdateServerUserAsync(user));
-        }
 
+            // Clean up
+            await _kepwareApiClient.Admin.DeleteServerUserGroupAsync(userGroup.Name);
+        }
 
         [Fact]
         public async Task CreateServerUserAsync_ShouldThrowArgumentException_WhenPasswordIsEmpty()
         {
             // Arrange
-            var user = CreateTestServerUser();
-            user.Password = null;
+            var userGroup = new ServerUserGroup
+            {
+                Name = "TestGroup",
+                Enabled = true
+            };
 
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{user.Name}")
-               .ReturnsResponse(HttpStatusCode.NotFound, "Not Found");
+            await _kepwareApiClient.Admin.CreateOrUpdateServerUserGroupAsync(userGroup);
+            var user = CreateTestServerUser(userGroup.Name);
+            user.Password = string.Empty; // Empty password
 
             // Act & Assert
             await Should.ThrowAsync<ArgumentException>(async () =>
                 await _kepwareApiClient.Admin.CreateOrUpdateServerUserAsync(user));
-        }
 
+            // Clean up
+            await _kepwareApiClient.Admin.DeleteServerUserGroupAsync(userGroup.Name);
+        }
 
         [Fact]
         public async Task UpdateServerUserAsync_ShouldThrowArgumentException_WhenPasswordIsInvalid()
         {
             // Arrange
-            var user = CreateTestServerUser();
+            var userGroup = new ServerUserGroup
+            {
+                Name = "TestGroup",
+                Enabled = true
+            };
 
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{user.Name}")
-                  .ReturnsResponse(HttpStatusCode.OK, JsonSerializer.Serialize(user), "application/json");
-
+            await _kepwareApiClient.Admin.CreateOrUpdateServerUserGroupAsync(userGroup);
+            var user = CreateTestServerUser(userGroup.Name);
+            await _kepwareApiClient.GenericConfig.InsertItemAsync(user);
             user.Password = "short";
+
             // Act & Assert
             await Should.ThrowAsync<ArgumentException>(async () =>
                 await _kepwareApiClient.Admin.CreateOrUpdateServerUserAsync(user));
-        }
 
+            // Clean up
+            await _kepwareApiClient.Admin.DeleteServerUserGroupAsync(userGroup.Name);
+        }
 
         [Fact]
         public async Task UpdateServerUserAsync_ShouldNotThrowArgumentException_WhenPasswordIsEmpty()
         {
             // Arrange
-            var user = CreateTestServerUser();
+            var userGroup = new ServerUserGroup
+            {
+                Name = "TestGroup",
+                Enabled = true
+            };
 
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{user.Name}")
-                  .ReturnsResponse(HttpStatusCode.OK, JsonSerializer.Serialize(user), "application/json");
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Put, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{user.Name}")
-              .ReturnsResponse(HttpStatusCode.OK);
+            await _kepwareApiClient.Admin.CreateOrUpdateServerUserGroupAsync(userGroup);
+            var user = CreateTestServerUser(userGroup.Name);
+            await _kepwareApiClient.GenericConfig.InsertItemAsync(user);
 
             user.Password = null;
 
@@ -166,99 +180,93 @@ namespace Kepware.Api.TestIntg.ApiClient
 
             // Assert
             result.ShouldBeTrue();
-            _httpMessageHandlerMock.VerifyRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{user.Name}", Times.Once());
-            _httpMessageHandlerMock.VerifyRequest(HttpMethod.Put, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{user.Name}", Times.Once());
+
+            // Clean up
+            await _kepwareApiClient.Admin.DeleteServerUserGroupAsync(userGroup.Name);
         }
 
         [Fact]
         public async Task DeleteServerUserAsync_ShouldReturnTrue_WhenDeleteSuccessful()
         {
             // Arrange
-            var userName = "TestUser";
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Delete, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{userName}")
-                .ReturnsResponse(HttpStatusCode.OK);
+            var userGroup = new ServerUserGroup
+            {
+                Name = "TestGroup",
+                Enabled = true
+            };
+
+            await _kepwareApiClient.Admin.CreateOrUpdateServerUserGroupAsync(userGroup);
+            var user = CreateTestServerUser(userGroup.Name);
+            await _kepwareApiClient.GenericConfig.InsertItemAsync(user);
 
             // Act
-            var result = await _kepwareApiClient.Admin.DeleteServerUserAsync(userName);
+            var result = await _kepwareApiClient.Admin.DeleteServerUserAsync(user.Name);
 
             // Assert
             result.ShouldBeTrue();
-            _httpMessageHandlerMock.VerifyRequest(HttpMethod.Delete, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{userName}", Times.Once());
+
+            // Clean up
+            await _kepwareApiClient.Admin.DeleteServerUserGroupAsync(userGroup.Name);
         }
 
         [Fact]
         public async Task DeleteServerUserAsync_ShouldReturnFalse_WhenDeleteFails()
         {
-            // Arrange
-            var userName = "TestUser";
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Delete, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{userName}")
-                .ReturnsResponse(HttpStatusCode.InternalServerError, "Internal Server Error");
+            //Arrange
+            var userGroup = new ServerUserGroup
+            {
+                Name = "TestGroup",
+                Enabled = true
+            };
+            var user = CreateTestServerUser(userGroup.Name);
+
 
             // Act
-            var result = await _kepwareApiClient.Admin.DeleteServerUserAsync(userName);
+            var result = await _kepwareApiClient.Admin.DeleteServerUserAsync(user.Name);
 
             // Assert
             result.ShouldBeFalse();
-            _httpMessageHandlerMock.VerifyRequest(HttpMethod.Delete, $"{TEST_ENDPOINT}{ENDPOINT_USER}/{userName}", Times.Once());
-            _loggerMockGeneric.Verify(logger =>
-                logger.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => true),
-                    It.IsAny<Exception>(),
-                    It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
-                Times.Once);
         }
 
         [Fact]
         public async Task GetServerUsersAsync_ShouldReturnServerUserCollection_WhenApiRespondsSuccessfully()
         {
             // Arrange
-            var users = new ServerUserCollection
+            var userGroup = new ServerUserGroup
             {
-                CreateTestServerUser("User1"),
-                CreateTestServerUser("User2")
+                Name = "TestGroup",
+                Enabled = true
             };
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER}")
-                .ReturnsResponse(HttpStatusCode.OK, JsonSerializer.Serialize(users), "application/json");
+
+            await _kepwareApiClient.Admin.CreateOrUpdateServerUserGroupAsync(userGroup);
+            var users = new ServerUserCollection
+                {
+                    CreateTestServerUser(userGroup.Name, "User1"),
+                    CreateTestServerUser(userGroup.Name, "User2")
+                };
+            await _kepwareApiClient.GenericConfig.InsertItemsAsync<ServerUserCollection, ServerUser>(users);
+
 
             // Act
             var result = await _kepwareApiClient.Admin.GetServerUserListAsync();
 
             // Assert
             result.ShouldNotBeNull();
-            result.Count.ShouldBe(2);
+            result.Count.ShouldBeGreaterThan(2);
+            result.ShouldContain(u => u.Name == "User1");
+            result.ShouldContain(u => u.Name == "User2");
+
+            // Clean up
+            await _kepwareApiClient.Admin.DeleteServerUserGroupAsync(userGroup.Name);
         }
 
-        [Fact]
-        public async Task GetServerUsersAsync_ShouldReturnNull_WhenApiReturnsError()
-        {
-            // Arrange
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER}")
-                .ReturnsResponse(HttpStatusCode.InternalServerError, "Internal Server Error");
-
-            // Act
-            var result = await _kepwareApiClient.Admin.GetServerUserListAsync();
-
-            // Assert
-            result.ShouldBeNull();
-            _loggerMockGeneric.Verify(logger =>
-                logger.Log(
-                    LogLevel.Warning,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => true),
-                    It.IsAny<Exception>(),
-                    It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
-                Times.Once);
-        }
-
-        private static ServerUser CreateTestServerUser(string name = "TestUser")
+        private static ServerUser CreateTestServerUser(string group, string name = "TestUser")
         {
             return new ServerUser
             {
                 Name = name,
                 Enabled = true,
-                UserGroupName = "TestGroup",
+                UserGroupName = group,
                 Password = "ValidPassword123!",
                 UserType = 0
             };

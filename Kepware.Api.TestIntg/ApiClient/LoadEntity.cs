@@ -12,6 +12,7 @@ using Xunit;
 
 namespace Kepware.Api.TestIntg.ApiClient
 {
+    [TestCaseOrderer("Xunit.Extensions.Ordering.TestCaseOrderer", "Xunit.Extensions.Ordering")]
     public class LoadEntityTests : TestApiClientBase
     {
         #region LoadEntityAsync - Channel (Collection)
@@ -275,19 +276,28 @@ namespace Kepware.Api.TestIntg.ApiClient
         [Fact]
         public async Task LoadEntityAsync_ShouldReturnTagGroupCollectionInTagGroup_WhenApiRespondsSuccessfully()
         {
+            // TODO: Currently this test fails due to issue in EndpointResolver.
             // Arrange
-            var channel = await AddTestChannel();
-            var device = await AddTestDevice(channel);
-            var tagGroup = await AddTestTagGroup(device);
-            var tagGroup2 = await AddTestTagGroup(tagGroup, "TagGroup2");
+            try
+            {
+                var channel = await AddTestChannel();
+                var device = await AddTestDevice(channel);
+                var tagGroup = await AddTestTagGroup(device);
+                var tagGroup2 = await AddTestTagGroup(tagGroup, "TagGroup2");
 
-            // Act
-            var result = await _kepwareApiClient.GenericConfig.LoadCollectionAsync<DeviceTagGroupCollection, DeviceTagGroup>(tagGroup);
+                // Act
+                var result = await _kepwareApiClient.GenericConfig.LoadCollectionAsync<DeviceTagGroupCollection, DeviceTagGroup>(tagGroup);
 
-            // Assert
-            Assert.NotNull(result);
-            Assert.Single(result);
-            Assert.Contains(result, g => g.Name == tagGroup2.Name);
+                // Assert
+                Assert.NotNull(result);
+                Assert.Single(result);
+                Assert.Contains(result, g => g.Name == tagGroup2.Name);
+
+            }
+            catch (Exception ex)
+            {
+               Assert.Fail($"Currently this test fails due to issue in EndpointResolver. Test failed with exception: \n {ex}");
+            }
 
             // Cleanup
             await DeleteAllChannelsAsync();
@@ -298,20 +308,28 @@ namespace Kepware.Api.TestIntg.ApiClient
         [Fact]
         public async Task LoadEntityAsync_ShouldReturnTagCollectionFromTagGroup_WhenApiRespondsSuccessfully()
         {
-            // Arrange
-            var channel = await AddTestChannel();
-            var device = await AddTestDevice(channel);
-            var tagGroup = await AddTestTagGroup(device);
-            var tagList = await AddSimulatorTestTags(tagGroup);
+            // TODO: Currently this test fails due to issue in EndpointResolver.
+            try
+            {
+                // Arrange
+                var channel = await AddTestChannel();
+                var device = await AddTestDevice(channel);
+                var tagGroup = await AddTestTagGroup(device);
+                var tagList = await AddSimulatorTestTags(tagGroup);
 
-            // Act
-            var result = await _kepwareApiClient.GenericConfig.LoadCollectionAsync<DeviceTagGroupTagCollection, Tag>(tagGroup);
+                // Act
+                var result = await _kepwareApiClient.GenericConfig.LoadCollectionAsync<DeviceTagGroupTagCollection, Tag>(tagGroup);
 
-            // Assert
-            Assert.NotNull(result);
-            Assert.Equal(2, result.Count);
-            Assert.Contains(result, t => t.Name == tagList[0].Name);
-            Assert.Contains(result, t => t.Name == tagList[1].Name);
+                // Assert
+                Assert.NotNull(result);
+                Assert.Equal(2, result.Count);
+                Assert.Contains(result, t => t.Name == tagList[0].Name);
+                Assert.Contains(result, t => t.Name == tagList[1].Name);
+            }
+            catch (Exception ex)
+            {
+                Assert.Fail($"Currently this test fails due to issue in EndpointResolver. Test failed with exception: \n {ex}");
+            }
 
             // Cleanup
             await DeleteAllChannelsAsync();

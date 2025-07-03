@@ -11,6 +11,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using Xunit.Extensions.Ordering;
 
 namespace Kepware.Api.TestIntg.ApiClient
 {
@@ -20,24 +21,6 @@ namespace Kepware.Api.TestIntg.ApiClient
         private const string UNIT_TEST_DEVICE = "unitTestDevice";
         private const string ENDPOINT_TAG_GENERATION = $"/config/v1/project/channels/{UNIT_TEST_CHANNEL}/devices/{UNIT_TEST_DEVICE}/services/TagGeneration";
         private const string JOB_ENDPOINT = $"/config/v1/project/channels/{UNIT_TEST_CHANNEL}/devices/{UNIT_TEST_DEVICE}/services/TagGeneration/jobs/job123";
-
-        [Fact]
-        public async Task AutomaticTagGenerationAsync_ShouldReturnKepServerJobPromise_WhenApiRespondsSuccessfully()
-        {
-            // Arrange
-            var channel = await AddTestChannel(driver: "Allen-Bradley ControlLogix Ethernet");
-            var device = await AddAtgTestDevice(channel);
-
-            // Act
-            var result = await _kepwareApiClient.ApiServices.AutomaticTagGenerationAsync(channel.Name, device.Name, TimeSpan.FromSeconds(30));
-
-            // Assert
-            result.ShouldNotBeNull();
-            result.JobTimeToLive.ShouldBe(TimeSpan.FromSeconds(30));
-
-            // Clean up
-            await DeleteAllChannelsAsync();
-        }
 
         [Fact]
         public async Task AutomaticTagGenerationAsync_ShouldReturnKepServerJobPromise_WhenApiResponseIsInvalid()

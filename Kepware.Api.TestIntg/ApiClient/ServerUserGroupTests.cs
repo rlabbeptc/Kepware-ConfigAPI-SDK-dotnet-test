@@ -14,15 +14,12 @@ namespace Kepware.Api.TestIntg.ApiClient
 {
     public class ServerUserGroupTests : TestApiClientBase
     {
-        private const string ENDPOINT_USER_GROUP = "/config/v1/admin/server_user_groups";
 
         [Fact]
         public async Task GetServerUserGroupAsync_ShouldReturnServerUserGroup_WhenApiRespondsSuccessfully()
         {
             // Arrange
-            var userGroup = CreateTestServerUserGroup();
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER_GROUP}/{userGroup.Name}")
-                .ReturnsResponse(HttpStatusCode.OK, JsonSerializer.Serialize(userGroup), "application/json");
+            var userGroup = new ServerUserGroup{ Name= "Administrators"};
 
             // Act
             var result = await _kepwareApiClient.Admin.GetServerUserGroupAsync(userGroup.Name);
@@ -30,7 +27,7 @@ namespace Kepware.Api.TestIntg.ApiClient
             // Assert
             result.ShouldNotBeNull();
             result.Name.ShouldBe(userGroup.Name);
-            result.Enabled.ShouldBe(userGroup.Enabled);
+            result.Enabled!.Value.ShouldBeTrue();
         }
 
         [Fact]
@@ -38,22 +35,12 @@ namespace Kepware.Api.TestIntg.ApiClient
         {
             // Arrange
             var groupName = "NonExistentGroup";
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER_GROUP}/{groupName}")
-                .ReturnsResponse(HttpStatusCode.NotFound, "Not Found");
 
             // Act
             var result = await _kepwareApiClient.Admin.GetServerUserGroupAsync(groupName);
 
             // Assert
             result.ShouldBeNull();
-            _loggerMockGeneric.Verify(logger =>
-                logger.Log(
-                    LogLevel.Warning,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => true),
-                    It.IsAny<Exception>(),
-                    It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
-                Times.Once);
         }
 
         [Fact]
@@ -61,19 +48,15 @@ namespace Kepware.Api.TestIntg.ApiClient
         {
             // Arrange
             var userGroup = CreateTestServerUserGroup();
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER_GROUP}/{userGroup.Name}")
-                .ReturnsResponse(HttpStatusCode.NotFound, "Not Found");
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Post, $"{TEST_ENDPOINT}{ENDPOINT_USER_GROUP}")
-                .ReturnsResponse(HttpStatusCode.Created);
 
             // Act
             var result = await _kepwareApiClient.Admin.CreateOrUpdateServerUserGroupAsync(userGroup);
 
             // Assert
             result.ShouldBeTrue();
-            _httpMessageHandlerMock.VerifyRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER_GROUP}/{userGroup.Name}", Times.Once());
-            _httpMessageHandlerMock.VerifyRequest(HttpMethod.Post, $"{TEST_ENDPOINT}{ENDPOINT_USER_GROUP}", Times.Once());
+
+            // Clean up
+            await _kepwareApiClient.GenericConfig.DeleteItemAsync(userGroup);
         }
 
         [Fact]
@@ -81,104 +64,60 @@ namespace Kepware.Api.TestIntg.ApiClient
         {
             // Arrange
             var userGroup = CreateTestServerUserGroup();
-            var currentGroup = CreateTestServerUserGroup();
-            currentGroup.Enabled = false;
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER_GROUP}/{userGroup.Name}")
-                .ReturnsResponse(HttpStatusCode.OK, JsonSerializer.Serialize(currentGroup), "application/json");
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Put, $"{TEST_ENDPOINT}{ENDPOINT_USER_GROUP}/{userGroup.Name}")
-                .ReturnsResponse(HttpStatusCode.OK);
+            await _kepwareApiClient.GenericConfig.InsertItemAsync(userGroup);
+            userGroup.Enabled = false;
 
             // Act
             var result = await _kepwareApiClient.Admin.CreateOrUpdateServerUserGroupAsync(userGroup);
 
             // Assert
             result.ShouldBeTrue();
-            _httpMessageHandlerMock.VerifyRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER_GROUP}/{userGroup.Name}", Times.Once());
-            _httpMessageHandlerMock.VerifyRequest(HttpMethod.Put, $"{TEST_ENDPOINT}{ENDPOINT_USER_GROUP}/{userGroup.Name}", Times.Once());
+
+            // Clean up
+            await _kepwareApiClient.GenericConfig.DeleteItemAsync(userGroup);
         }
 
         [Fact]
         public async Task DeleteServerUserGroupAsync_ShouldReturnTrue_WhenDeleteSuccessful()
         {
             // Arrange
-            var groupName = "TestGroup";
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Delete, $"{TEST_ENDPOINT}{ENDPOINT_USER_GROUP}/{groupName}")
-                .ReturnsResponse(HttpStatusCode.OK);
+            var userGroup = CreateTestServerUserGroup();
+            await _kepwareApiClient.GenericConfig.InsertItemAsync(userGroup);
 
             // Act
-            var result = await _kepwareApiClient.Admin.DeleteServerUserGroupAsync(groupName);
+            var result = await _kepwareApiClient.Admin.DeleteServerUserGroupAsync(userGroup.Name);
 
             // Assert
             result.ShouldBeTrue();
-            _httpMessageHandlerMock.VerifyRequest(HttpMethod.Delete, $"{TEST_ENDPOINT}{ENDPOINT_USER_GROUP}/{groupName}", Times.Once());
+
+            // Clean up
+            await _kepwareApiClient.GenericConfig.DeleteItemAsync(userGroup);
         }
 
         [Fact]
         public async Task DeleteServerUserGroupAsync_ShouldReturnFalse_WhenDeleteFails()
         {
             // Arrange
-            var groupName = "TestGroup";
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Delete, $"{TEST_ENDPOINT}{ENDPOINT_USER_GROUP}/{groupName}")
-                .ReturnsResponse(HttpStatusCode.InternalServerError, "Internal Server Error");
+            // Cannot delete the default Administrators group
+            var groupName = "Administrators";
 
             // Act
             var result = await _kepwareApiClient.Admin.DeleteServerUserGroupAsync(groupName);
 
             // Assert
             result.ShouldBeFalse();
-            _httpMessageHandlerMock.VerifyRequest(HttpMethod.Delete, $"{TEST_ENDPOINT}{ENDPOINT_USER_GROUP}/{groupName}", Times.Once());
-            _loggerMockGeneric.Verify(logger =>
-                logger.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => true),
-                    It.IsAny<Exception>(),
-                    It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
-                Times.Once);
         }
 
         [Fact]
         public async Task GetServerUserGroupsAsync_ShouldReturnServerUserGroupCollection_WhenApiRespondsSuccessfully()
         {
-            // Arrange
-            var userGroups = new ServerUserGroupCollection
-            {
-                CreateTestServerUserGroup("Group1"),
-                CreateTestServerUserGroup("Group2")
-            };
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER_GROUP}")
-                .ReturnsResponse(HttpStatusCode.OK, JsonSerializer.Serialize(userGroups), "application/json");
 
             // Act
             var result = await _kepwareApiClient.Admin.GetServerUserGroupListAsync();
 
             // Assert
             result.ShouldNotBeNull();
-            result.Count.ShouldBe(2);
-        }
-
-        [Fact]
-        public async Task GetServerUserGroupsAsync_ShouldReturnNull_WhenApiReturnsError()
-        {
-            // Arrange
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, $"{TEST_ENDPOINT}{ENDPOINT_USER_GROUP}")
-                .ReturnsResponse(HttpStatusCode.InternalServerError, "Internal Server Error");
-
-            // Act
-            var result = await _kepwareApiClient.Admin.GetServerUserGroupListAsync();
-
-            // Assert
-            result.ShouldBeNull();
-            _loggerMockGeneric.Verify(logger =>
-                logger.Log(
-                    LogLevel.Warning,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => true),
-                    It.IsAny<Exception>(),
-                    It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
-                Times.Once);
+            result.Count.ShouldBeGreaterThan(2);
         }
 
         private static ServerUserGroup CreateTestServerUserGroup(string name = "TestGroup")

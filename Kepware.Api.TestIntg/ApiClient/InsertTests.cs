@@ -32,7 +32,7 @@ public class InsertTests : TestApiClientBase
     {
         // Arrange  
         var channel = CreateTestChannel();
-        channel.DynamicProperties.Add("InvalidProperty", JsonDocument.Parse("\"InvalidValue\"").RootElement);
+        channel.SetDynamicProperty("InvalidProperty","InvalidValue");
 
         // Act  
         var result = await _kepwareApiClient.GenericConfig.InsertItemAsync<ChannelCollection, Channel>(channel);

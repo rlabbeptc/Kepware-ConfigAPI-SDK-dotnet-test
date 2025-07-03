@@ -73,7 +73,7 @@ public class UpdateTests : TestApiClientBase
     {
         // Arrange
         var channel = await AddTestChannel();
-        channel.DynamicProperties.Add("InvalidProperty", JsonDocument.Parse("\"InvalidValue\"").RootElement);
+        channel.SetDynamicProperty("InvalidProperty", "InvalidValue");
 
         // Act
         var result = await _kepwareApiClient.GenericConfig.UpdateItemAsync(channel);
