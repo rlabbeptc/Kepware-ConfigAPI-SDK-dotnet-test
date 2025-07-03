@@ -85,67 +85,66 @@ namespace Kepware.Api.TestIntg.ApiClient
             }
         }
 
-        [Theory]
-        [InlineData("KEPServerEX", "12", 6, 17, true)]
-        [InlineData("KEPServerEX", "12", 6, 16, false)]
-        [InlineData("ThingWorxKepwareEdge", "13", 1, 10, true)]
-        [InlineData("ThingWorxKepwareEdge", "13", 1, 9, false)]
-        [InlineData("UnknownProduct", "99", 10, 0, false)]
-        public async Task LoadProject_ShouldLoadCorrectly_BasedOnProductSupport(
-            string productName, string productId, int majorVersion, int minorVersion, bool supportsJsonLoad)
-        {
-            ConfigureConnectedClient(productName, productId, majorVersion, minorVersion);
+        //[Theory]
+        //[InlineData("KEPServerEX", "12", 6, 17, true)]
+        //[InlineData("KEPServerEX", "12", 6, 16, false)]
+        //[InlineData("ThingWorxKepwareEdge", "13", 1, 10, true)]
+        //[InlineData("ThingWorxKepwareEdge", "13", 1, 9, false)]
+        //[InlineData("UnknownProduct", "99", 10, 0, false)]
+        //public async Task LoadProject_ShouldLoadCorrectly_BasedOnProductSupport(
+        //    string productName, string productId, int majorVersion, int minorVersion, bool supportsJsonLoad)
+        //{
+        //    // TODO: Implement a way to serilize the project data to JSON and compare against it being added to Kepware.
+        //
+        //    // Arrange
+        //    var channel = await AddTestChannel();
+        //    var device = await AddTestDevice(channel);
+        //    var tags = await AddSimulatorTestTags(device);
 
-            if (supportsJsonLoad)
-            {
-                await ConfigureToServeFullProject();
-            }
-            else
-            {
-                await ConfigureToServeEndpoints();
-            }
+        //    var project = await _kepwareApiClient.Project.LoadProject(true);
 
-            var project = await _kepwareApiClient.Project.LoadProject(true);
+        //    project.IsLoadedByProjectLoadService.ShouldBe(supportsJsonLoad);
 
-            project.IsLoadedByProjectLoadService.ShouldBe(supportsJsonLoad);
+        //    project.ShouldNotBeNull();
+        //    project.Channels.ShouldNotBeEmpty("Channels list should not be empty.");
 
-            project.ShouldNotBeNull();
-            project.Channels.ShouldNotBeEmpty("Channels list should not be empty.");
+        //    var testProject = await LoadJsonTestDataAsync();
+        //    var compareResult = EntityCompare.Compare<ChannelCollection, Channel>(testProject?.Project?.Channels, project?.Channels);
 
-            var testProject = await LoadJsonTestDataAsync();
-            var compareResult = EntityCompare.Compare<ChannelCollection, Channel>(testProject?.Project?.Channels, project?.Channels);
+        //    compareResult.ShouldNotBeNull();
+        //    compareResult.UnchangedItems.ShouldNotBeEmpty("All channels should be unchanged.");
+        //    compareResult.ChangedItems.ShouldBeEmpty("No channels should be changed.");
+        //    compareResult.ItemsOnlyInLeft.ShouldBeEmpty("No channels should exist only in the test data.");
+        //    compareResult.ItemsOnlyInRight.ShouldBeEmpty("No channels should exist only in the loaded project.");
 
-            compareResult.ShouldNotBeNull();
-            compareResult.UnchangedItems.ShouldNotBeEmpty("All channels should be unchanged.");
-            compareResult.ChangedItems.ShouldBeEmpty("No channels should be changed.");
-            compareResult.ItemsOnlyInLeft.ShouldBeEmpty("No channels should exist only in the test data.");
-            compareResult.ItemsOnlyInRight.ShouldBeEmpty("No channels should exist only in the loaded project.");
+        //    foreach (var (ExpectedChannel, LoadedChannel) in testProject?.Project?.Channels?.Zip(project?.Channels ?? []) ?? [])
+        //    {
+        //        var deviceCompareResult = EntityCompare.Compare<DeviceCollection, Device>(ExpectedChannel.Devices, LoadedChannel.Devices);
+        //        deviceCompareResult.ShouldNotBeNull();
+        //        deviceCompareResult.UnchangedItems.ShouldNotBeEmpty($"All devices in channel {ExpectedChannel.Name} should be unchanged.");
+        //        deviceCompareResult.ChangedItems.ShouldBeEmpty($"No devices in channel {ExpectedChannel.Name} should be changed.");
+        //        deviceCompareResult.ItemsOnlyInLeft.ShouldBeEmpty($"No devices should exist only in the test data for channel {ExpectedChannel.Name}.");
+        //        deviceCompareResult.ItemsOnlyInRight.ShouldBeEmpty($"No devices should exist only in the loaded project for channel {ExpectedChannel.Name}.");
 
-            foreach (var (ExpectedChannel, LoadedChannel) in testProject?.Project?.Channels?.Zip(project?.Channels ?? []) ?? [])
-            {
-                var deviceCompareResult = EntityCompare.Compare<DeviceCollection, Device>(ExpectedChannel.Devices, LoadedChannel.Devices);
-                deviceCompareResult.ShouldNotBeNull();
-                deviceCompareResult.UnchangedItems.ShouldNotBeEmpty($"All devices in channel {ExpectedChannel.Name} should be unchanged.");
-                deviceCompareResult.ChangedItems.ShouldBeEmpty($"No devices in channel {ExpectedChannel.Name} should be changed.");
-                deviceCompareResult.ItemsOnlyInLeft.ShouldBeEmpty($"No devices should exist only in the test data for channel {ExpectedChannel.Name}.");
-                deviceCompareResult.ItemsOnlyInRight.ShouldBeEmpty($"No devices should exist only in the loaded project for channel {ExpectedChannel.Name}.");
+        //        foreach (var (ExpectedDevice, LoadedDevice) in ExpectedChannel.Devices?.Zip(LoadedChannel.Devices ?? []) ?? [])
+        //        {
+        //            if (ExpectedDevice.Tags?.Count > 0 || LoadedDevice.Tags?.Count > 0)
+        //            {
+        //                var tagCompareResult = EntityCompare.Compare<DeviceTagCollection, Tag>(ExpectedDevice.Tags, LoadedDevice.Tags);
+        //                tagCompareResult.ShouldNotBeNull();
+        //                tagCompareResult.UnchangedItems.ShouldNotBeEmpty($"All tags in device {ExpectedDevice.Name} should be unchanged.");
+        //                tagCompareResult.ChangedItems.ShouldBeEmpty($"No tags in device {ExpectedDevice.Name} should be changed.");
+        //                tagCompareResult.ItemsOnlyInLeft.ShouldBeEmpty($"No tags should exist only in the test data for device {ExpectedDevice.Name}.");
+        //                tagCompareResult.ItemsOnlyInRight.ShouldBeEmpty($"No tags should exist only in the loaded project for device {ExpectedDevice.Name}.");
+        //            }
 
-                foreach (var (ExpectedDevice, LoadedDevice) in ExpectedChannel.Devices?.Zip(LoadedChannel.Devices ?? []) ?? [])
-                {
-                    if (ExpectedDevice.Tags?.Count > 0 || LoadedDevice.Tags?.Count > 0)
-                    {
-                        var tagCompareResult = EntityCompare.Compare<DeviceTagCollection, Tag>(ExpectedDevice.Tags, LoadedDevice.Tags);
-                        tagCompareResult.ShouldNotBeNull();
-                        tagCompareResult.UnchangedItems.ShouldNotBeEmpty($"All tags in device {ExpectedDevice.Name} should be unchanged.");
-                        tagCompareResult.ChangedItems.ShouldBeEmpty($"No tags in device {ExpectedDevice.Name} should be changed.");
-                        tagCompareResult.ItemsOnlyInLeft.ShouldBeEmpty($"No tags should exist only in the test data for device {ExpectedDevice.Name}.");
-                        tagCompareResult.ItemsOnlyInRight.ShouldBeEmpty($"No tags should exist only in the loaded project for device {ExpectedDevice.Name}.");
-                    }
+        //            CompareTagGroupsRecursive(ExpectedDevice.TagGroups, LoadedDevice.TagGroups, ExpectedDevice.Name);
+        //        }
+        //    }
 
-                    CompareTagGroupsRecursive(ExpectedDevice.TagGroups, LoadedDevice.TagGroups, ExpectedDevice.Name);
-                }
-            }
-        }
+        //    // Clean up
+        //    await DeleteAllChannelsAsync();
+        //}
 
         private static void CompareTagGroupsRecursive(DeviceTagGroupCollection? expected, DeviceTagGroupCollection? actual, string parentName)
         {
@@ -176,39 +175,36 @@ namespace Kepware.Api.TestIntg.ApiClient
             }
         }
 
-        [Theory]
-        [InlineData("KEPServerEX", "12", 6, 17)]
-        [InlineData("KEPServerEX", "12", 6, 16)]
-        [InlineData("ThingWorxKepwareEdge", "13", 1, 10)]
-        [InlineData("ThingWorxKepwareEdge", "13", 1, 9)]
-        [InlineData("UnknownProduct", "99", 10, 0)]
-        public async Task LoadProject_NotFull_ShouldLoadCorrectly_BasedOnProductSupport(
-          string productName, string productId, int majorVersion, int minorVersion)
+        [Fact]
+        public async Task LoadProject_NotFull_ShouldLoadCorrectly_BasedOnProductSupport()
         {
-            ConfigureConnectedClient(productName, productId, majorVersion, minorVersion);
+            // Arrange
+            var channel = await AddTestChannel();
+            var device = await AddTestDevice(channel);
+            var tags = await AddSimulatorTestTags(device);
 
-            await ConfigureToServeEndpoints();
-
+            // Act
             var project = await _kepwareApiClient.Project.LoadProject(blnLoadFullProject: false);
 
+            // Assert
             project.ShouldNotBeNull();
             project.Channels.ShouldBeNull("Channels list should be null.");
 
-            foreach (var channel in project.Channels ?? [])
+            foreach (var ch in project.Channels ?? [])
             {
-                channel.Devices.ShouldBeNull("Devices should not be loaded when not requested.");
+                ch.Devices.ShouldBeNull("Devices should not be loaded when not requested.");
             }
+
+            // Clean up
+            await DeleteAllChannelsAsync();
         }
 
         [Fact]
         public async Task LoadProject_ShouldReturnEmptyProject_WhenHttpRequestFails()
         {
-            // Arrange
-            _httpMessageHandlerMock.SetupAnyRequest()
-                                   .ThrowsAsync(new HttpRequestException());
 
             // Act
-            var project = await _kepwareApiClient.Project.LoadProject(true);
+            var project = await _badCredKepwareApiClient.Project.LoadProject(true);
 
             // Assert
             project.ShouldNotBeNull();

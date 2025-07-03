@@ -27,100 +27,67 @@ namespace Kepware.Api.TestIntg.ApiClient
         public async Task GetOrCreateChannelAsync_ShouldReturnChannel_WhenChannelExists()
         {
             // Arrange
-            var channelName = "ExistingChannel";
-            var channelJson = """
-                {
-                    "PROJECT_ID": 676550906,
-                    "common.ALLTYPES_NAME": "ExistingChannel",
-                    "common.ALLTYPES_DESCRIPTION": "Example Channel",
-                    "servermain.MULTIPLE_TYPES_DEVICE_DRIVER": "Simulator"
-                }
-                """;
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{channelName}")
-                                   .ReturnsResponse(channelJson, "application/json");
+            var channel = await AddTestChannel();
 
             // Act
-            var result = await _projectApiHandler.Channels.GetOrCreateChannelAsync(channelName, "Simulator");
+            var result = await _projectApiHandler.Channels.GetOrCreateChannelAsync(channel.Name, channel.DeviceDriver!);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(channelName, result.Name);
+            Assert.Equal(channel.Name, result.Name);
+
+            // Clean up
+            await DeleteAllChannelsAsync();
         }
 
         [Fact]
         public async Task GetOrCreateChannelAsync_ShouldCreateChannel_WhenChannelDoesNotExist()
         {
             // Arrange
-            await ConfigureToServeDrivers();
-
-            var channelName = "NewChannel";
-            var driverName = "Simulator";
-            var channelJson = """
-                {
-                    "PROJECT_ID": 676550906,
-                    "common.ALLTYPES_NAME": "NewChannel",
-                    "common.ALLTYPES_DESCRIPTION": "Example Channel",
-                    "servermain.MULTIPLE_TYPES_DEVICE_DRIVER": "Simulator"
-                }
-                """;
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{channelName}")
-                                   .ReturnsResponse(HttpStatusCode.NotFound);
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Post, TEST_ENDPOINT + "/config/v1/project/channels")
-                                   .ReturnsResponse(channelJson, "application/json");
+            var channel = CreateTestChannel();
 
             // Act
-            var result = await _projectApiHandler.Channels.GetOrCreateChannelAsync(channelName, driverName);
+            var result = await _projectApiHandler.Channels.GetOrCreateChannelAsync(channel.Name, channel.DeviceDriver);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(channelName, result.Name);
+            Assert.Equal(channel.Name, result.Name);
+
+            // Clean up
+            await DeleteAllChannelsAsync();
         }
 
         [Fact]
         public async Task UpdateChannelAsync_ShouldReturnTrue_WhenUpdateIsSuccessful()
         {
             // Arrange
-            await ConfigureToServeDrivers();
-            var channelJson = """
-                {
-                    "PROJECT_ID": 676550906,
-                    "common.ALLTYPES_NAME": "ChannelToUpdate",
-                    "common.ALLTYPES_DESCRIPTION": "Example Channel",
-                    "servermain.MULTIPLE_TYPES_DEVICE_DRIVER": "Simulator"
-                }
-                """;
-
-            var channel = new Channel { Name = "ChannelToUpdate" };
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{channel.Name}")
-                 .ReturnsResponse(channelJson, "application/json");
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Put, TEST_ENDPOINT + $"/config/v1/project/channels/{channel.Name}")
-                                   .ReturnsResponse(HttpStatusCode.OK);
+            var channel = await AddTestChannel();
+            channel.Description = "Updated Description";
 
             // Act
             var result = await _projectApiHandler.Channels.UpdateChannelAsync(channel);
 
             // Assert
             Assert.True(result);
+
+            // Clean up
+            await DeleteAllChannelsAsync();
         }
 
         [Fact]
         public async Task DeleteChannelAsync_ShouldReturnTrue_WhenDeletionIsSuccessful()
         {
             // Arrange
-            var channel = new Channel { Name = "ChannelToDelete" };
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Delete, TEST_ENDPOINT + $"/config/v1/project/channels/{channel.Name}")
-                                   .ReturnsResponse(HttpStatusCode.OK);
+            var channel = await AddTestChannel();
 
             // Act
             var result = await _projectApiHandler.Channels.DeleteChannelAsync(channel);
 
             // Assert
             Assert.True(result);
+
+            // Clean up
+            await DeleteAllChannelsAsync();
         }
 
         #endregion
@@ -131,105 +98,71 @@ namespace Kepware.Api.TestIntg.ApiClient
         public async Task GetOrCreateDeviceAsync_ShouldReturnDevice_WhenDeviceExists()
         {
             // Arrange
-            await ConfigureToServeDrivers();
-            var channel = new Channel { Name = "ExistingChannel" };
-            var deviceName = "ExistingDevice";
-            var deviceJson = """
-                {
-                    "PROJECT_ID": 676550906,
-                    "common.ALLTYPES_NAME": "ExistingDevice",
-                    "common.ALLTYPES_DESCRIPTION": "Example Device",
-                    "servermain.DEVICE_CHANNEL_ASSIGNMENT": "ExistingChannel"
-                }
-                """;
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{channel.Name}/devices/{deviceName}")
-                                   .ReturnsResponse(deviceJson, "application/json");
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{channel.Name}/devices/{deviceName}/tags")
-                                .ReturnsResponse("[]", "application/json");
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{channel.Name}/devices/{deviceName}/tag_groups")
-                                .ReturnsResponse("[]", "application/json");
+            var channel = await AddTestChannel();
+            var device = await AddTestDevice(channel);
 
             // Act
-            var result = await _projectApiHandler.Devices.GetOrCreateDeviceAsync(channel, deviceName);
+            var result = await _projectApiHandler.Devices.GetOrCreateDeviceAsync(channel, device.Name);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(deviceName, result.Name);
+            Assert.Equal(device.Name, result.Name);
+
+            // Clean up
+            await DeleteAllChannelsAsync();
         }
 
         [Fact]
         public async Task GetOrCreateDeviceAsync_ShouldCreateDevice_WhenDeviceDoesNotExist()
         {
             // Arrange
-            await ConfigureToServeDrivers();
-            var channel = new Channel { Name = "ExistingChannel", DeviceDriver = "Simulator" };
-            var deviceName = "NewDevice";
-            var deviceJson = """
-                {
-                    "PROJECT_ID": 676550906,
-                    "common.ALLTYPES_NAME": "NewDevice",
-                    "common.ALLTYPES_DESCRIPTION": "Example Device",
-                    "servermain.DEVICE_CHANNEL_ASSIGNMENT": "ExistingChannel"
-                }
-                """;
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{channel.Name}/devices/{deviceName}")
-                                   .ReturnsResponse(HttpStatusCode.NotFound);
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Post, TEST_ENDPOINT + $"/config/v1/project/channels/{channel.Name}/devices")
-                                   .ReturnsResponse(deviceJson, "application/json");
+            var channel = await AddTestChannel();
+            var device = CreateTestDevice(channel);
 
             // Act
-            var result = await _projectApiHandler.Devices.GetOrCreateDeviceAsync(channel, deviceName);
+            var result = await _projectApiHandler.Devices.GetOrCreateDeviceAsync(channel, device.Name);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(deviceName, result.Name);
+            Assert.Equal(device.Name, result.Name);
+
+            // Clean up
+            await DeleteAllChannelsAsync();
         }
 
         [Fact]
         public async Task UpdateDeviceAsync_ShouldReturnTrue_WhenUpdateIsSuccessful()
         {
             // Arrange
-            var deviceJson = """
-                {
-                    "PROJECT_ID": 676550906,
-                    "common.ALLTYPES_NAME": "DeviceToUpdate",
-                    "common.ALLTYPES_DESCRIPTION": "Example Device",
-                    "servermain.DEVICE_CHANNEL_ASSIGNMENT": "ExistingChannel"
-                }
-                """;
-            var device = new Device { Name = "DeviceToUpdate", Channel = new Channel { Name = "ExistingChannel" } };
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{device.Channel.Name}/devices/{device.Name}")
-                 .ReturnsResponse(deviceJson, "application/json");
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Put, TEST_ENDPOINT + $"/config/v1/project/channels/{device.Channel.Name}/devices/{device.Name}")
-                                   .ReturnsResponse(HttpStatusCode.OK);
+            var channel = await AddTestChannel();
+            var device = await AddTestDevice(channel);
+            device.Description = "Updated Device Description";
 
             // Act
             var result = await _projectApiHandler.Devices.UpdateDeviceAsync(device);
 
             // Assert
             Assert.True(result);
+
+            // Clean up
+            await DeleteAllChannelsAsync();
         }
 
         [Fact]
         public async Task DeleteDeviceAsync_ShouldReturnTrue_WhenDeletionIsSuccessful()
         {
             // Arrange
-            var device = new Device { Name = "DeviceToDelete", Channel = new Channel { Name = "ExistingChannel" } };
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Delete, TEST_ENDPOINT + $"/config/v1/project/channels/{device.Channel.Name}/devices/{device.Name}")
-                                   .ReturnsResponse(HttpStatusCode.OK);
+            var channel = await AddTestChannel();
+            var device = await AddTestDevice(channel);
 
             // Act
             var result = await _projectApiHandler.Devices.DeleteDeviceAsync(device);
 
             // Assert
             Assert.True(result);
+
+            // Clean up
+            await DeleteAllChannelsAsync();
         }
 
         #endregion
@@ -239,37 +172,15 @@ namespace Kepware.Api.TestIntg.ApiClient
         [Fact]
         public async Task LoadTagGroupsRecursiveAsync_ShouldLoadTagGroupsCorrectly()
         {
+            //TODO: Currently in a failed state do to SDK errors.
             // Arrange
-            await ConfigureToServeDrivers();
-            var device = new Device { Name = "DeviceWithTags", Channel = new Channel { Name = "ExistingChannel" } };
-            var tagGroupsJson = """
-                [
-                    {
-                        "PROJECT_ID": 676550906,
-                        "common.ALLTYPES_NAME": "TagGroup1",
-                        "common.ALLTYPES_DESCRIPTION": "Example Tag Group",
-                        "servermain.TAGGROUP_LOCAL_TAG_COUNT": 5,
-                        "servermain.TAGGROUP_TOTAL_TAG_COUNT": 5,
-                        "servermain.TAGGROUP_AUTOGENERATED": false
-                    }
-                ]
-                """;
+            var channel = await AddTestChannel();
+            var device = await AddTestDevice(channel);
+            var tagGroup = await AddTestTagGroup(device);
+            var tagGroup2 = await AddTestTagGroup(device, "TagGroup2");
+            var tagGroup3 = await AddTestTagGroup(tagGroup);
 
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{device.Channel.Name}/devices/{device.Name}/tag_groups")
-                                   .ReturnsResponse(tagGroupsJson, "application/json");
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{device.Channel.Name}/devices/{device.Name}/tag_groups/TagGroup1/tags")
-                        .ReturnsResponse("[]", "application/json");
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{device.Channel.Name}/devices/{device.Name}/tag_groups/TagGroup1/tag_groups")
-                        .ReturnsResponse(tagGroupsJson, "application/json");
-
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{device.Channel.Name}/devices/{device.Name}/tag_groups/TagGroup1/tag_groups/TagGroup1/tags")
-                        .ReturnsResponse("[]", "application/json");
-            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{device.Channel.Name}/devices/{device.Name}/tag_groups/TagGroup1/tag_groups/TagGroup1/tag_groups")
-                        .ReturnsResponse("[]", "application/json");
-
-            var tagGroup = new DeviceTagGroup { Name = "TagGroup1", Owner = device };
-            var tagGroups = new List<DeviceTagGroup> { tagGroup };
+            var tagGroups = new List<DeviceTagGroup> { tagGroup, tagGroup2, tagGroup3 };
 
             // Act
             await ProjectApiHandler.LoadTagGroupsRecursiveAsync(_kepwareApiClient, tagGroups);
@@ -278,6 +189,11 @@ namespace Kepware.Api.TestIntg.ApiClient
             Assert.NotNull(tagGroup.TagGroups);
             Assert.Single(tagGroup.TagGroups);
             Assert.Equal("TagGroup1", tagGroup.TagGroups.First().Name);
+            Assert.NotNull(tagGroup2.TagGroups);
+            Assert.Empty(tagGroup2.TagGroups);
+
+            // Clean up
+            await DeleteAllChannelsAsync();
         }
 
         #endregion
