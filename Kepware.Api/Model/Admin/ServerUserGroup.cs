@@ -11,7 +11,7 @@ namespace Kepware.Api.Model.Admin
     /// <summary>
     /// Represents a user group in Kepware, allowing management of permissions and access control.
     /// </summary>
-    [Endpoint("/config/v1/admin/server_user_groups/{name}")]
+    [Endpoint("/config/v1/admin/server_usergroups/{name}")]
     public class ServerUserGroup : NamedEntity
     {
         /// <summary>
@@ -289,7 +289,7 @@ namespace Kepware.Api.Model.Admin
         #endregion
     }
 
-    [Endpoint("/config/v1/admin/server_user_groups")]
+    [Endpoint("/config/v1/admin/server_usergroups")]
     public class ServerUserGroupCollection : EntityCollection<ServerUserGroup>
     {
 
