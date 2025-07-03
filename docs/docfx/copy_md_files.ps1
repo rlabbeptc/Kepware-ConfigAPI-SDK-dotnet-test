@@ -3,8 +3,8 @@
 # 
 
 # Define source and destination directories
-$sourceDir = "..\..\"
-$destinationDir = ".\"
+$sourceDir = ".\"
+$destinationDir = ".\docs\docfx"
 
 # Define the subfolders in the repository that md files will be migrated to the website
 $folderList = @("Kepware.Api\", "Kepware.Api.Sample\", "KepwareSync.Service\")
