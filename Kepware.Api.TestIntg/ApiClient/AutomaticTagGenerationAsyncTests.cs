@@ -1,6 +1,5 @@
 using Kepware.Api.Model;
 using Kepware.Api.Model.Services;
-using Kepware.Api.TestIntg.Util;
 using Moq;
 using Moq.Contrib.HttpClient;
 using Shouldly;
