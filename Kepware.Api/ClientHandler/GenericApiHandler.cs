@@ -283,7 +283,7 @@ namespace Kepware.Api.ClientHandler
                 if (typeof(K) == typeof(Channel) || typeof(K) == typeof(Device))
                 {
                     //check for usage of non supported drivers
-                    var drivers = await SupportedDriversAsync(cancellationToken);
+                    var drivers = await GetSupportedDriversAsync(cancellationToken);
 
                     var groupedItems = items
                       .GroupBy(i =>
@@ -666,7 +666,7 @@ namespace Kepware.Api.ClientHandler
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<ReadOnlyDictionary<string, Docs.Driver>> SupportedDriversAsync(CancellationToken cancellationToken = default)
+        public async Task<ReadOnlyDictionary<string, Docs.Driver>> GetSupportedDriversAsync(CancellationToken cancellationToken = default)
         {
             if (m_cachedSupportedDrivers == null)
             {
