@@ -47,7 +47,7 @@ namespace Kepware.Api.ClientHandler
         /// <param name="targetCollection">The collection representing the current state of the API</param>
         /// <param name="owner">The owner of the entities.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A task that represents the asynchronous operation. The task result contains the comparison result.</returns>
+        /// <returns>A task that represents the asynchronous operation. The task result contains the comparison result as <see cref="EntityCompare.CollectionResultBucket{K}"/>.</returns>
 
         public async Task<EntityCompare.CollectionResultBucket<K>> CompareAndApply<T, K>(T? sourceCollection, T? targetCollection, NamedEntity? owner = null, CancellationToken cancellationToken = default)
           where T : EntityCollection<K>
@@ -130,7 +130,7 @@ namespace Kepware.Api.ClientHandler
         /// <param name="oldItem">The old item.</param>
         /// <param name="owner">The owner of the entities.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A task that represents the asynchronous operation.</returns>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a boolean indicating whether the update was successful.</returns>
         public async Task<bool> UpdateItemAsync<T, K>(K item, K? oldItem = default, NamedEntity? owner = null, CancellationToken cancellationToken = default)
             where T : EntityCollection<K>
             where K : NamedEntity, new()
@@ -144,7 +144,7 @@ namespace Kepware.Api.ClientHandler
         /// <param name="items"></param>
         /// <param name="owner"></param>
         /// <param name="cancellationToken"></param>
-        /// <returns></returns>
+        /// <returns>The task result contains an array of booleans indicating whether the update for each item was successful.</returns>
         public async Task<bool[]> UpdateItemsAsync<T, K>(List<(K item, K? oldItem)> items, NamedEntity? owner = null, CancellationToken cancellationToken = default)
           where T : EntityCollection<K>
           where K : NamedEntity, new()
@@ -209,7 +209,7 @@ namespace Kepware.Api.ClientHandler
         /// <param name="item"></param>
         /// <param name="owner"></param>
         /// <param name="cancellationToken"></param>
-        /// <returns></returns>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a boolean indicating whether the insert was successful.</returns>
         public async Task<bool> InsertItemAsync<T>(T item, NamedEntity? owner = null, CancellationToken cancellationToken = default)
          where T : NamedEntity
         {
@@ -250,7 +250,7 @@ namespace Kepware.Api.ClientHandler
         /// <param name="item"></param>
         /// <param name="owner"></param>
         /// <param name="cancellationToken"></param>
-        /// <returns></returns>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a boolean indicating whether the insert was successful.</returns>
         public async Task<bool> InsertItemAsync<T, K>(K item, NamedEntity? owner = null, CancellationToken cancellationToken = default)
           where T : EntityCollection<K>
           where K : NamedEntity, new()
@@ -265,7 +265,7 @@ namespace Kepware.Api.ClientHandler
         /// <param name="pageSize"></param>
         /// <param name="owner"></param>
         /// <param name="cancellationToken"></param>
-        /// <returns></returns>
+        /// <returns>A task that represents the asynchronous operation. The task result contains an array of booleans indicating whether the each insert was successful.</returns>
         public async Task<bool[]> InsertItemsAsync<T, K>(List<K> items, int pageSize = 10, NamedEntity? owner = null, CancellationToken cancellationToken = default)
          where T : EntityCollection<K>
          where K : NamedEntity, new()
@@ -362,7 +362,7 @@ namespace Kepware.Api.ClientHandler
         /// <typeparam name="T"></typeparam>
         /// <param name="item"></param>
         /// <param name="cancellationToken"></param>
-        /// <returns></returns>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a boolean indicating whether the delete was successful.</returns>
         public Task<bool> DeleteItemAsync<T>(T item, CancellationToken cancellationToken = default)
           where T : NamedEntity, new()
         {
@@ -376,7 +376,7 @@ namespace Kepware.Api.ClientHandler
         /// <typeparam name="T"></typeparam>
         /// <param name="itemName"></param>
         /// <param name="cancellationToken"></param>
-        /// <returns></returns>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a boolean indicating whether the delete was successful.</returns>
         public Task<bool> DeleteItemAsync<T>(string itemName, CancellationToken cancellationToken = default)
          where T : NamedEntity, new()
          => DeleteItemAsync<T>([itemName], cancellationToken);

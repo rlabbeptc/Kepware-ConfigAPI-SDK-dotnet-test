@@ -38,7 +38,7 @@ namespace Kepware.Api.ClientHandler
         /// <param name="driverName">The name of the driver.</param>
         /// <param name="properties">The properties to set on the device.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A task that represents the asynchronous operation. The task result contains the created or loaded device.</returns>
+        /// <returns>A task that represents the asynchronous operation. The task result contains the created or loaded <see cref="Device"/>.</returns>
         /// <exception cref="ArgumentNullException">Thrown when the channel is null.</exception>
         /// <exception cref="ArgumentException">Thrown when the device name is null or empty.</exception>
         /// <exception cref="InvalidOperationException">Thrown when the device cannot be created or loaded.</exception>
@@ -99,7 +99,7 @@ namespace Kepware.Api.ClientHandler
         /// <param name="driverName">The name of the driver.</param>
         /// <param name="properties">The properties to set on the device.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
-        /// <returns>A task that represents the asynchronous operation. The task result contains the created device, or null if creation failed.</returns>
+        /// <returns>A task that represents the asynchronous operation. The task result contains the created <see cref="Device"/>, or null if creation failed.</returns>
         /// <exception cref="ArgumentNullException">Thrown when the channel is null.</exception>
         /// <exception cref="ArgumentException">Thrown when the device name is null or empty.</exception>
         public async Task<Device?> CreateDeviceAsync(Channel channel, string name, string? driverName = default, IDictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
