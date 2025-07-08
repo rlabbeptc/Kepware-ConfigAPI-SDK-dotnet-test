@@ -283,13 +283,18 @@ namespace Kepware.Api.ClientHandler
                 if (typeof(K) == typeof(Channel) || typeof(K) == typeof(Device))
                 {
                     //check for usage of non supported drivers
-                    var drivers = await GetSupportedDriversAsync(cancellationToken);
+
+                    // Load supported drivers from cache or API - prevents multiple calls to the docs endpoint
+                    if (m_cachedSupportedDrivers == null)
+                    {
+                        m_cachedSupportedDrivers = await GetSupportedDriversAsync(cancellationToken).ConfigureAwait(false);
+                    }
 
                     var groupedItems = items
                       .GroupBy(i =>
                       {
                           var driver = i.GetDynamicProperty<string>(Properties.Channel.DeviceDriver);
-                          return !string.IsNullOrEmpty(driver) && drivers.ContainsKey(driver);
+                          return !string.IsNullOrEmpty(driver) && m_cachedSupportedDrivers.ContainsKey(driver);
                       });
 
                     var unsupportedItems = groupedItems.FirstOrDefault(g => !g.Key)?.ToList() ?? [];
