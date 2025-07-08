@@ -269,7 +269,8 @@ namespace Kepware.Api.Test.ApiClient
                         .ReturnsResponse("[]", "application/json");
 
             var tagGroup = new DeviceTagGroup { Name = "TagGroup1", Owner = device };
-            var tagGroups = new List<DeviceTagGroup> { tagGroup };
+            var tagGroup2 = new DeviceTagGroup { Name = "TagGroup1", Owner = tagGroup };
+            var tagGroups = new List<DeviceTagGroup> { tagGroup , tagGroup2 };
 
             // Act
             await ProjectApiHandler.LoadTagGroupsRecursiveAsync(_kepwareApiClient, tagGroups);
@@ -278,6 +279,8 @@ namespace Kepware.Api.Test.ApiClient
             Assert.NotNull(tagGroup.TagGroups);
             Assert.Single(tagGroup.TagGroups);
             Assert.Equal("TagGroup1", tagGroup.TagGroups.First().Name);
+            Assert.NotNull(tagGroup2.TagGroups);
+            Assert.Empty(tagGroup2.TagGroups);
         }
 
         #endregion
