@@ -145,7 +145,7 @@ namespace Kepware.Api.ClientHandler
         /// <param name="owner"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<List<bool>> UpdateItemsAsync<T, K>(List<(K item, K? oldItem)> items, NamedEntity? owner = null, CancellationToken cancellationToken = default)
+        public async Task<bool[]> UpdateItemsAsync<T, K>(List<(K item, K? oldItem)> items, NamedEntity? owner = null, CancellationToken cancellationToken = default)
           where T : EntityCollection<K>
           where K : NamedEntity, new()
         {
@@ -197,7 +197,7 @@ namespace Kepware.Api.ClientHandler
             if (result.Count < items.Count)
                 result.AddRange(Enumerable.Repeat(false, items.Count - result.Count));
 
-            return result;
+            return [..result];
         }
         #endregion
 
