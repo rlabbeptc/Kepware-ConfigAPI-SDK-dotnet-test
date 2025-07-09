@@ -105,7 +105,7 @@ namespace Kepware.Api.Test.ApiClient
         }
 
         [Fact]
-        public async Task GetChannelAsync_ShouldCreateChannel_WhenChannelDoesNotExist()
+        public async Task GetChannelAsync_ShouldReturnNull_WhenChannelDoesNotExist()
         {
             // Arrange
             await ConfigureToServeDrivers();
@@ -231,6 +231,57 @@ namespace Kepware.Api.Test.ApiClient
             // Assert
             Assert.NotNull(result);
             Assert.Equal(deviceName, result.Name);
+        }
+
+        [Fact]
+        public async Task GetDeviceAsync_ShouldReturnDevice_WhenDeviceExists()
+        {
+            // Arrange
+            await ConfigureToServeDrivers();
+            var channel = new Channel { Name = "ExistingChannel" };
+            var deviceName = "ExistingDevice";
+            var deviceJson = """
+                {
+                    "PROJECT_ID": 676550906,
+                    "common.ALLTYPES_NAME": "ExistingDevice",
+                    "common.ALLTYPES_DESCRIPTION": "Example Device",
+                    "servermain.DEVICE_CHANNEL_ASSIGNMENT": "ExistingChannel"
+                }
+                """;
+
+            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{channel.Name}/devices/{deviceName}")
+                                   .ReturnsResponse(deviceJson, "application/json");
+
+            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{channel.Name}/devices/{deviceName}/tags")
+                                .ReturnsResponse("[]", "application/json");
+
+            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{channel.Name}/devices/{deviceName}/tag_groups")
+                                .ReturnsResponse("[]", "application/json");
+
+            // Act
+            var result = await _projectApiHandler.Devices.GetDeviceAsync(channel, deviceName);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(deviceName, result.Name);
+        }
+
+        [Fact]
+        public async Task GetDeviceAsync_ShouldReturnNull_WhenDeviceDoesNotExist()
+        {
+            // Arrange
+            await ConfigureToServeDrivers();
+            var channel = new Channel { Name = "ExistingChannel", DeviceDriver = "Simulator" };
+            var deviceName = "NewDevice";
+
+            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{channel.Name}/devices/{deviceName}")
+                                   .ReturnsResponse(HttpStatusCode.NotFound);
+
+            // Act
+            var result = await _projectApiHandler.Devices.GetDeviceAsync(channel, deviceName);
+
+            // Assert
+            Assert.Null(result);
         }
 
         [Fact]

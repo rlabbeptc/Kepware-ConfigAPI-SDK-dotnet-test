@@ -75,7 +75,7 @@ namespace Kepware.Api.TestIntg.ApiClient
         }
 
         [Fact]
-        public async Task GetChannelAsync_ShouldCreateChannel_WhenChannelDoesNotExist()
+        public async Task GetChannelAsync_ShouldReturnNull_WhenChannelDoesNotExist()
         {
             // Arrange
             var channel = CreateTestChannel();
@@ -158,6 +158,41 @@ namespace Kepware.Api.TestIntg.ApiClient
             // Assert
             Assert.NotNull(result);
             Assert.Equal(device.Name, result.Name);
+
+            // Clean up
+            await DeleteAllChannelsAsync();
+        }
+
+        [Fact]
+        public async Task GetDeviceAsync_ShouldReturnDevice_WhenDeviceExists()
+        {
+            // Arrange
+            var channel = await AddTestChannel();
+            var device = await AddTestDevice(channel);
+
+            // Act
+            var result = await _projectApiHandler.Devices.GetDeviceAsync(channel, device.Name);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(device.Name, result.Name);
+
+            // Clean up
+            await DeleteAllChannelsAsync();
+        }
+
+        [Fact]
+        public async Task GetDeviceAsync_ShouldReturnNull_WhenDeviceDoesNotExist()
+        {
+            // Arrange
+            var channel = await AddTestChannel();
+            var device = CreateTestDevice(channel);
+
+            // Act
+            var result = await _projectApiHandler.Devices.GetDeviceAsync(channel, device.Name);
+
+            // Assert
+            Assert.Null(result);
 
             // Clean up
             await DeleteAllChannelsAsync();
