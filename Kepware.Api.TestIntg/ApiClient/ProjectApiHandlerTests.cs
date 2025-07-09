@@ -47,7 +47,7 @@ namespace Kepware.Api.TestIntg.ApiClient
             var channel = CreateTestChannel();
 
             // Act
-            var result = await _projectApiHandler.Channels.GetOrCreateChannelAsync(channel.Name, channel.DeviceDriver);
+            var result = await _projectApiHandler.Channels.GetOrCreateChannelAsync(channel.Name, channel.DeviceDriver!);
 
             // Assert
             Assert.NotNull(result);
