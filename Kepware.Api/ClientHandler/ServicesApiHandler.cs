@@ -63,8 +63,16 @@ namespace Kepware.Api.ClientHandler
 
             var response = await m_kepwareApiClient.HttpClient.PutAsync(ENDPOINT_REINITIALIZE_RUNTIME, httpContent, cancellationToken).ConfigureAwait(false);
 
-
             var message = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new KepServerJobPromise(
+                    ENDPOINT_REINITIALIZE_RUNTIME, 
+                    timeToLive, 
+                    (ApiResponseCode)(int)response.StatusCode, 
+                    $"ReinitializeRuntimeAsync request failed with status code {(ApiResponseCode)(int)response.StatusCode} and message: {message}");
+            }
 
             try
             {
@@ -141,6 +149,15 @@ namespace Kepware.Api.ClientHandler
             var response = await m_kepwareApiClient.HttpClient.PutAsync(endpoint, httpContent, cancellationToken).ConfigureAwait(false);
 
             var message = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return new KepServerJobPromise(
+                    endpoint,
+                    timeToLive,
+                    (ApiResponseCode)(int)response.StatusCode,
+                    $"AutomaticTagGeneration request failed with status code {(ApiResponseCode)(int)response.StatusCode} and message: {message}");
+            }
 
             try
             {
