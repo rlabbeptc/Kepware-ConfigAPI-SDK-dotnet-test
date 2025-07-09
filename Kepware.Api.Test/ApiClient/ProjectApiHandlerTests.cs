@@ -80,6 +80,49 @@ namespace Kepware.Api.Test.ApiClient
         }
 
         [Fact]
+        public async Task GetChannelAsync_ShouldReturnChannel_WhenChannelExists()
+        {
+            // Arrange
+            var channelName = "ExistingChannel";
+            var channelJson = """
+                {
+                    "PROJECT_ID": 676550906,
+                    "common.ALLTYPES_NAME": "ExistingChannel",
+                    "common.ALLTYPES_DESCRIPTION": "Example Channel",
+                    "servermain.MULTIPLE_TYPES_DEVICE_DRIVER": "Simulator"
+                }
+                """;
+
+            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{channelName}")
+                                   .ReturnsResponse(channelJson, "application/json");
+
+            // Act
+            var result = await _projectApiHandler.Channels.GetChannelAsync(channelName);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(channelName, result.Name);
+        }
+
+        [Fact]
+        public async Task GetChannelAsync_ShouldCreateChannel_WhenChannelDoesNotExist()
+        {
+            // Arrange
+            await ConfigureToServeDrivers();
+
+            var channelName = "NewChannel";
+
+            _httpMessageHandlerMock.SetupRequest(HttpMethod.Get, TEST_ENDPOINT + $"/config/v1/project/channels/{channelName}")
+                                   .ReturnsResponse(HttpStatusCode.NotFound);
+
+            // Act
+            var result = await _projectApiHandler.Channels.GetChannelAsync(channelName);
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
         public async Task UpdateChannelAsync_ShouldReturnTrue_WhenUpdateIsSuccessful()
         {
             // Arrange
