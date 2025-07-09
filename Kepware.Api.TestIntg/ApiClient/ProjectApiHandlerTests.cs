@@ -58,6 +58,39 @@ namespace Kepware.Api.TestIntg.ApiClient
         }
 
         [Fact]
+        public async Task GetChannelAsync_ShouldReturnChannel_WhenChannelExists()
+        {
+            // Arrange
+            var channel = await AddTestChannel();
+
+            // Act
+            var result = await _projectApiHandler.Channels.GetChannelAsync(channel.Name);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(channel.Name, result.Name);
+
+            // Clean up
+            await DeleteAllChannelsAsync();
+        }
+
+        [Fact]
+        public async Task GetChannelAsync_ShouldCreateChannel_WhenChannelDoesNotExist()
+        {
+            // Arrange
+            var channel = CreateTestChannel();
+
+            // Act
+            var result = await _projectApiHandler.Channels.GetChannelAsync(channel.Name);
+
+            // Assert
+            Assert.Null(result);
+
+            // Clean up
+            await DeleteAllChannelsAsync();
+        }
+
+        [Fact]
         public async Task UpdateChannelAsync_ShouldReturnTrue_WhenUpdateIsSuccessful()
         {
             // Arrange
