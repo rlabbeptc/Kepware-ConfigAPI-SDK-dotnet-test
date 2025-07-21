@@ -164,7 +164,7 @@ namespace Kepware.Api
             catch (HttpRequestException httpEx)
             {
                 if (m_isConnected == null || m_isConnected == true) // first time after connection change or when connection is lost
-                    m_logger.LogWarning(httpEx, "Failed to connect to {ClientName}-client at {BaseAddress}", ClientName, m_httpClient.BaseAddress);
+                    m_logger.LogWarning("Failed to connect to {ClientName}-client at {BaseAddress}, Reason: {Message}", ClientName, m_httpClient.BaseAddress, httpEx.Message);
             }
             m_isConnected = blnIsConnected;
             return blnIsConnected && m_hasValidCredentials == true;
