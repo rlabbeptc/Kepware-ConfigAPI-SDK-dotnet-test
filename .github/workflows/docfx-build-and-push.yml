@@ -12,15 +12,6 @@ on:
       - 'KepwareSync.Service/**'
       - 'docs/docfx/**'
       - '.github/workflows/dotnet.yml' 
-      # - '!**/*.md' Exclude markdown files
-  # pull_request:
-  #   branches: [ "main" ]
-  #   paths:
-  #     - 'Kepware.Api/**'
-  #     - 'Kepware.Api.Sample/**'
-  #     - 'KepwareSync.Service/**'
-  #     - '.github/workflows/dotnet.yml'  
-  #     - '!*.md' # Exclude markdown files
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
