@@ -1,4 +1,4 @@
-name: .NET
+name: Sync Service Build and Release
 
 on:
   workflow_dispatch:
@@ -50,9 +50,9 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
       - name: Build
-        run: dotnet build Kepware.SyncService/Kepware.SyncService.csproj --no-restore --configuration release
+        run: dotnet build ./KepwareSync.Service/Kepware.SyncService.csproj --no-restore --configuration release
       - name: dotnet publish
-        run: dotnet publish KepwareSync.Service/Kepware.SyncService.csproj --configuration release -o publish /p:UseAppHost=true
+        run: dotnet publish ./KepwareSync.Service/Kepware.SyncService.csproj --configuration release -o publish /p:UseAppHost=true
       - name: Create and Upload Release Asset (Linux)
         if: ${{ github.event_name != 'pull_request' && matrix.platform == 'ubuntu' }}
         run: |

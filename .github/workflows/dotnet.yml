@@ -1,4 +1,4 @@
-name: .NET
+name: SDK Build and Release
 
 on:
   workflow_dispatch:
@@ -64,8 +64,8 @@ jobs:
           name: .NET 9 Test Report (${{ matrix.platform }})
           path: "**/TestResults/**/*.trx"
           reporter: dotnet-trx
-      - name: dotnet publish
-        run: dotnet publish KepwareSync.Service/Kepware.SyncService.csproj --configuration release -o publish /p:UseAppHost=true
+    #   - name: dotnet publish
+    #     run: dotnet publish KepwareSync.Service/Kepware.SyncService.csproj --configuration release -o publish /p:UseAppHost=true
 
       - name: Push to GitHub Packages
         if: ${{ github.event_name != 'pull_request' && matrix.platform == 'ubuntu' }}

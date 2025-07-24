@@ -5,7 +5,7 @@ name: Docfx Builder and Publisher for Web Pages
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
+    branches: [ "test" ]
     paths:
       - 'Kepware.Api/**'
       - 'Kepware.Api.Sample/**'
