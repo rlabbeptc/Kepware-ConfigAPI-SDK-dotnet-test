@@ -1,5 +1,5 @@
 ﻿name-template: 'Kepware SyncService v$RESOLVED_VERSION'
-tag-template: 'v$RESOLVED_VERSION'
+tag-template: 'SyncService v$RESOLVED_VERSION'
 commitish: refs/heads/main
 version-resolver:
   major:
