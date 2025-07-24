@@ -60,7 +60,7 @@ public class UpdateTests : TestApiClientBase
         var results = await _kepwareApiClient.GenericConfig.UpdateItemsAsync<DeviceTagCollection, Tag>(tags, device);
 
         // Assert
-        results.Count.ShouldBe(tags.Count);
+        results.Length.ShouldBe(tags.Count);
         results.ShouldAllBe(r => r == true);
 
         // Clean up
