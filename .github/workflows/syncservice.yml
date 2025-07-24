@@ -41,7 +41,7 @@ jobs:
         id: drafter
         uses: release-drafter/release-drafter@v6
         with:
-          version: Kepware.SyncService ${{ steps.nbgv.outputs.SemVer2 }}
+          version: ${{ steps.nbgv.outputs.SemVer2 }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Setup .NET
