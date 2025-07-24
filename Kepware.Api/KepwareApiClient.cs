@@ -93,6 +93,7 @@ namespace Kepware.Api
         public KepwareApiClient(KepwareApiClientOptions options, ILoggerFactory loggerFactory, HttpClient httpClient)
             : this(UNKNOWN, options, loggerFactory, httpClient)
         {
+            m_logger.LogInformation("Created KepwareApiClient instance with name {ClientName} at {BaseAddress}", ClientName, m_httpClient.BaseAddress);
         }
 
         internal KepwareApiClient(string name, KepwareApiClientOptions options, ILoggerFactory loggerFactory, HttpClient httpClient)
