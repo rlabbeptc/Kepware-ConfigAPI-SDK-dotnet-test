@@ -41,6 +41,7 @@ jobs:
         id: drafter
         uses: release-drafter/release-drafter@v6
         with:
+          config-name: syncservice-release-drafter.yml
           version: ${{ steps.nbgv.outputs.SemVer2 }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

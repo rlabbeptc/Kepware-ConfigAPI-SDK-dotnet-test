@@ -1,4 +1,4 @@
-﻿name-template: 'Kepware.Api SDK v$RESOLVED_VERSION'
+﻿name-template: 'Kepware SyncService v$RESOLVED_VERSION'
 tag-template: 'v$RESOLVED_VERSION'
 commitish: refs/heads/main
 version-resolver:
