@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'Kepware.Api/**'
+    #   - 'Kepware.Api/**'
       - 'KepwareSync.Service/**'
       - '.github/workflows/docker-build-and-push.yml' 
       - '!**/*.md' # Exclude markdown files

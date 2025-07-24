@@ -34,6 +34,7 @@ jobs:
       - uses: dotnet/nbgv@master
         id: nbgv
         with:
+          path: ./KepwareSync.Service
           setAllVars: true
       - name: Use Release Drafter
         if: ${{ github.event_name != 'pull_request' && matrix.platform == 'ubuntu' }}

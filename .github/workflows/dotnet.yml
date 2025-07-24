@@ -38,6 +38,7 @@ jobs:
       - uses: dotnet/nbgv@master
         id: nbgv
         with:
+          path: ./Kepware.Api
           setAllVars: true
       - name: Use Release Drafter
         if: ${{ github.event_name != 'pull_request' && matrix.platform == 'ubuntu' }}
