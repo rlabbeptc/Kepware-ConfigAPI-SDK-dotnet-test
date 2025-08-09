@@ -64,7 +64,7 @@ jobs:
                 $(find . -path '**/publish/Kepware.SyncService.dbg') \
                 $(find . -path '**/publish/appsettings.json')
             # Upload the ZIP file
-            gh release upload "Kepware SyncService v${{ steps.nbgv.outputs.SemVer2 }}" Kepware.Sync.Service-linux-x64.zip --clobber
+            gh release upload "Kepware SyncService v${{ steps.nbgv.outputs.SemVer2 }}" Kepware.SyncService-linux-x64.zip --clobber
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
