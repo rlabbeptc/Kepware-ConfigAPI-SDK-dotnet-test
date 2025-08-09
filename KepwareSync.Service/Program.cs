@@ -21,7 +21,7 @@ namespace Kepware.SyncService
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
                 .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
                 .AddEnvironmentVariables();
-
+            // THis is great!
             var configuration = cfgBuilder.Build();
             builder.Configuration.AddConfiguration(configuration);
 
