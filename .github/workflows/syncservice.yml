@@ -64,7 +64,7 @@ jobs:
                 $(find . -path '**/publish/Kepware.SyncService.dbg') \
                 $(find . -path '**/publish/appsettings.json')
             # Upload the ZIP file
-            gh release upload "SyncService/v${{ steps.nbgv.outputs.SemVer2 }}" Kepware.SyncService-linux-x64.zip --clobber
+            gh release upload ${{ steps.drafter.outputs.tag_name }} Kepware.SyncService-linux-x64.zip --clobber
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -74,6 +74,6 @@ jobs:
             # Create the ZIP file with only the required files
             Compress-Archive -Path @(".\publish\Kepware.SyncService.exe",".\publish\Kepware.SyncService.pdb", ".\publish\appsettings.json") -DestinationPath Kepware.SyncService-win-x64.zip
             # Upload the ZIP file
-            gh release upload "SyncService/v${{ steps.nbgv.outputs.SemVer2 }}" Kepware.SyncService-win-x64.zip --clobber
+            gh release upload ${{ steps.drafter.outputs.tag_name }} Kepware.SyncService-win-x64.zip --clobber
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
