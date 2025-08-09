@@ -79,6 +79,6 @@ jobs:
         if: ${{ github.event_name != 'pull_request' && matrix.platform == 'ubuntu' }}
         run: |
             # Upload the NuGet package
-            gh release upload "Kepware.Api v${{ steps.nbgv.outputs.SemVer2 }}" ./Kepware.Api/bin/Release/*.nupkg --clobber
+            gh release upload ${{ steps.drafter.outputs.tag_name }} ./Kepware.Api/bin/Release/*.nupkg --clobber
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
